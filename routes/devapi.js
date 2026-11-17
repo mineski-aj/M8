@@ -62,10 +62,10 @@ router.get('/api/battledata-m8', (req, res) => {
 // Sponsor logos + categorization — logos live in /assets/sponsor/<SET>/, categorization
 // (grouping, per-category loop duration, display order) is edited from the
 // dashboard's Sponsors tab and persisted to sponsors_config.json.
-// Four independent logo sets live in assets/sponsor/<SET>/ (each with its own white/ subfolder).
-// Every sponsor route takes an optional ?set=MAIN|MY|PH|ID; default is MAIN.
-// Categories (sponsors_config.json) are shared: a logo filename missing from a set is simply skipped.
-const SPONSOR_SETS         = ['MAIN', 'MY', 'PH', 'ID'];
+// Four independent sponsor sets (MAIN, ID, MY, PH — one per country/feed), each with its OWN logo folder
+// (assets/sponsor/<SET>/, + white/) and its OWN categories / order / durations (data/sponsors_config.json -> sets.<SET>).
+// Every sponsor route takes ?set=MAIN|ID|MY|PH (default MAIN); overlay pages pass it from their own ?set= URL parameter.
+const SPONSOR_SETS         = ['MAIN', 'ID', 'MY', 'PH'];
 const DEFAULT_SPONSOR_SET  = 'MAIN';
 const SPONSORS_ROOT        = path.join(__dirname, '..', 'assets', 'sponsor');
 function sponsorSet(req) {
@@ -91,18 +91,29 @@ function readSponsorFiles(set) {
   }
 }
 
-function readSponsorsConfig() {
+// sponsors_config.json = { sets: { MAIN: {categories, hiddenInIngame, hiddenInSponsorsPage}, ID: {...}, MY: {...}, PH: {...} } }
+// — one independent category/order/duration setup per country set. A legacy flat file ({categories,...}) is read as MAIN.
+const emptySponsorCfg = () => ({ categories: [], hiddenInIngame: [], hiddenInSponsorsPage: [] });
+function readSponsorsFile() {
   try {
     const data = JSON.parse(fs.readFileSync(SPONSORS_CONFIG_FILE, 'utf8'));
-    if (data && Array.isArray(data.categories)) {
-      return {
-        categories: data.categories,
-        hiddenInIngame: Array.isArray(data.hiddenInIngame) ? data.hiddenInIngame : [],
-        hiddenInSponsorsPage: Array.isArray(data.hiddenInSponsorsPage) ? data.hiddenInSponsorsPage : [],
-      };
-    }
+    if (data && data.sets) return data.sets;
+    if (data && Array.isArray(data.categories)) return { MAIN: data };   // legacy flat shape
   } catch (e) {}
-  return { categories: [], hiddenInIngame: [], hiddenInSponsorsPage: [] };
+  return {};
+}
+function readSponsorsConfig(set) {
+  const c = readSponsorsFile()[set || DEFAULT_SPONSOR_SET] || {};
+  return {
+    categories: Array.isArray(c.categories) ? c.categories : [],
+    hiddenInIngame: Array.isArray(c.hiddenInIngame) ? c.hiddenInIngame : [],
+    hiddenInSponsorsPage: Array.isArray(c.hiddenInSponsorsPage) ? c.hiddenInSponsorsPage : [],
+  };
+}
+function writeSponsorsConfig(set, cfg) {
+  const sets = {};
+  SPONSOR_SETS.forEach(k => { sets[k] = k === set ? cfg : readSponsorsConfig(k); });   // other sets are kept as they are
+  fs.writeFileSync(SPONSORS_CONFIG_FILE, JSON.stringify({ sets }, null, 2));
 }
 
 // Public — overlays read this for the ordered, timed play list
@@ -118,7 +129,7 @@ function readSponsorsConfig() {
 router.get('/api/sponsors', (req, res) => {
   const set    = sponsorSet(req);
   const files  = new Set(readSponsorFiles(set));
-  const config = readSponsorsConfig();
+  const config = readSponsorsConfig(set);
   const hiddenIngame = req.query.ingame ? new Set(config.hiddenInIngame) : null;
   const hiddenSponsorsPage = req.query.sponsorspage ? new Set(config.hiddenInSponsorsPage) : null;
   const sponsors = [];
@@ -137,8 +148,8 @@ router.get('/api/sponsors', (req, res) => {
 // Dashboard Sponsors tab — categorization + every available logo file
 // (so the UI can show unassigned logos alongside categorized ones).
 router.get('/api/sponsors-config', (req, res) => {
-  const config = readSponsorsConfig();
   const set = sponsorSet(req);
+  const config = readSponsorsConfig(set);
   res.set('Cache-Control', 'no-store').json({
     set,
     sets: SPONSOR_SETS,
@@ -154,6 +165,7 @@ router.post('/api/sponsors-config', (req, res) => {
   const body  = req.body || {};
   const token = body.token;
   if (!token || token !== getDashboardPassword()) return res.status(401).json({ error: 'Unauthorized' });
+  const set  = sponsorSet({ query: { set: body.set || (req.query && req.query.set) } });
   const data = body.data;
   if (!data || !Array.isArray(data.categories)) {
     return res.status(400).json({ error: 'Payload must include a categories array' });
@@ -161,8 +173,8 @@ router.post('/api/sponsors-config', (req, res) => {
   const hiddenInIngame = Array.isArray(data.hiddenInIngame) ? data.hiddenInIngame.filter(f => typeof f === 'string') : [];
   const hiddenInSponsorsPage = Array.isArray(data.hiddenInSponsorsPage) ? data.hiddenInSponsorsPage.filter(f => typeof f === 'string') : [];
   try {
-    fs.writeFileSync(SPONSORS_CONFIG_FILE, JSON.stringify({ categories: data.categories, hiddenInIngame, hiddenInSponsorsPage }, null, 2));
-    res.json({ ok: true });
+    writeSponsorsConfig(set, { categories: data.categories, hiddenInIngame, hiddenInSponsorsPage });
+    res.json({ ok: true, set });
   } catch (e) {
     res.status(500).json({ error: 'Could not write sponsors_config.json' });
   }

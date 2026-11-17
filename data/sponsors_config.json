@@ -1,51 +1,70 @@
 {
-  "categories": [
-    {
-      "id": "cat_main",
-      "name": "OFFICIAL SPONSOR",
-      "duration": 4,
-      "logos": [
-        "INFINIX.png",
-        "SMART.png",
-        "VISA.png"
+  "sets": {
+    "MAIN": {
+      "categories": [
+        {
+          "id": "cat_main",
+          "name": "OFFICIAL SPONSOR",
+          "duration": 4,
+          "logos": [
+            "INFINIX.png",
+            "SMART.png",
+            "VISA.png"
+          ]
+        },
+        {
+          "id": "cat_msofvnao999",
+          "name": "PARTNER IN ESPORTS",
+          "duration": 2,
+          "logos": [
+            "CLEAR.png",
+            "JOYTIFY.png",
+            "MISEDAAP.png",
+            "OISHI.png",
+            "ICOLOR.png"
+          ]
+        },
+        {
+          "id": "cat_msofvrqo889",
+          "name": "STRATEGIC PARTNER",
+          "duration": 2,
+          "logos": [
+            "TTRACING.png",
+            "CHINA AIRLINES.png",
+            "SIP.png",
+            "DOMODOMO.png",
+            "TikTok.png",
+            "FAIRRIE.png"
+          ]
+        },
+        {
+          "id": "cat_festivalhero",
+          "name": "FESTIVAL HERO",
+          "duration": 2,
+          "logos": [
+            "MONSTER.png"
+          ]
+        }
+      ],
+      "hiddenInIngame": [],
+      "hiddenInSponsorsPage": [
+        "JOYTIFY.png"
       ]
     },
-    {
-      "id": "cat_msofvnao999",
-      "name": "PARTNER IN ESPORTS",
-      "duration": 2,
-      "logos": [
-        "CLEAR.png",
-        "JOYTIFY.png",
-        "MISEDAAP.png",
-        "OISHI.png",
-        "ICOLOR.png"
-      ]
+    "ID": {
+      "categories": [],
+      "hiddenInIngame": [],
+      "hiddenInSponsorsPage": []
     },
-    {
-      "id": "cat_msofvrqo889",
-      "name": "STRATEGIC PARTNER",
-      "duration": 2,
-      "logos": [
-        "TTRACING.png",
-        "CHINA AIRLINES.png",
-        "SIP.png",
-        "DOMODOMO.png",
-        "TikTok.png",
-        "FAIRRIE.png"
-      ]
+    "MY": {
+      "categories": [],
+      "hiddenInIngame": [],
+      "hiddenInSponsorsPage": []
     },
-    {
-      "id": "cat_festivalhero",
-      "name": "FESTIVAL HERO",
-      "duration": 2,
-      "logos": [
-        "MONSTER.png"
-      ]
+    "PH": {
+      "categories": [],
+      "hiddenInIngame": [],
+      "hiddenInSponsorsPage": []
     }
-  ],
-  "hiddenInIngame": [],
-  "hiddenInSponsorsPage": [
-    "JOYTIFY.png"
-  ]
+  }
 }

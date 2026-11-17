@@ -7,6 +7,7 @@
   <base href="/">
   <script src="html/js/cache-bust.js"></script>
   <script src="html/js/theme-apply.js"></script>
+  <script src="html/js/sponsor-set.js"></script>
   <script src="html/js/sponsor-cursor.js"></script>
   <script src="html/js/po-gold-text.js"></script>
   <script src="html/js/hero-web.js"></script>
@@ -8333,7 +8334,7 @@
     let crSponsorBase = '/assets/sponsor/MAIN/';
     async function crFetchSponsorCategories() {
       try {
-        const r = await fetch('/api/sponsors-config', { cache: 'no-store' });
+        const r = await fetch('/api/sponsors-config' + SponsorSet.qs(), { cache: 'no-store' });
         const d = await r.json();
         if (d && d.base) crSponsorBase = d.base;
         return (d && Array.isArray(d.categories)) ? d.categories : [];
@@ -8596,7 +8597,7 @@
       return {
         start() {
           active = true;
-          fetch('/api/sponsors').then(r => r.json()).then(list => {
+          fetch('/api/sponsors' + SponsorSet.qs()).then(r => r.json()).then(list => {
             if (!active || !list || !list.length) return;
             sponsors = list;
             idx = SponsorCursor.start(list.length);

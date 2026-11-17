@@ -32,7 +32,7 @@ assets/
              hires/<POSE>_web/<ign>_<POSE>.webp (full-size WebP; the PNG originals were deleted)
   game/      items/ role/ spell/ emblem/ maps/      (game-data icons)
   team/      logos/<TRI>.png
-  sponsor/   MAIN/ MY/ PH/ ID/ = 4 logo sets (each + white/); routes take ?set=, default MAIN — served by /api/sponsors (the scene art is overlay/sponsors)
+  sponsor/   MAIN/ ID/ MY/ PH/ = 4 country sets, each with its own logos (+ white/) AND its own categories/order/durations (data/sponsors_config.json -> sets.<SET>); routes take ?set=, default MAIN — see "Sponsor sets" below
   fonts/     Anton, General Sans
   webm/      shared background loops (bgloop*, phase2_anniv*), motion/ (kill-event webms), playoffs/ (playoffsbg_*.webm)
   common/    shared images (mpl2026logo.png)
@@ -212,3 +212,7 @@ Get the target's `webSocketDebuggerUrl` from `http://localhost:9222/json`, then 
 ## Images are WebP-only for hero / MVP / player photos
 
 Hero icons, MVP art, hero post/highlight art and all player photos exist **only as WebP** (the PNG originals and the old `_web` fallback logic were removed — `hero-web.js` no longer has a PNG fallback, `mvSetImg()` in postgame.html just hides the `<img>` if the file is missing). Add new art with `python3 Tools/png2webp.py lossy <dir>` (quality 90, alpha kept) and keep the filename convention above; `/api/player-photos`, `/api/signature-photos` and `/api/photo-manifest` list `*.webp`. UI art under `assets/overlay/**` is still PNG (theme variants and built-up paths such as `wsTvcAsset(name + '.png')` make a blind rename unsafe).
+
+## Sponsor sets — MAIN / ID / MY / PH (one per country feed)
+
+The Sponsors tab (`html/sponsors-dashboard.html`) has four tabs, one per set; each edits that set's categories / logo order / durations and the logos come from `assets/sponsor/<SET>/` (+ `white/`). `data/sponsors_config.json` = `{ sets: { MAIN, ID, MY, PH } }` (a legacy flat file is read as MAIN); saving one set never touches the others. Server: `/api/sponsors?set=` (play list, honours `ingame=1`), `/api/sponsors-config?set=` (GET) and POST `{ token, set, data }` — `sponsorSet()` in `routes/devapi.js` validates the name and falls back to MAIN. **Pages choose their set from their own URL: `html/js/sponsor-set.js` → `SponsorSet.name` (`?set=ID`, default MAIN); every sponsor fetch must append `SponsorSet.qs()`** (done in postgame.html's `makeSponsorLoop` + Credit Reel and in `overlay-scoreboard.js`). So a country gets its own browser sources: `postgame.html?set=MY`, `mploverlay_v7.html?set=MY`. The dashboard's Control-tab previews open without `?set`, i.e. they preview MAIN. A new overlay with a sponsor loop must include `sponsor-set.js` and use `SponsorSet.qs()`.

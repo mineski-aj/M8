@@ -743,7 +743,7 @@ setInterval(sbPollMatchState, 3000);
     })();
   }
 
-  fetch('/api/sponsors?ingame=1')
+  fetch('/api/sponsors?ingame=1' + SponsorSet.qs(true))
     .then(function(r) { return r.json(); })
     .then(function(list) {
       if (!list || !list.length) return;

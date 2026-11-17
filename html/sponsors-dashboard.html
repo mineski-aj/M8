@@ -148,6 +148,20 @@
     }
     #dirty-hint { font-size: 12px; color: #ffbb44; }
 
+    /* ── Sponsor set tabs (MAIN / ID / MY / PH) ── */
+    #set-tabs { display: flex; gap: 6px; flex-shrink: 0; }
+    .set-tab {
+      background: #12121c; border: 1px solid #222232; color: #8a8aa0; border-radius: 8px 8px 0 0;
+      font-size: 13px; font-weight: 700; letter-spacing: .08em; padding: 8px 22px; cursor: pointer;
+      font-family: inherit; transition: background .15s, color .15s, border-color .15s;
+    }
+    .set-tab:hover { color: #d0d0e0; background: #181826; }
+    .set-tab.active { background: #1c1c2e; color: #fff; border-color: #5566cc; border-bottom-color: #1c1c2e; }
+    .set-tab .set-count { font-weight: 500; font-size: 11px; color: #555; margin-left: 6px; }
+    .set-tab.active .set-count { color: #8890c8; }
+    #set-info { font-size: 12px; color: #667; padding: 2px 2px 0; flex-shrink: 0; }
+    #set-info code { color: #9aa0d8; }
+
     /* ── Toast ── */
     #saved-toast {
       position: fixed;
@@ -190,10 +204,18 @@
     </div>
   </header>
 
+  <div id="set-tabs">
+    <button class="set-tab" data-set="MAIN">MAIN<span class="set-count"></span></button>
+    <button class="set-tab" data-set="ID">ID<span class="set-count"></span></button>
+    <button class="set-tab" data-set="MY">MY<span class="set-count"></span></button>
+    <button class="set-tab" data-set="PH">PH<span class="set-count"></span></button>
+  </div>
+  <div id="set-info"></div>
+
   <div id="scroll">
     <div class="panel">
       <div class="panel-title">Unassigned Logos</div>
-      <div class="panel-hint">Files found in <code>/sponsors</code> that aren't in a category yet. Drag one down into a category to add it.</div>
+      <div class="panel-hint">Logo files in <code id="bench-dir">assets/sponsor/MAIN/</code> that aren't in a category yet. Drag one down into a category to add it.</div>
       <div id="bench-zone"></div>
     </div>
 
@@ -218,6 +240,9 @@
   var files   = [];   /* every logo file found in /sponsors */
   var dirty   = false;
   var dragFile = null; /* filename currently being dragged, or null */
+  var SETS = ['MAIN', 'ID', 'MY', 'PH'];
+  var currentSet = (function () { var v = sessionStorage.getItem('sponsor_set'); return SETS.indexOf(v) !== -1 ? v : 'MAIN'; })();
+  var setStats = {};   /* set -> { logos: n in folder, assigned: n in categories } for the tab badges */
 
   /* ── AUTH ── */
   function showApp()   { document.getElementById('login-wrap').style.display = 'none'; document.getElementById('app').classList.add('visible'); }
@@ -238,7 +263,7 @@
           token = pw;
           sessionStorage.setItem('match_token', token);
           document.getElementById('login-err').textContent = '';
-          loadConfig().then(showApp);
+          loadConfig().then(function () { showApp(); loadSetStats(); });
         } else {
           document.getElementById('login-err').textContent = 'Incorrect password.';
         }
@@ -247,13 +272,16 @@
 
   /* ── LOAD ── */
   function loadConfig() {
-    return fetch('/api/sponsors-config', { cache: 'no-store' })
+    return fetch('/api/sponsors-config?set=' + currentSet, { cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         config = { categories: data.categories || [], hiddenInIngame: data.hiddenInIngame || [], hiddenInSponsorsPage: data.hiddenInSponsorsPage || [] };
         files  = data.availableFiles || [];
         if (data.base) sponsorBase = data.base;
+        setStats[currentSet] = { logos: files.length, assigned: Object.keys(assignedFiles()).filter(function (f) { return files.indexOf(f) !== -1; }).length };
+        setDirty(false);
         render();
+        renderSetTabs();
       })
       .catch(function () { console.warn('Could not load sponsors-config'); });
   }
@@ -278,10 +306,10 @@
     fetch('/api/sponsors-config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: token, data: config }),
+      body: JSON.stringify({ token: token, set: currentSet, data: config }),
     }).then(function (r) {
       document.getElementById('save-status').textContent = r.ok ? '' : 'Save failed';
-      if (r.ok) { showSavedToast(); setDirty(false); }
+      if (r.ok) { showSavedToast(); setDirty(false); setStats[currentSet] = { logos: files.length, assigned: Object.keys(assignedFiles()).filter(function (f) { return files.indexOf(f) !== -1; }).length }; renderSetTabs(); }
       if (r.status === 401) { token = ''; sessionStorage.removeItem('match_token'); showLogin(); }
     }).catch(function () { document.getElementById('save-status').textContent = 'Cannot reach server.'; });
   }
@@ -423,6 +451,41 @@
       if (!dragFile) return;
       moveTo(dragFile, catId, null);
       dragFile = null;
+    });
+  }
+
+  /* ── SET TABS ── */
+  function renderSetTabs() {
+    document.querySelectorAll('.set-tab').forEach(function (b) {
+      var st = setStats[b.dataset.set];
+      b.classList.toggle('active', b.dataset.set === currentSet);
+      b.querySelector('.set-count').textContent = st ? (st.assigned + '/' + st.logos) : '';
+    });
+    document.getElementById('bench-dir').textContent = 'assets/sponsor/' + currentSet + '/';
+    var info = document.getElementById('set-info');
+    info.innerHTML = 'Editing the <b>' + currentSet + '</b> set — overlay pages show it when opened with <code>?set=' + currentSet + '</code>' +
+      (currentSet === 'MAIN' ? ' (or no <code>?set</code>, the default)' : '') + '.' +
+      (files.length ? '' : ' <span style="color:#e0a040">No logo files yet — add PNG/WebP files to <code>assets/sponsor/' + currentSet + '/</code> (white variants in its <code>white/</code> folder), then reload.</span>');
+  }
+  document.querySelectorAll('.set-tab').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var next = b.dataset.set;
+      if (next === currentSet) return;
+      if (dirty && !window.confirm('Discard unsaved changes to the ' + currentSet + ' set?')) return;
+      currentSet = next;
+      sessionStorage.setItem('sponsor_set', currentSet);
+      loadConfig();
+    });
+  });
+  /* tab badges for the other sets (assigned/total logos) so you can see which ones are set up */
+  function loadSetStats() {
+    SETS.forEach(function (st) {
+      if (st === currentSet) return;
+      fetch('/api/sponsors-config?set=' + st, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+        var a = {}; (d.categories || []).forEach(function (c) { (c.logos || []).forEach(function (f) { a[f] = 1; }); });
+        setStats[st] = { logos: (d.availableFiles || []).length, assigned: Object.keys(a).filter(function (f) { return (d.availableFiles || []).indexOf(f) !== -1; }).length };
+        renderSetTabs();
+      }).catch(function () {});
     });
   }
 
