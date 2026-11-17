@@ -162,6 +162,21 @@
     #set-info { font-size: 12px; color: #667; padding: 2px 2px 0; flex-shrink: 0; }
     #set-info code { color: #9aa0d8; }
 
+    /* ── Event sponsors + copy URLs ── */
+    #set-urls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex-shrink: 0; }
+    #set-urls .url-chip { font-size: 11px; color: #9aa0d8; background: #0f0f18; border: 1px solid #2a2a3a; border-radius: 6px; padding: 5px 9px; font-family: ui-monospace, Menlo, monospace; }
+    .btn-copy-url { background: #1a1a2c; border: 1px solid #333350; color: #c8c8f0; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+    .btn-copy-url:hover { background: #22223a; }
+    .btn-copy-url.copied { background: #16a34a; border-color: #16a34a; color: #fff; }
+    .ev-row { display: flex; align-items: center; gap: 14px; padding: 8px 0; border-top: 1px solid #1e1e2e; }
+    .ev-row:first-child { border-top: none; }
+    .ev-label { width: 190px; flex-shrink: 0; font-size: 13px; color: #e0e0f0; font-weight: 600; }
+    .ev-label small { display: block; font-weight: 400; color: #556; font-size: 11px; margin-top: 2px; }
+    .ev-row select { background: #0f0f18; border: 1px solid #2a2a3a; border-radius: 6px; color: #e0e0f0; font-size: 13px; padding: 7px 10px; min-width: 260px; }
+    .ev-thumb { width: 150px; height: 58px; background: repeating-conic-gradient(#1b1b28 0 25%, #14141e 0 50%) 0 0 / 14px 14px; border: 1px solid #2a2a3a; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .ev-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .ev-thumb span { font-size: 11px; color: #556; }
+
     /* ── Toast ── */
     #saved-toast {
       position: fixed;
@@ -211,6 +226,7 @@
     <button class="set-tab" data-set="PH">PH<span class="set-count"></span></button>
   </div>
   <div id="set-info"></div>
+  <div id="set-urls"></div>
 
   <div id="scroll">
     <div class="panel">
@@ -225,6 +241,12 @@
       <div id="categories-list"></div>
       <button class="btn btn-add-cat" id="add-cat-btn" style="margin-top:12px;">+ Add Category</button>
     </div>
+
+    <div class="panel">
+      <div class="panel-title">Event sponsors — a custom sponsor on specific Ingame events</div>
+      <div class="panel-hint">Pick art from <code id="events-dir">assets/sponsor/MAIN/events/</code> (transparent PNG/WebP — it is fitted into the event's on-screen box, positionable in the Edit tab). <b>— none —</b> means that event runs without a sponsor for this country. Live overlays pick up a saved change within ~20 seconds.</div>
+      <div id="events-list"></div>
+    </div>
   </div>
 
   <div id="actions-row">
@@ -237,7 +259,14 @@
 (function () {
   var token   = sessionStorage.getItem('match_token') || '';
   var config  = { categories: [], hiddenInIngame: [], hiddenInSponsorsPage: [] };
-  var files   = [];   /* every logo file found in /sponsors */
+  var files   = [];   /* every logo file found in the set's folder */
+  var eventFiles = []; /* art files in the set's events/ folder */
+  var EVENT_SLOTS = [
+    { key: 'doublekill',  label: 'Double Kill',   note: 'logo beside the kill popup' },
+    { key: 'triplekill',  label: 'Triple Kill',   note: 'logo beside the kill popup' },
+    { key: 'turtleslain', label: 'Turtle Slain',  note: 'not shown under the 10th Anniversary theme' },
+    { key: 'golddiff',    label: 'Gold Diff chip', note: 'chip above the Gold Diff panel', builtin: true },
+  ];
   var dirty   = false;
   var dragFile = null; /* filename currently being dragged, or null */
   var SETS = ['MAIN', 'ID', 'MY', 'PH'];
@@ -275,8 +304,9 @@
     return fetch('/api/sponsors-config?set=' + currentSet, { cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        config = { categories: data.categories || [], hiddenInIngame: data.hiddenInIngame || [], hiddenInSponsorsPage: data.hiddenInSponsorsPage || [] };
+        config = { categories: data.categories || [], hiddenInIngame: data.hiddenInIngame || [], hiddenInSponsorsPage: data.hiddenInSponsorsPage || [], events: data.events || {} };
         files  = data.availableFiles || [];
+        eventFiles = data.availableEventFiles || [];
         if (data.base) sponsorBase = data.base;
         setStats[currentSet] = { logos: files.length, assigned: Object.keys(assignedFiles()).filter(function (f) { return files.indexOf(f) !== -1; }).length };
         setDirty(false);
@@ -493,6 +523,55 @@
   function render() {
     renderBench();
     renderCategories();
+    renderEvents();
+    renderUrls();
+  }
+
+  /* ── EVENT SPONSORS ── */
+  function renderEvents() {
+    document.getElementById('events-dir').textContent = 'assets/sponsor/' + currentSet + '/events/';
+    var root = document.getElementById('events-list');
+    root.innerHTML = '';
+    EVENT_SLOTS.forEach(function (slot) {
+      var cur = (config.events && config.events[slot.key]) || '';
+      var row = document.createElement('div'); row.className = 'ev-row';
+      var lab = document.createElement('div'); lab.className = 'ev-label';
+      lab.textContent = slot.label; var sm = document.createElement('small'); sm.textContent = slot.note; lab.appendChild(sm);
+      var sel = document.createElement('select');
+      function opt(v, t) { var o = document.createElement('option'); o.value = v; o.textContent = t; if (v === cur) o.selected = true; sel.appendChild(o); }
+      opt('', '— none —');
+      if (slot.builtin) opt('builtin', 'Built-in chip (themed)');
+      var base = 'assets/sponsor/' + currentSet + '/events/';
+      eventFiles.forEach(function (f) { opt(base + f, f); });
+      if (cur && cur !== 'builtin' && cur.indexOf(base) === 0 && eventFiles.indexOf(cur.slice(base.length)) === -1) opt(cur, cur.slice(base.length) + ' (file missing)');
+      sel.addEventListener('change', function () {
+        config.events = config.events || {};
+        config.events[slot.key] = sel.value;
+        setDirty(true); renderEvents();
+      });
+      var thumb = document.createElement('div'); thumb.className = 'ev-thumb';
+      if (cur && cur !== 'builtin') { var im = document.createElement('img'); im.src = '/' + cur; thumb.appendChild(im); }
+      else { var sp = document.createElement('span'); sp.textContent = cur === 'builtin' ? 'built-in' : 'no sponsor'; thumb.appendChild(sp); }
+      row.appendChild(lab); row.appendChild(sel); row.appendChild(thumb);
+      root.appendChild(row);
+    });
+  }
+
+  /* ── COPY URLS (one browser source per country) ── */
+  function copyText(text, btn) {
+    function done() { var t = btn.textContent; btn.classList.add('copied'); btn.textContent = 'Copied ✓'; setTimeout(function () { btn.classList.remove('copied'); btn.textContent = t; }, 1400); }
+    function fallback() { var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} document.body.removeChild(ta); done(); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
+  }
+  function renderUrls() {
+    var root = document.getElementById('set-urls'); root.innerHTML = '';
+    [['Ingame', '/html/mploverlay_v7.html?set=' + currentSet], ['Postgame', '/html/postgame.html?set=' + currentSet]].forEach(function (u) {
+      var full = location.origin + u[1];
+      var chip = document.createElement('span'); chip.className = 'url-chip'; chip.textContent = u[1];
+      var b = document.createElement('button'); b.className = 'btn-copy-url'; b.textContent = 'Copy ' + u[0] + ' URL';
+      b.addEventListener('click', function () { copyText(full, b); });
+      root.appendChild(chip); root.appendChild(b);
+    });
   }
 
   function renderBench() {

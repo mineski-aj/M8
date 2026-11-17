@@ -115,6 +115,16 @@ app.post('/match/team-lineups', function (req, res) {
   res.json({ ok: true });
 });
 
+// Short per-country links for browser sources: /ingame/ID -> the Ingame page for the ID sponsor set (same for /postgame/<SET>).
+// Plain /ingame and /postgame mean the MAIN set. The page itself reads ?set= (html/js/sponsor-set.js).
+['ingame', 'postgame'].forEach(function (page) {
+  const file = page === 'ingame' ? 'mploverlay_v7.html' : 'postgame.html';
+  app.get(['/' + page, '/' + page + '/:set'], function (req, res) {
+    const set = String(req.params.set || 'MAIN').toUpperCase().replace(/[^A-Z]/g, '');
+    res.redirect('/html/' + file + '?set=' + (['MAIN', 'ID', 'MY', 'PH'].includes(set) ? set : 'MAIN'));
+  });
+});
+
 // Browsers ask for /favicon.ico on their own — serve the M8 logo (same file the pages link to).
 app.get('/favicon.ico', function (req, res) {
   res.sendFile(path.join(__dirname, 'assets', 'common', 'favicon.ico'));

@@ -1911,6 +1911,7 @@
   .gdc-smart-img {
     position: absolute; left: 0; top: 0;
     width: 396px; height: 61px;
+    object-fit: contain; /* a country's own chip art fits the box without stretching (the built-in art already matches it exactly) */
   }
   /* 10th Anniversary's golddiffsmart.png is narrower (293px vs 396px,
      same 61px height) — re-centered over the same 858px-wide .gdc-bg

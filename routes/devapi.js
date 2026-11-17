@@ -93,7 +93,23 @@ function readSponsorFiles(set) {
 
 // sponsors_config.json = { sets: { MAIN: {categories, hiddenInIngame, hiddenInSponsorsPage}, ID: {...}, MY: {...}, PH: {...} } }
 // — one independent category/order/duration setup per country set. A legacy flat file ({categories,...}) is read as MAIN.
-const emptySponsorCfg = () => ({ categories: [], hiddenInIngame: [], hiddenInSponsorsPage: [] });
+// Event sponsors = the custom sponsor shown on specific Ingame events, per country set. slot -> '' (none) | 'builtin' (golddiff only:
+// the themed chip that ships with the overlay) | 'assets/sponsor/<SET>/events/<file>'.
+const EVENT_SLOTS = ['doublekill', 'triplekill', 'turtleslain', 'golddiff'];
+function cleanEvents(set, ev) {
+  const out = {};
+  EVENT_SLOTS.forEach(k => {
+    const v = ev && typeof ev[k] === 'string' ? ev[k] : '';
+    if (v === 'builtin' && k === 'golddiff') out[k] = v;
+    else if (v.startsWith('assets/sponsor/' + set + '/events/') && !v.includes('..')) out[k] = v;
+    else out[k] = '';
+  });
+  return out;
+}
+function readEventFiles(set) {
+  try { return fs.readdirSync(path.join(SPONSORS_ROOT, set, 'events')).filter(f => /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f)); }
+  catch (e) { return []; }
+}
 function readSponsorsFile() {
   try {
     const data = JSON.parse(fs.readFileSync(SPONSORS_CONFIG_FILE, 'utf8'));
@@ -108,6 +124,7 @@ function readSponsorsConfig(set) {
     categories: Array.isArray(c.categories) ? c.categories : [],
     hiddenInIngame: Array.isArray(c.hiddenInIngame) ? c.hiddenInIngame : [],
     hiddenInSponsorsPage: Array.isArray(c.hiddenInSponsorsPage) ? c.hiddenInSponsorsPage : [],
+    events: cleanEvents(set || DEFAULT_SPONSOR_SET, c.events),
   };
 }
 function writeSponsorsConfig(set, cfg) {
@@ -157,8 +174,16 @@ router.get('/api/sponsors-config', (req, res) => {
     categories: config.categories,
     hiddenInIngame: config.hiddenInIngame,
     hiddenInSponsorsPage: config.hiddenInSponsorsPage,
+    events: config.events,
     availableFiles: readSponsorFiles(set),
+    availableEventFiles: readEventFiles(set),
   });
+});
+
+// Ingame overlays read their country's event sponsors from here (kill-event logos, Gold Diff chip).
+router.get('/api/event-sponsors', (req, res) => {
+  const set = sponsorSet(req);
+  res.set('Cache-Control', 'no-store').json({ set, events: readSponsorsConfig(set).events });
 });
 
 router.post('/api/sponsors-config', (req, res) => {
@@ -173,7 +198,7 @@ router.post('/api/sponsors-config', (req, res) => {
   const hiddenInIngame = Array.isArray(data.hiddenInIngame) ? data.hiddenInIngame.filter(f => typeof f === 'string') : [];
   const hiddenInSponsorsPage = Array.isArray(data.hiddenInSponsorsPage) ? data.hiddenInSponsorsPage.filter(f => typeof f === 'string') : [];
   try {
-    writeSponsorsConfig(set, { categories: data.categories, hiddenInIngame, hiddenInSponsorsPage });
+    writeSponsorsConfig(set, { categories: data.categories, hiddenInIngame, hiddenInSponsorsPage, events: cleanEvents(set, data.events) });
     res.json({ ok: true, set });
   } catch (e) {
     res.status(500).json({ error: 'Could not write sponsors_config.json' });

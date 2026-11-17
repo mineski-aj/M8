@@ -167,6 +167,22 @@ function gdcBuildPanel() {
 }
 gdcBuildPanel();
 
+/* The chip above the panel is the country's Gold Diff sponsor (Sponsors tab -> Event sponsors, slot "golddiff"): 'builtin' = the themed
+   chip that ships with the overlay, an image URL = that country's art (fitted in the same box), '' = no chip. */
+function gdcApplyChip() {
+  const smart = document.getElementById('gdc-smart');
+  if (!smart) return;
+  const img = smart.querySelector('.gdc-smart-img');
+  const theme = document.documentElement.getAttribute('data-theme');
+  const dir = theme === '10th_anniversary' ? 'assets/overlay/ingame/anniversary/' : theme === 'playoffs' ? 'assets/overlay/ingame/playoffs/' : 'assets/overlay/ingame/';
+  const v = EventSponsors.get('golddiff');
+  if (!v) { smart.style.display = 'none'; return; }
+  smart.style.display = '';
+  img.src = (v === 'builtin') ? dir + 'golddiffsmart.png' : v;
+}
+{ const sc = document.getElementById('gdc-smart'); if (sc) sc.style.display = 'none'; }   /* hidden until the config says otherwise */
+EventSponsors.onChange(gdcApplyChip);
+
 function gdcApplyRow(lane, homeSeat, awaySeat) {
   const ref = gdcRefs[lane];
   if (!ref) return;

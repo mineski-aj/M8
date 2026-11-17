@@ -49,22 +49,31 @@
       "hiddenInIngame": [],
       "hiddenInSponsorsPage": [
         "JOYTIFY.png"
-      ]
+      ],
+      "events": {
+        "doublekill": "assets/sponsor/MAIN/events/ingamesmart.png",
+        "turtleslain": "assets/sponsor/MAIN/events/ingamesmart.png",
+        "triplekill": "assets/sponsor/MAIN/events/ingamevisawhite.png",
+        "golddiff": "builtin"
+      }
     },
     "ID": {
       "categories": [],
       "hiddenInIngame": [],
-      "hiddenInSponsorsPage": []
+      "hiddenInSponsorsPage": [],
+      "events": {}
     },
     "MY": {
       "categories": [],
       "hiddenInIngame": [],
-      "hiddenInSponsorsPage": []
+      "hiddenInSponsorsPage": [],
+      "events": {}
     },
     "PH": {
       "categories": [],
       "hiddenInIngame": [],
-      "hiddenInSponsorsPage": []
+      "hiddenInSponsorsPage": [],
+      "events": {}
     }
   }
 }

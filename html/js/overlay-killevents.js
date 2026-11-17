@@ -48,11 +48,13 @@ function killEventTeamLogoSrc(camp, tricodeOverride) {
 
 /* Kill events sponsored by a specific brand — the sponsor logo only
    shows for these videos, popping in alongside the photo. */
-var KILL_EVENT_SPONSOR_LOGO = {
-  'doublekill.webm':  'assets/overlay/ingame/ingamesmart.png',
-  'turtleslain.webm': 'assets/overlay/ingame/ingamesmart.png',
-  'triplekill.webm':  'assets/overlay/ingame/ingamevisawhite.png',
-};
+/* Which logo (if any) goes with which video comes from the COUNTRY set this page was opened with (?set=ID …) — see
+   overlay-eventsponsors.js; configured per set in the dashboard's Sponsors tab. No logo configured = the event runs unsponsored. */
+var KILL_EVENT_SPONSOR_SLOT = { 'doublekill.webm': 'doublekill', 'triplekill.webm': 'triplekill', 'turtleslain.webm': 'turtleslain' };
+function killEventConfiguredLogo(video) {
+  var u = KILL_EVENT_SPONSOR_SLOT[video] ? EventSponsors.get(KILL_EVENT_SPONSOR_SLOT[video]) : '';
+  return (u && u !== 'builtin') ? u : null;
+}
 /* 10th Anniversary — Turtle Slain runs unsponsored (Double Kill and
    Triple Kill keep their logos). previewKillEventSponsor() below picks
    its preview video based on this same theme check, so it always
@@ -67,7 +69,7 @@ function killEventSponsorLogo(video) {
   if (video === 'turtleslain.webm' && document.documentElement.getAttribute('data-theme') === '10th_anniversary') {
     return null;
   }
-  return KILL_EVENT_SPONSOR_LOGO[video] || null;
+  return killEventConfiguredLogo(video);
 }
 
 /* Playoffs sponsor fit. The sponsor PNGs are full 1920x1080 canvases with different margins (Smart's pill spans 1865x534,
@@ -564,8 +566,8 @@ function previewKillEventSponsor() {
   killRoleIconEl.style.display = 'none';
   killPhotoClipEl.classList.add('ke-in');
   killNametagClipEl.classList.add('ke-in');
-  killSponsorLogoEl.src = KILL_EVENT_SPONSOR_LOGO[video];
-  killSponsorLogoClipEl.classList.add('ke-in');
+  var previewLogo = killEventConfiguredLogo(video);
+  if (previewLogo) { killEventApplySponsorFit(previewLogo); killSponsorLogoEl.src = previewLogo; killSponsorLogoClipEl.classList.add('ke-in'); }
 
   /* Also preview the Wipe Out team-logo box so it's positionable from the
      same Edit tab config — harmless under any theme, it just never shows
