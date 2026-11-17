@@ -1,0 +1,17 @@
+{
+  "authKey": "",
+  "authUrl": "https://royal-rain-9cbc.andrewjames-s.workers.dev",
+  "accessToken": "<X-Access-Token for the auth-key worker \u2014 or set env DIRE_ACCESS_TOKEN>",
+  "judgeIds": {
+    "global": "1369004764",
+    "indo": "1369004764"
+  },
+  "servers": {
+    "battleList": "https://esportsdata-sg.mobilelegends.com"
+  },
+  "battleId": "3602880545491431349",
+  "dataId": "1118",
+  "pollInterval": 1,
+  "mapName": "",
+  "matchCnt": ""
+}

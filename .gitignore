@@ -2,3 +2,4 @@ logs/
 node_modules/
 .DS_Store
 .webcache/
+data/dire_config.json

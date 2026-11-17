@@ -153,6 +153,7 @@ app.use(require('./routes/postgame'));
 app.use(require('./routes/dashboard'));
 app.use(require('./routes/overlayStyles'));
 app.use(require('./routes/devapi'));
+app.use(require('./routes/dire'));   // built-in DiredudeAPI at /dire/api/* (DEBUG API mode)
 
 // Debug: log unmatched routes
 app.use(function (req, res, next) {
@@ -165,6 +166,8 @@ require('./lib/pollers');
 
 app.listen(PORT, '0.0.0.0', () => {
   require('./lib/eventLog').add({ level: 'success', page: 'server', kind: 'server', msg: 'Overlay server started on :' + PORT });
+  // Server restarted while API Mode is DEBUG -> bring the built-in DiredudeAPI (lib/dire.js) back up.
+  require('./lib/dire').onModeChange(require('./lib/apiMode').getApiMode()).catch(function () {});
   console.log("================================================");
   console.log(`  Overlay Server running on :${PORT}`);
   console.log(`  Dashboard  → http://localhost:${PORT}/`);

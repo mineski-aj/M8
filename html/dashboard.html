@@ -1117,6 +1117,17 @@
           <button class="api-mode-seg-btn" data-mode="debug">DEBUG</button>
         </div>
       </div>
+      <!-- DEBUG = the built-in self-hosted DiredudeAPI (lib/dire.js). Only shown while DEBUG is the active mode. -->
+      <div class="settings-row" id="dire-row" style="display:none">
+        <label>Self-hosted API</label>
+        <button id="dire-debug-btn" class="settings-btn" title="GET /dire/api/debug — load the most recent battle of the last 24h (testing without a live game)">Debug</button>
+        <button id="dire-refresh-btn" class="settings-btn" title="GET /dire/api/refresh — fetch the judge's current battle and restart polling">Refresh</button>
+        <span id="dire-action-status" class="settings-status"></span>
+      </div>
+      <div class="settings-row" id="dire-status-row" style="display:none">
+        <label></label>
+        <span id="dire-status" class="settings-status">…</span>
+      </div>
     </div>
   </div>
 
@@ -1536,7 +1547,57 @@
     API_MODES.forEach(function (m) {
       apiModeSegBtns[m].classList.toggle('active', m === mode);
     });
+    direShow(mode === 'debug');
   }
+
+  /* ── DEBUG mode = built-in self-hosted DiredudeAPI (lib/dire.js, /dire/api/*) ──
+     While DEBUG is active the game poller reads /dire/api/gamedata instead of the Battledata URL.
+     [Debug]   = GET /dire/api/debug    most recent battle of the last 24h (no live game needed)
+     [Refresh] = GET /dire/api/refresh  the judge's current battle, restart polling */
+  var direRow = document.getElementById('dire-row'), direStatusRow = document.getElementById('dire-status-row');
+  var direStatusEl = document.getElementById('dire-status'), direActionEl = document.getElementById('dire-action-status');
+  var direBtns = { debug: document.getElementById('dire-debug-btn'), refresh: document.getElementById('dire-refresh-btn') };
+  var direTimer = null;
+  function direFmtStatus(st) {
+    if (!st) return 'no status';
+    if (!st.configured) return '⚠ not configured — add the access token to data/dire_config.json';
+    var parts = [st.running ? '● polling' : '○ stopped'];
+    if (st.battleId) parts.push('battle ' + String(st.battleId).slice(0, 8) + '…' + String(st.battleId).slice(-4));
+    parts.push(st.isDebug ? 'latest game (Debug)' : 'judge game (Refresh)');
+    if (st.lastUpdated) parts.push('updated ' + new Date(st.lastUpdated).toLocaleTimeString());
+    else parts.push('no data yet — press Debug or Refresh');
+    return parts.join(' · ');
+  }
+  function direPoll() {
+    fetch('/dire/api/status', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (st) {
+      direStatusEl.textContent = direFmtStatus(st) + (st.lastError ? '  —  ⚠ ' + st.lastError : '');
+      direStatusEl.style.color = st.lastError || !st.configured ? '#ff9955' : (st.running && st.hasData ? '#44cc88' : '');
+    }).catch(function () { direStatusEl.textContent = 'status unavailable'; });
+  }
+  function direShow(on) {
+    direRow.style.display = on ? '' : 'none';
+    direStatusRow.style.display = on ? '' : 'none';
+    clearInterval(direTimer); direTimer = null;
+    if (on) { direPoll(); direTimer = setInterval(direPoll, 2000); }
+  }
+  function direAct(kind) {
+    var btn = direBtns[kind], other = direBtns[kind === 'debug' ? 'refresh' : 'debug'];
+    btn.disabled = other.disabled = true; var label = btn.textContent; btn.textContent = label + '…';
+    direActionEl.textContent = ''; direActionEl.style.color = '';
+    fetch('/dire/api/' + kind, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j.success) throw new Error(j.error || 'failed');
+      var d = j.data || {};
+      direActionEl.textContent = kind === 'debug'
+        ? 'Loaded debug battle ' + d.debugBattleId + ' (' + d.totalFound + ' found in 24h)'
+        : 'Judge battle ' + d.battleId + (d.changed ? ' (new)' : ' (unchanged)');
+      direActionEl.style.color = '#44cc88';
+      direPoll();
+    }).catch(function (e) {
+      direActionEl.textContent = '⚠ ' + e.message; direActionEl.style.color = '#ff4455';
+    }).then(function () { btn.disabled = other.disabled = false; btn.textContent = label; });
+  }
+  direBtns.debug.addEventListener('click', function () { direAct('debug'); });
+  direBtns.refresh.addEventListener('click', function () { direAct('refresh'); });
 
   fetch('/api/api-mode').then(function(r){ return r.json(); }).then(function(d){
     applyApiModeSeg(API_MODES.indexOf(d.mode) !== -1 ? d.mode : 'live');
@@ -1618,6 +1679,11 @@
 
   fetch('/api/game-url').then(function(r){ return r.json(); }).then(function(d){
     gameApiInput.value = d.url || '';
+    if (d.selfHosted) {   // DEBUG API mode: the built-in DiredudeAPI — nothing to edit
+      gameApiInput.disabled = true; gameApiApply.disabled = true;
+      gameApiInput.title = 'DEBUG mode reads the built-in self-hosted API (DiredudeAPI). Switch to LIVE or WEB to edit this URL.';
+      gameApiStatus.textContent = 'built-in DiredudeAPI (DEBUG mode)';
+    }
   }).catch(function(){});
 
   function saveGameApiUrl() {
@@ -1626,7 +1692,8 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: url })
-    }).then(function(r){ return r.json(); }).then(function(){
+    }).then(function(r){ return r.json(); }).then(function(j){
+      if (j && j.ok === false) throw new Error(j.error || 'not saved');
       gameApiStatus.textContent = 'Saved ✓';
       gameApiStatus.style.color = '#44cc88';
       setTimeout(function(){ gameApiStatus.textContent = ''; }, 2000);

@@ -8,6 +8,8 @@ const { getApiMode, setApiMode, readUrlForMode, writeUrlForMode } = require('../
 const { getTheme, setTheme } = require('../lib/theme');
 const { normalizeGameFeed } = require('../lib/rawAdapter');
 const feedDerived = require('../lib/feedDerived');
+const dire = require('../lib/dire');
+const { getGameUrl, isSelfHosted } = require('../lib/gameUrl');
 const { getGameRefreshMs, setGameRefreshMs, MIN_MS: GAME_REFRESH_MIN, MAX_MS: GAME_REFRESH_MAX } = require('../lib/gameRefresh');
 
 // LIVE/DEBUG API mode — Settings page's "dangerous debug button". Every
@@ -15,12 +17,14 @@ const { getGameRefreshMs, setGameRefreshMs, MIN_MS: GAME_REFRESH_MIN, MAX_MS: GA
 // flips which one every reader (these routes, lib/pollers.js, lib/hrmPoller.js)
 // resolves to. See lib/apiMode.js.
 router.get('/api/api-mode', (req, res) => {
-  res.json({ mode: getApiMode() });
+  res.json({ mode: getApiMode(), dire: dire.status() });
 });
 
 router.post('/api/api-mode', (req, res) => {
   const mode = setApiMode((req.body || {}).mode);
-  res.json({ ok: true, mode });
+  // DEBUG = the built-in self-hosted DiredudeAPI (lib/dire.js): entering starts its polling, leaving stops it.
+  dire.onModeChange(mode).catch(() => {});
+  res.json({ ok: true, mode, dire: dire.status() });
 });
 
 // Broadcast theme — Settings page picker. One global value, applied by
@@ -410,10 +414,12 @@ router.post('/api/seat-arrangement', (req, res) => {
 const GAME_URL_FILE = path.join(__dirname, '..', 'data', 'game_api_url.json');
 
 router.get('/api/game-url', (req, res) => {
-  res.json({ url: readUrlForMode(GAME_URL_FILE, '') });
+  // selfHosted = DEBUG mode: the URL is the built-in DiredudeAPI and is not editable
+  res.json({ url: getGameUrl(), selfHosted: isSelfHosted() });
 });
 
 router.post('/api/game-url', (req, res) => {
+  if (isSelfHosted()) return res.status(409).json({ ok: false, selfHosted: true, error: 'DEBUG mode uses the built-in DiredudeAPI — switch to LIVE or WEB to edit this URL' });
   const url = ((req.body || {}).url || '').trim().replace(/\/$/, '');
   writeUrlForMode(GAME_URL_FILE, url);
   res.json({ ok: true, url });
@@ -535,7 +541,7 @@ router.get('/api/gamedata-proxy', async (req, res) => {
     return res.set('Cache-Control', 'no-store').json(state.lastGameData);
   }
   try {
-    const gameUrl = readUrlForMode(GAME_URL_FILE, '').trim();
+    const gameUrl = getGameUrl();
     if (!gameUrl) return res.status(404).json({ error: 'no game URL configured' });
     const data = await fetchGamedataFresh(gameUrl);
     res.set('Cache-Control', 'no-store').json(data);
