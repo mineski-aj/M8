@@ -115,6 +115,11 @@ app.post('/match/team-lineups', function (req, res) {
   res.json({ ok: true });
 });
 
+// Browsers ask for /favicon.ico on their own — serve the M8 logo (same file the pages link to).
+app.get('/favicon.ico', function (req, res) {
+  res.sendFile(path.join(__dirname, 'assets', 'common', 'favicon.ico'));
+});
+
 // Static assets — HTML files served fresh, other assets cached for 1 day
 app.use(express.static(path.join(__dirname), {
   maxAge: '1d',
