@@ -1,0 +1,3017 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <base href="/">
+  <script src="html/js/cache-bust.js"></script>
+  <script src="html/js/theme-apply.js"></script>
+  <script src="html/js/event-log-client.js"></script>
+  <script src="html/js/overlay-sse-shim.js"></script>
+  <title>MPL Tags Overlay</title>
+  <style>
+    @font-face {
+      font-family: 'General Sans';
+      font-weight: 600;
+      font-display: block;
+      src: local('GeneralSans-Semibold'), local('GeneralSans-SemiBold'), local('General Sans Semibold'), url('/assets/fonts/GeneralSans-Semibold.otf') format('opentype');
+    }
+    @font-face {
+      font-family: 'General Sans';
+      font-weight: 700;
+      font-display: block;
+      src: local('GeneralSans-Bold'), local('General Sans Bold'), url('/assets/fonts/GeneralSans-Bold.otf') format('opentype');
+    }
+    @font-face {
+      font-family: 'General Sans';
+      font-weight: 500;
+      font-display: block;
+      src: local('GeneralSans-Medium'), local('General Sans Medium'), url('/assets/fonts/GeneralSans-Medium.otf') format('opentype');
+    }
+    @font-face {
+      font-family: 'Anton';
+      font-weight: 400;
+      font-display: block;
+      src: local('Anton'), local('Anton Regular'), url('/assets/fonts/Anton-Regular.ttf') format('truetype');
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── BROADCAST CANVAS ── */
+    html, body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: transparent;
+      font-family: 'General Sans', 'Segoe UI', system-ui, sans-serif;
+    }
+    #canvas {
+      width: 1920px;
+      height: 1080px;
+      position: relative;
+      overflow: hidden;
+    }
+
+
+    /* ── Map Selection tag ── */
+    #mapselect-page {
+      position: absolute; top: 0; left: 0; width: 1920px; height: 1080px;
+      pointer-events: none;
+      display: none;
+    }
+    #mapselect-page.ms-on { display: block; }
+    #mapselect-page.ms-visible { } /* whole-page fade handled per game-block below */
+    /* Games 6 and 7 (playoffs best-of-7): the side-by-side game blocks no
+       longer fit 1920px, so the whole tag scales down (see
+       applyMapselScale) anchored at its left margin / bottom edge. */
+    #mapselect-page { transform-origin: 29px 1028px; transition: transform 400ms cubic-bezier(.16,1,.3,1); }
+
+    .ms-gameblock {
+      position: absolute; top: 0; left: 0; width: 1920px; height: 1080px;
+      transition: none; /* the offset itself never animates, only the boxes inside do */
+    }
+
+    /* Container-first, then-contents reveal: each box (the background
+       graphic) slides/fades in on its own, and only once that's under
+       way does its .ms-content wrapper (the real info — logos, text,
+       icons) slide/fade in on top of it. Both travel left → right on
+       the same snappy ease-out curve, never top-to-bottom. */
+    .ms-box {
+      position: absolute;
+      opacity: 0;
+      transform: translateX(-32px);
+      transition: opacity 360ms cubic-bezier(.16,1,.3,1), transform 360ms cubic-bezier(.16,1,.3,1);
+    }
+    .ms-box.ms-box-visible { opacity: 1; transform: translateX(0); }
+    .ms-box.ms-no-anim { transition: none; }
+
+    .ms-content {
+      position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+      opacity: 0;
+      transform: translateX(-22px);
+      transition: opacity 320ms cubic-bezier(.16,1,.3,1), transform 320ms cubic-bezier(.16,1,.3,1);
+    }
+    .ms-content.ms-content-visible { opacity: 1; transform: translateX(0); }
+    .ms-content.ms-no-anim { transition: none; }
+
+    /* Side-select box (coin toss winner + side) */
+    .ms-sidebox {
+      left: 29px; top: 747px; width: 353px; height: 154px;
+      background-size: 100% 100%; background-repeat: no-repeat;
+    }
+    .ms-title {
+      position: absolute; left: 15px; top: 5px; width: 176px; height: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'General Sans', sans-serif; font-weight: 600;
+      color: #000; text-align: center; white-space: nowrap; line-height: 1;
+    }
+    .ms-toss-logo {
+      position: absolute; left: 17px; top: 41px; width: 103px; height: 103px;
+      object-fit: contain;
+    }
+    .ms-toss-tricode {
+      position: absolute; left: 174px; top: 41px; width: 166px; height: 103px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Anton', sans-serif; color: #fff; text-align: center;
+      white-space: nowrap; line-height: 1;
+    }
+
+    /* Map-select box (map icon + name) — lives inside .ms-mapbox-mask
+       (see the reveal-mask block below), which owns the real position/
+       size and clips it; this box just fills that mask at 0/0/100%/100%
+       and slides via translateY inside it. */
+    .ms-mapbox {
+      left: 0; top: 0; width: 100%; height: 100%;
+      background-image: url('/assets/overlay/mapselect/mapbacker.png');
+      background-size: 100% 100%; background-repeat: no-repeat;
+    }
+    .ms-map-icon {
+      position: absolute; left: 10px; top: 27px; width: 64px; height: 64px;
+      border-radius: 50%;
+      background-size: cover; background-position: center; background-repeat: no-repeat;
+    }
+    .ms-map-name {
+      position: absolute; left: 115px; top: 44px; width: 230px; height: 31px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Anton', sans-serif; color: #000; text-align: center;
+      text-transform: uppercase; white-space: nowrap; line-height: 1;
+    }
+    .ms-map-label {
+      position: absolute; left: 115px; top: 76px; width: 230px; height: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'General Sans', sans-serif; font-weight: 700; font-size: 17px;
+      color: #000; text-align: center; letter-spacing: .04em;
+    }
+
+    /* Win box — same "lives inside a mask" deal as the map box above. */
+    .ms-winbox {
+      left: 0; top: 0; width: 100%; height: 100%;
+      background-image: url('/assets/overlay/mapselect/mapwin.png');
+      background-size: 100% 100%; background-repeat: no-repeat;
+    }
+    /* Playoffs art (same sizes) — assets/overlay/mapselect/playoffs/. The side boxes'
+       playoffs art is picked in JS (sideAssetUrl). */
+    [data-theme="playoffs"] .ms-mapbox { background-image: url('/assets/overlay/mapselect/playoffs/mapbacker.png'); }
+    [data-theme="playoffs"] .ms-winbox { background-image: url('/assets/overlay/mapselect/playoffs/mapwin.png'); }
+
+    /* ── Phase 2/3 "emerge from behind" reveal (ENTRANCE ONLY — hiding
+       still uses the exact same fade-left-and-out as every other box,
+       see below) ──
+       Map box (phase 2) and win box (phase 3) slide out from directly
+       behind the box above them instead of the default fade+slide-from-
+       left, and must never be visible above that box's bottom edge
+       while they do — that box can still be mid fade-in itself (partly
+       translucent), which let phase 2's opaque backer bleed through
+       before this masking was added.
+
+       Each box gets a non-transforming `.ms-*-mask` wrapper, positioned/
+       sized to the box's own FINAL resting rect with `overflow: hidden`.
+       The box itself lives inside at left:0/top:0/100%/100% and slides
+       via translateY — since the mask's own top edge IS that resting
+       top, anything still above local y:0 (still above the mask's top
+       edge, i.e. still overlapping the box above) is clipped away
+       entirely regardless of z-index/opacity, and only what has slid
+       down past that line is ever painted. z-index (side > map > win)
+       is kept too, as a second line of defense for the few px the boxes
+       legitimately overlap at rest.
+
+       `.ms-box-enter`/`.ms-content-enter` mark the PRE-FIRST-REVEAL-ONLY
+       starting position — flush with the top edge of the box above (so
+       fully within its mask, fully clipped/invisible). The script below
+       strips both classes for good the instant the box is first
+       revealed, so hiding it afterwards (hideAll) falls through to the
+       plain `.ms-box`/`.ms-content` rules instead — unchanged from every
+       other box's fade-left-and-out. */
+    .ms-reveal-mask {
+      position: absolute;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .ms-sidebox { z-index: 3; }
+    .ms-mapbox-mask { left: 29px; top: 898px; width: 353px; height: 123px; z-index: 2; }
+    /* Shared position for every map-selection win box — both the
+       regular real-map flow (ensureBlock) and the 10th Anniversary
+       accumulating side-only flow (ensureSideOnlyBlock) use this exact
+       same .ms-winbox-mask, by explicit request, so it's one position
+       maintained in one place rather than a per-flow override. */
+    .ms-winbox-mask {
+      left: 42px !important;
+      top: 997px !important;
+      width: 139px !important;
+      height: 31px !important;
+      z-index: 1;
+    }
+
+    .ms-mapbox.ms-box-enter {
+      opacity: 1;
+      transform: translateY(-151px); /* ms-sidebox top (747) - ms-mapbox top (898) */
+    }
+    .ms-mapbox .ms-content.ms-content-enter { transform: none; }
+
+    .ms-winbox.ms-box-enter {
+      opacity: 1;
+      transform: translateY(-122px); /* ms-mapbox top (898) - ms-winbox top (1020) */
+    }
+    .ms-winbox .ms-content.ms-content-enter { transform: none; }
+
+    .ms-win-text {
+      position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Anton', sans-serif; color: #000; text-align: center;
+      white-space: nowrap; line-height: 1;
+    }
+
+    /* ── Side Selection card — alternate graphic used INSTEAD OF the
+       normal side+map+win box sequence above, for whichever game is
+       currently in progress if that game's map is the literal 'NONE'
+       sentinel (see routes/overlay.js's mapselecttag reveal logic and
+       lib/mapSelectionState.js — same sentinel Match Board's own Map
+       dropdown/map-selection-dashboard.html's per-game "None" button
+       both use). A single persistent instance, not one per game index
+       like .ms-gameblock — it always shows whichever game most recently
+       triggered it, replacing (not stacking beside) any previously-
+       revealed games' blocks while active, per explicit request. See
+       showGame()'s isNone branch below for the show/hide choreography. */
+    .ms-sideonly {
+      position: absolute; left: 42px; top: 850px; width: 495px; height: 147px;
+      z-index: 4; /* above .ms-sidebox (3) — irrelevant in practice since the
+                     gameblocks are hidden whenever this is visible, but keeps
+                     the stacking order sane if that ever changes */
+      background-size: 100% 100%; background-repeat: no-repeat;
+      opacity: 0;
+      transform: translateX(-32px);
+      transition: opacity 360ms cubic-bezier(.16,1,.3,1), transform 360ms cubic-bezier(.16,1,.3,1);
+    }
+    .ms-sideonly.ms-sideonly-visible { opacity: 1; transform: translateX(0); }
+    .ms-sideonly.ms-no-anim { transition: none; }
+    .ms-sideonly-blue { background-image: url('/assets/overlay/mapselect/blueselect.png'); }
+    .ms-sideonly-red  { background-image: url('/assets/overlay/mapselect/redselect.png'); }
+
+    /* Every child position below is LOCAL to .ms-sideonly's own 495x147
+       box, straight from the pasted design spec — its background-color/
+       z-index values are placeholder export noise, not real styling
+       intent (see CLAUDE.md's "Working from pasted design-tool CSS"
+       convention). */
+    .ms-sideonly-logo {
+      position: absolute; left: 42px; top: 14px; width: 119px; height: 119px;
+      object-fit: contain;
+      opacity: 0;
+      transform: scale(0.6);
+      transition: opacity 300ms cubic-bezier(.16,1,.3,1), transform 300ms cubic-bezier(.16,1,.3,1);
+    }
+    .ms-sideonly-label {
+      position: absolute; left: 222px; top: 20px; width: 252px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'General Sans', sans-serif; font-weight: 700; font-size: 22.4px; /* 5.37pt @ 300dpi */
+      color: #fff; text-transform: uppercase; text-align: center; white-space: nowrap;
+      /* Black glow to lift white text off blueselect/redselect's bright
+         gradient art — every theme, this feature isn't theme-gated. */
+      text-shadow: 0 0 5px rgba(0, 0, 0, 0.35), 1px 1px 1.5px rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      transition: opacity 280ms ease-out;
+    }
+    .ms-sideonly-side {
+      position: absolute; left: 206px; top: 43px; width: 283px; height: 60px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Anton', sans-serif; font-size: 58.6px; /* 14.06pt @ 300dpi */
+      line-height: 1; color: #fff; text-transform: uppercase; text-align: center; white-space: nowrap;
+      text-shadow: 0 0 5px rgba(0, 0, 0, 0.35), 1px 1px 1.5px rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      transform: scale(0.6);
+      transition: opacity 300ms cubic-bezier(.16,1,.3,1), transform 300ms cubic-bezier(.16,1,.3,1);
+    }
+    .ms-sideonly-game {
+      position: absolute; left: 285px; top: 105px; width: 121px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'General Sans', sans-serif; font-weight: 700; font-size: 22.4px; /* 5.37pt @ 300dpi */
+      color: #fff; text-transform: uppercase; text-align: center; white-space: nowrap;
+      text-shadow: 0 0 5px rgba(0, 0, 0, 0.35), 1px 1px 1.5px rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: opacity 320ms ease-out, transform 320ms ease-out;
+    }
+    .ms-sideonly-logo.ms-sideonly-visible,
+    .ms-sideonly-label.ms-sideonly-visible { opacity: 1; }
+    .ms-sideonly-logo.ms-sideonly-visible { transform: scale(1); }
+    .ms-sideonly-side.ms-sideonly-visible { opacity: 1; transform: scale(1); }
+    .ms-sideonly-game.ms-sideonly-visible { opacity: 1; transform: translateY(0); }
+    .ms-sideonly-logo.ms-no-anim,
+    .ms-sideonly-label.ms-no-anim,
+    .ms-sideonly-side.ms-no-anim,
+    .ms-sideonly-game.ms-no-anim { transition: none; }
+
+    /* ── Player H2H (Gold) tag ──
+       Coordinates are relative to Layer_1 (.ph2h-back, the 1319x247
+       playerh2hback.png panel) exactly as pasted from the design tool,
+       nested exactly as described (photo inside back, plate inside
+       photo, role/name inside plate, hero + title directly inside
+       back). The outer #ph2h-clip/#ph2h-overlay pair is NOT part of the
+       design spec — it's our own slide-in/out mechanism (same
+       fixed-clip + sliding-inner technique as golddiff-check in
+       mploverlay_v7.css) sized 56px taller than .ph2h-back itself so the
+       home/away photos (which start at top:-56 relative to .ph2h-back,
+       deliberately overflowing the panel's own top edge per the user's
+       "don't crop the top" instruction) and the title banner (top:-31)
+       stay fully inside the clip while off-screen, instead of getting
+       cut off before they even have a chance to slide into view. */
+    #ph2h-clip {
+      position: absolute; left: 301px; top: 777px; width: 1319px; height: 303px;
+      overflow: hidden; display: none; pointer-events: none; z-index: 5;
+    }
+    #ph2h-overlay {
+      position: absolute; left: 0; top: 0; width: 1319px; height: 303px;
+      transform: translateY(303px);
+      transition: transform 350ms ease-in;
+    }
+    #ph2h-overlay.ph2h-in {
+      transition: transform 350ms cubic-bezier(0.16, 1, 0.3, 1);
+      transform: translateY(0);
+    }
+    .ph2h-back {
+      position: absolute; left: 0; top: 56px; width: 1319px; height: 247px;
+      background-image: url('/assets/overlay/L3h2h/playerh2hback.png');
+      background-size: 100% 100%; background-repeat: no-repeat;
+    }
+    /* 10th Anniversary — same filenames, reskinned art under
+       assets/overlay/L3h2h/anniversary/, same convention as p4kAsset/mbAsset. */
+    [data-theme="10th_anniversary"] .ph2h-back { background-image: url('/assets/overlay/L3h2h/anniversary/playerh2hback.png'); }
+    /* Stacking (front to back): nameplate > photo > hero. */
+    .ph2h-photo {
+      position: absolute; width: 303px; height: 303px;
+      object-fit: cover; object-position: top center; /* crop the bottom if needed, never the top */
+      z-index: 2;
+    }
+    .ph2h-photo.ph2h-home { left: 81px;  top: -56px; }
+    .ph2h-photo.ph2h-away { left: 935px; top: -56px; } /* mirrored: 1319 - 81 - 303 */
+
+    /* Positioned relative to .ph2h-back (the main container), NOT the
+       photo — Group_1's own left/top (0/192) are given "in relation to
+       the main container". */
+    /* Layer_5 (312x64 @ 0,183) replaces the earlier Group_1 (308x55 @
+       0,192) spec for the player tag — same background assets
+       (playerh2hblue/red.png), just the corrected box. */
+    .ph2h-plate {
+      position: absolute; top: 183px; width: 312px; height: 64px;
+      background-size: 100% 100%; background-repeat: no-repeat;
+      z-index: 3;
+    }
+    .ph2h-plate.ph2h-home { left: 0px;    background-image: url('/assets/overlay/L3h2h/playerh2hblue.png'); }
+    .ph2h-plate.ph2h-away { left: 1007px; background-image: url('/assets/overlay/L3h2h/playerh2hred.png');  } /* mirrored: 1319 - 0 - 312 */
+    /* 10th Anniversary — same convention as .ph2h-back above. */
+    [data-theme="10th_anniversary"] .ph2h-plate.ph2h-home { background-image: url('/assets/overlay/L3h2h/anniversary/playerh2hblue.png'); }
+    [data-theme="10th_anniversary"] .ph2h-plate.ph2h-away { background-image: url('/assets/overlay/L3h2h/anniversary/playerh2hred.png'); }
+
+    /* Rendered pure black regardless of the source icon's own color —
+       assets/game/role/*.png icons are a light taupe, not black. */
+    .ph2h-role { position: absolute; top: 10px; width: 46px; height: 46px; object-fit: contain; filter: brightness(0); }
+    .ph2h-plate.ph2h-home .ph2h-role { left: 10px;  }
+    .ph2h-plate.ph2h-away .ph2h-role { left: 256px; } /* mirrored: 312 - 10 - 46 */
+
+    .ph2h-name {
+      position: absolute; top: 5px; width: 213px; height: 55px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'General Sans', sans-serif; font-weight: 700; font-size: 26px;
+      color: #fff; text-align: center; line-height: 1; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .ph2h-plate.ph2h-home .ph2h-name { left: 88px; }
+    .ph2h-plate.ph2h-away .ph2h-name { left: 11px; } /* mirrored: 312 - 88 - 213 */
+
+    .ph2h-hero { position: absolute; top: 2px; width: 194px; height: 190px; object-fit: contain; z-index: 1; }
+    .ph2h-hero.ph2h-home { left: 3px;    }
+    .ph2h-hero.ph2h-away { left: 1122px; } /* mirrored: 1319 - 3 - 194 */
+
+    .ph2h-title {
+      position: absolute; left: 392px; top: -31px; width: 532px; height: 59px;
+      background-image: url('/assets/overlay/L3h2h/playerh2h%20title.png');
+      background-size: 100% 100%; background-repeat: no-repeat;
+      overflow: hidden; border-radius: 8px; z-index: 6;
+    }
+    /* 10th Anniversary — same filename, reskinned art under
+       assets/overlay/L3h2h/anniversary/ (the on-disk filename really does have
+       a literal space — %20-encoded here same as the Regular rule
+       above). */
+    [data-theme="10th_anniversary"] .ph2h-title { background-image: url('/assets/overlay/L3h2h/anniversary/playerh2h%20title.png'); }
+    .ph2h-title-sheen {
+      position: absolute; top: 0; left: -60%; width: 40%; height: 100%;
+      background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.85) 50%, transparent 100%);
+      transform: skewX(-20deg);
+      pointer-events: none;
+    }
+    @keyframes ph2h-sheen-sweep { from { left: -60%; } to { left: 120%; } }
+    .ph2h-title.ph2h-sheen-play .ph2h-title-sheen { animation: ph2h-sheen-sweep 650ms ease-out; }
+    @keyframes ph2h-title-bounce {
+      0%   { transform: scale(1);    }
+      35%  { transform: scale(0.92); }
+      65%  { transform: scale(1.06); }
+      100% { transform: scale(1);    }
+    }
+    .ph2h-title.ph2h-bounce-play { animation: ph2h-title-bounce 350ms ease-out; }
+    .ph2h-title-text {
+      position: absolute; left: 41px; top: 0; width: 451px; height: 59px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'General Sans', sans-serif; font-weight: 700; font-size: 28px;
+      color: #000; text-align: center; line-height: 1; white-space: nowrap;
+      text-transform: uppercase; z-index: 1;
+    }
+
+    /* 5 stat rows, evenly spaced inside the 596x203 stats box (the
+       playerh2hguide.png reference only shows 3 rows — the user asked
+       for the same row treatment stretched to fit 5). Each row: a
+       centered label, then ONE continuous head-to-head bar — the red
+       track is the row's full width, a blue fill grows over it from
+       the left, so whichever side has the bigger value visibly takes
+       up more of the single bar (not two independent bars). Values
+       flank the bar on the outside, colored to match their side. */
+    /* left/width nudged in from the original 362/596 — the nameplates'
+       own right/left inner edges land at x:389 (home) and x:930 (away)
+       within .ph2h-back, and 362-958 overlapped both of them on the
+       GPM/TDPM rows. 405-915 clears both with ~15px to spare. */
+    .ph2h-stats { position: absolute; left: 405px; top: 37px; width: 510px; height: 203px; z-index: 6; }
+    .ph2h-row   { position: absolute; left: 0; width: 510px; height: 38px; }
+    .ph2h-row-label {
+      position: absolute; left: 0; top: 0; width: 510px; height: 15px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'General Sans', sans-serif; font-weight: 700; font-size: 16px;
+      letter-spacing: .03em; text-transform: uppercase; color: #2a2a2a;
+    }
+    .ph2h-value {
+      position: absolute; top: 17px; width: 70px; height: 20px;
+      display: flex; align-items: center;
+      font-family: 'Anton', sans-serif; font-size: 20px; white-space: nowrap; color: #000;
+    }
+    .ph2h-value.ph2h-value-home { left: -8px;  justify-content: flex-start; }
+    .ph2h-value.ph2h-value-away { left: 448px; justify-content: flex-end;  }
+    .ph2h-bar-track {
+      position: absolute; left: 74px; top: 17px; width: 362px; height: 20px;
+      background: #FF3232; overflow: hidden; border-radius: 3px;
+    }
+    .ph2h-bar-fill {
+      position: absolute; left: 0; top: 0; height: 100%; width: 0;
+      background: #1E64FF; transition: width 700ms ease-out;
+    }
+    /* 10th Anniversary — same anniversary blue/red pair used across the
+       rest of the broadcast (Consolidated Post 2's Damage bars, Post
+       H2H's comparison bars, every score bar). */
+    [data-theme="10th_anniversary"] .ph2h-bar-track { background: #ff243e; }
+    [data-theme="10th_anniversary"] .ph2h-bar-fill { background: #0094fb; }
+    /* Away/red advantage: fill grows from the bar's right edge instead
+       of the left — anchor flips, direction of growth flips with it. */
+    .ph2h-bar-fill.ph2h-fill-right { left: auto; right: 0; }
+    /* Advantage badge — only the leading side's box ever shows text
+       ("+8.9"-style); the trailing side's box stays empty. 4px above
+       the bar, left-aligned to the bar's own left edge for home,
+       mirrored to the bar's right edge for away. 11pt @144dpi = 22px. */
+    .ph2h-diff {
+      position: absolute; top: -6px; width: 147px; height: 27px;
+      display: flex; align-items: center;
+      font-family: 'Anton', sans-serif; font-size: 15px; white-space: nowrap;
+    }
+    .ph2h-diff.ph2h-diff-home { left: 74px;  justify-content: flex-start; color: #1E64FF; }
+    .ph2h-diff.ph2h-diff-away { left: 289px; justify-content: flex-end;  color: #FF3232; } /* mirrored: bar right(436) - 147 */
+
+    /* ── Local debug bar (press ` to toggle) ── */
+    /* ── [FEATURE: match-card] Match Card — two independent team-logo
+       video loops (assets/overlay/matchcard/*_LOOP_*.webm, already-animated
+       art) for the live match's blue/red teams. Each side is its own
+       clip+burst+video stack, independently positioned/sized from the
+       Edit tab (per CLAUDE.md's "every element independently editable"
+       rule — the clip is what the Edit tab drags/resizes; burst+video
+       just fill it, they're not independently positionable pieces, same
+       as #ph2h-clip/#ph2h-overlay's own non-editable inner pair above).
+       overflow:visible so the impact burst's glow can bleed a little
+       past the clip's own box without being clipped mid-pop. Symmetric
+       default placement either side of canvas-center (960px) with a
+       500px gap between them, filled by the dedicated "VS" clip
+       (#mc-vs-clip, below) dead center of the canvas. */
+    #mc-blue-clip, #mc-red-clip {
+      position: absolute; top: 290px; width: 500px; height: 500px;
+      overflow: visible; display: none; pointer-events: none; z-index: 5;
+    }
+    #mc-blue-clip { left: 210px; }
+    #mc-red-clip  { left: 1210px; }
+    #mc-blue-clip.mc-on, #mc-red-clip.mc-on { display: block; }
+
+    /* "VS" — dead center of the 1920x1080 canvas (960,540), sized to
+       exactly fill the 500px gap between the two team clips above at
+       its native 16:9 (1280x720 source) aspect. Plays once alongside
+       the team logos' entrance (see mcShowCards() below), not looped —
+       it's a one-shot reveal graphic, not an ambient loop like the team
+       art. */
+    #mc-vs-clip {
+      position: absolute; left: 710px; top: 399.375px; width: 500px; height: 281.25px;
+      overflow: visible; display: none; pointer-events: none; z-index: 4;
+    }
+    #mc-vs-clip.mc-on { display: block; }
+    #mc-vs-video {
+      position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+      object-fit: contain;
+      transform-origin: center center;
+    }
+    #mc-vs-video.mc-out { animation: mc-pop-out 280ms ease-in both; } /* shares mc-pop-out with the team videos below */
+
+    /* Impact burst — a quick radial flash behind each logo, timed (via
+       animation-delay below) to pop at the exact instant that side's
+       own drop-in animation lands, so it reads as one "hit" rather than
+       two unrelated effects. Pure decoration, never blocks input. */
+    #mc-blue-burst, #mc-red-burst {
+      position: absolute; left: 50%; top: 50%; width: 100%; height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.35) 35%, rgba(255,255,255,0) 70%);
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.2);
+      pointer-events: none;
+      z-index: 1;
+    }
+    #mc-blue-burst.mc-burst-play { animation: mc-burst-pop 550ms ease-out; animation-delay: 300ms; }
+    #mc-red-burst.mc-burst-play  { animation: mc-burst-pop 550ms ease-out; animation-delay: 420ms; }
+    @keyframes mc-burst-pop {
+      0%   { transform: translate(-50%, -50%) scale(0.2); opacity: 0.9; }
+      40%  { transform: translate(-50%, -50%) scale(1.35); opacity: 0.55; }
+      100% { transform: translate(-50%, -50%) scale(1.9);  opacity: 0; }
+    }
+
+    #mc-blue-video, #mc-red-video {
+      position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      z-index: 2;
+      transform-origin: center center;
+    }
+    /* Drop-in-and-settle: overshoot past full size/rotation, snap back
+       slightly the other way, then settle — a proper multi-step bounce
+       (a plain transition can only ease toward one target, not bounce
+       past and back), plus a small rotation swing for extra punch. Red
+       staggered 120ms behind blue so the two don't land in perfect
+       lockstep. animation-fill-mode:both via the shorthand keeps each
+       side pinned at its final resting transform once the animation
+       ends, so the looping video underneath doesn't jump. */
+    #mc-blue-video.mc-in { animation: mc-drop-blue 640ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    #mc-red-video.mc-in  { animation: mc-drop-red  640ms cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: 120ms; }
+    @keyframes mc-drop-blue {
+      0%   { opacity: 0; transform: translateX(-320px) scale(0.35) rotate(-20deg); }
+      55%  { opacity: 1; transform: translateX(22px)   scale(1.16) rotate(4deg); }
+      75%  {              transform: translateX(-10px)  scale(0.96) rotate(-1.5deg); }
+      100% { opacity: 1; transform: translateX(0)       scale(1)    rotate(0deg); }
+    }
+    @keyframes mc-drop-red {
+      0%   { opacity: 0; transform: translateX(320px)  scale(0.35) rotate(20deg); }
+      55%  { opacity: 1; transform: translateX(-22px)  scale(1.16) rotate(-4deg); }
+      75%  {              transform: translateX(10px)   scale(0.96) rotate(1.5deg); }
+      100% { opacity: 1; transform: translateX(0)       scale(1)    rotate(0deg); }
+    }
+    /* Hide — a quick shrink+fade, no bounce (that's an entrance-only
+       flourish), timed to HIDE_MS in the JS below. */
+    #mc-blue-video.mc-out, #mc-red-video.mc-out { animation: mc-pop-out 280ms ease-in both; }
+    @keyframes mc-pop-out {
+      0%   { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.55); }
+    }
+
+    /* ── NEXT MATCH label ──────────────────────────────────────────
+       Pasted design-tool spec: left:28, top:14, width:596, height:157
+       (.Rectangle_2) — only position/size is real intent per CLAUDE.md's
+       "Working from pasted design-tool CSS" convention; its
+       background-color (a placeholder yellow fill) is export noise, not
+       a real asset, so it's deliberately not reproduced here — the black
+       glow below is what actually lifts the text off whatever's playing
+       underneath the transparent canvas, not off a design-tool plate.
+       Leads the Match Card sequence: slides in first, then (see the JS
+       below) the team logos animate in 1s after this settles. */
+    #mc-next-match {
+      position: absolute; left: 28px; top: 14px; width: 596px; height: 157px;
+      display: none;
+      align-items: center; justify-content: center;
+      overflow: visible; /* text is allowed to breathe past its own box, same as other big display titles in this codebase */
+      pointer-events: none; z-index: 6;
+    }
+    #mc-next-match.mc-on { display: flex; }
+    #mc-next-match-text {
+      font-family: 'Anton', sans-serif;
+      font-size: 137.33px; /* 103pt @ 96dpi = 103 * 96/72, per user confirmation (this box is too short for this codebase's usual @300dpi pasted-spec conversion) */
+      line-height: 1;
+      color: #fff;
+      text-align: center;
+      white-space: nowrap;
+      text-shadow: 0 0 18px rgba(0,0,0,0.85), 0 0 40px rgba(0,0,0,0.6), 0 0 70px rgba(0,0,0,0.4);
+      transform: translateX(-700px);
+      /* Sharp initial acceleration (steep early slope) into a long
+         ease-out tail — an "expo-out" style curve, punchier off the
+         start than a plain ease-out while still landing smoothly. */
+      transition: transform 350ms cubic-bezier(0.19, 1, 0.22, 1);
+    }
+    #mc-next-match-text.mc-nm-in { transform: translateX(0); }
+
+    #debug-bar {
+      position: fixed; left: 0; bottom: 0; width: 100%;
+      background: rgba(10,10,16,.92); border-top: 1px solid #333;
+      display: none; align-items: center; gap: 10px; padding: 10px 16px;
+      font-family: 'Segoe UI', sans-serif; z-index: 1000;
+    }
+    #debug-bar.open { display: flex; }
+    #debug-bar .dbg-label { color: #9aa; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+    #debug-bar button {
+      background: #1a2030; border: 1px solid #2a3050; color: #88aaff;
+      font-size: 13px; font-weight: 600; padding: 6px 16px; border-radius: 6px; cursor: pointer;
+    }
+    #debug-bar button.hide { background: #3a1a1a; border-color: #5a2a2a; color: #ff8899; }
+    #debug-bar #dbg-msg { color: #ffbb44; font-size: 12px; }
+
+    /* ── [FEATURE: bpm-meter] "Heart-Stopping Moment" BPM meter — the
+       mpltag.html twin of mploverlay_v7's own copy (see overlay-bpmmeter.js
+       there for the fully-commented reference version; this one is a
+       separate, independent instance with its own show/hide state, using
+       'bpmtag' prefixed ids/selectors so the two never collide even though
+       dashboard.html's Edit tab wiring is shared code). Same four-layer
+       split, each layer owning the one thing that ever sets its
+       `transform` so nothing fights: position (#bpmtag-clip, Edit tab Y
+       only) / show-hide slide (#bpmtag-slide) / Edit tab size-scale
+       (#bpmtag-sizewrap, transform-origin:right top so growing it expands
+       into the canvas, not past the right edge) / shake (.bpmtag-shell,
+       written every rAF frame). Docked flush against the right edge,
+       clipped by #canvas's own overflow:hidden when slid off. */
+    #bpmtag-clip {
+      position: absolute;
+      right: 0; top: 491px;
+      width: 508px; height: 97px;
+      display: none;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #bpmtag-slide {
+      position: absolute;
+      left: 0; top: 0; width: 508px; height: 97px;
+      transform: translateX(508px);
+      transition: transform 380ms cubic-bezier(0.55,0,1,0.45);
+    }
+    #bpmtag-slide.bpmtag-in {
+      transform: translateX(0);
+      transition: transform 500ms cubic-bezier(0.22,1,0.36,1);
+    }
+    #bpmtag-sizewrap {
+      position: absolute; left: 0; top: 0; width: 508px; height: 97px;
+      transform-origin: right top;
+    }
+    .bpmtag-shell {
+      width: 508px; height: 97px; background: #0a0a0a;
+      border: 2px solid #222;
+      display: flex; flex-direction: row; overflow: hidden;
+    }
+    .bpmtag-img-slot {
+      width: 182px; height: 100%; flex-shrink: 0; background: #111;
+      border-right: 2px solid #222; overflow: hidden;
+    }
+    .bpmtag-img-slot-inner {
+      width: 100%; height: 100%;
+      /* Root-relative on purpose — CSS url() resolves against this
+         stylesheet's own path, not the page's <base href="/">. */
+    }
+    .bpmtag-area { flex: 1; display: flex; flex-direction: column; padding: 8px 10px; overflow: visible; }
+    .bpmtag-bar-track { display: flex; flex-direction: row; gap: 6px; overflow: visible; }
+    .bpmtag-scale-row { height: 21px; flex-shrink: 0; display: flex; align-items: center; }
+    .bpmtag-scale-inner { display: flex; flex-direction: row; align-items: center; justify-content: space-between; width: 100%; }
+    .bpmtag-scale-num { font-family: sans-serif; font-weight: 500; font-size: 11px; color: #d4d4d4; line-height: 1; text-align: center; flex: 1; }
+    .bpmtag-seg { flex-shrink: 0; border-radius: 2px; overflow: visible; }
+    /* Spice skin (sponsor). Authored against the 710x136 full-size meter and
+       converted to this 508x97 native box (x 508/710 = 0.7155) — #bpmtag-sizewrap's
+       Edit-tab scale then multiplies on top, so every instance keeps the same
+       ratio. Sits OUTSIDE .bpmtag-shell (which is overflow:hidden) so it can
+       overhang; .bpmtag-spice-fx mirrors the shell's shake transform from JS. */
+    .bpmtag-spice-fx { position: absolute; left: 0; top: 0; width: 508px; height: 97px; pointer-events: none; z-index: 2; }
+    /* Pop/tier scaling lives on the *-pop wrapper as plain transform:scale()
+       (the standalone `scale` property isn't supported by older embedded
+       Chromium, e.g. some vMix builds). The img inside keeps the shake. */
+    .bpmtag-spicy-pop {
+      position: absolute; left: -9.3px; top: -47.2px; width: 218.2px; height: 182.5px;
+      transform-origin: center center; will-change: transform;
+      transition: transform 450ms cubic-bezier(0.34,1.7,0.64,1);
+    }
+    .bpmtag-spicy {
+      position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+      opacity: 0; transition: opacity 200ms ease; will-change: transform;
+    }
+    .bpmtag-spicetext-pop {
+      position: absolute; right: 0; bottom: 105.6px; width: 308.4px; height: 43.4px;
+      transform-origin: center center;
+      transition: transform 450ms cubic-bezier(0.34,1.7,0.64,1);
+    }
+    .bpmtag-spicetext {
+      position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+      opacity: 0; transition: opacity 200ms ease;
+    }
+    .bpmtag-spicy.on, .bpmtag-spicetext.on { opacity: 1; }
+    /* Explosion exit (max level hidden, or + pressed 5x at max): boom.webm plays
+       over the meter while the meter itself fades fast. mpltag-only — the v7 copy
+       keeps the plain slide-out. The video lives in #bpmtag-sizewrap (scales with
+       the Edit-tab size) but outside .bpmtag-shell, so it isn't faded with it. */
+    .bpmtag-shell, .bpmtag-spice-fx { transition: opacity 200ms ease 90ms; }
+    #bpmtag-sizewrap.bpmtag-exploding .bpmtag-shell,
+    #bpmtag-sizewrap.bpmtag-exploding .bpmtag-spice-fx { opacity: 0; }
+    .bpmtag-boom {
+      position: absolute; left: 50%; top: 50%; width: 640px; height: 384px;
+      transform: translate(-50%, -50%); display: none; pointer-events: none; z-index: 5;
+    }
+
+    /* Fire behind the word text: a tiny 96x32 canvas running a heat-diffusion
+       fire sim (see bpm-meter JS), upscaled by the browser. ~3k pixels at
+       30fps = negligible CPU, one small texture upload, no filters/blur.
+       Only runs while a tier is active and the meter is shown. The bottom
+       edge sits behind the text, which hides the flame source. */
+    .bpmtag-fire {
+      position: absolute; right: 0; bottom: 100px; width: 308.4px; height: 130px;
+      opacity: 0; transition: opacity 200ms ease; pointer-events: none;
+    }
+    .bpmtag-fire.on { opacity: 1; }
+
+
+    /* ═══ L3 LOBBY — special "super" Waiting Lobby strip (playoffs look) ═══
+       Self-contained, NOT theme-gated: always the playoffs HUD. Bottom strip
+       y853..1080 over playoffsbg_theme.webm (cropped to the strip), timer
+       panel / sponsor / player photos / match box / name plates, every piece
+       its own absolutely-positioned element in canvas coordinates (so each is
+       independently draggable in the Edit tab). #l3l-root is only the
+       show/hide shell (0,0,1920x1080, transparent, no clicks).
+       Reuses Waiting Lobby's art: Blue/Red_NameBox.png, the playoffs
+       MatchBox_REGULAR MATCH.png, SCORES/vs.png, /hires photos, /api/sponsors. */
+    #l3l-root { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: none; pointer-events: none; }
+    #l3l-root.l3l-on { display: block; }
+    #l3l-bg { position: absolute; left: 0; top: 853px; width: 1920px; height: 227px; overflow: hidden; z-index: 1;
+      transform: translateY(240px); transition: transform 450ms cubic-bezier(0.55, 0, 0.9, 0.4); }
+    #l3l-bg video { position: absolute; left: 0; top: -800px; width: 1920px; height: 1080px; display: block; }
+    /* SUPERFAN ticker — carried over from the playoffs Waiting TVC (#ws-superfan in mplfs.html): same art, 899x51, fixed
+       "MPL PH SUPERFAN CITY" label + scrolling text from the Dynamic tab's Superfan Ticker field. Sits just above the strip, IN FRONT of the
+       player photos (z 9) — behind them, a player's head covered the "MPL PH SUPERFAN CITY" label. Slides/fades in with the rest of the strip (see .l3l-in below). */
+    #l3l-superfan { position: absolute; left: 12px; top: 788px; width: 899px; height: 51px; z-index: 9;
+      opacity: 0; transform: translateY(24px); transition: opacity 250ms ease, transform 250ms ease; }
+    /* The Edit tab sets left/top/WIDTH on #l3l-superfan; everything inside lives in a fixed 899x51 .l3l-sf-inner that is scaled uniformly to
+       width/899 (fitSuperfan() below; it also sets the box height = 51*scale so the selection box matches). Native size = 899 wide. */
+    .l3l-sf-inner { position: absolute; left: 0; top: 0; width: 899px; height: 51px; transform-origin: 0 0; }
+    .l3l-sf-inner > img { position: absolute; left: 0; top: 0; width: 899px; height: 51px; }
+    .l3l-sf-label, .l3l-sf-window span { font-family: 'General Sans', sans-serif; font-weight: 800; font-size: 27px; text-transform: uppercase; white-space: nowrap; }
+    .l3l-sf-label { position: absolute; left: 17px; top: 0; width: 360px; height: 51px; display: flex; align-items: center; color: #fff; }
+    .l3l-sf-window { position: absolute; left: 396px; top: 0; width: 503px; height: 51px; overflow: hidden;
+      -webkit-mask-image: linear-gradient(to right, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+              mask-image: linear-gradient(to right, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%); }
+    .l3l-sf-track { position: absolute; left: 0; top: 0; height: 51px; display: flex; align-items: center; animation: l3l-sf-scroll 9s linear infinite; }
+    .l3l-sf-window span { color: #0a0a0a; padding-right: 120px; flex: none; }
+    @keyframes l3l-sf-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    #l3l-root.l3l-in #l3l-superfan { opacity: 1; transform: none; transition: opacity 500ms ease 900ms, transform 600ms cubic-bezier(0.16, 1, 0.3, 1) 900ms; }
+    #l3l-goldline { position: absolute; left: 409px; top: 1075px; width: 1511px; height: 5px; z-index: 2;
+      background: linear-gradient(to right, #fde067, #d8b04a 50%, #f2d157);
+      transform: translateY(240px); transition: transform 450ms cubic-bezier(0.55, 0, 0.9, 0.4); }
+    #l3l-timerbox { position: absolute; left: 0; top: 853px; width: 409px; height: 227px; z-index: 3;
+      background: linear-gradient(to bottom, #ececee 0%, #dcdcde 55%, #cdcdcf 100%);
+      transform: translateY(240px); transition: transform 450ms cubic-bezier(0.55, 0, 0.9, 0.4); }
+    #l3l-timer-label { position: absolute; left: 0; top: 866px; width: 409px; height: 50px; z-index: 4;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'General Sans', sans-serif; font-weight: 700; font-size: 36px; color: #0a0a0a;
+      text-transform: uppercase; white-space: nowrap;
+      transform: translateY(240px); transition: transform 450ms cubic-bezier(0.55, 0, 0.9, 0.4); }
+    #l3l-timer-value { position: absolute; left: 0; top: 912px; width: 409px; height: 170px; z-index: 4;
+      font-family: 'Anton', sans-serif; font-weight: 400; font-size: 156px; line-height: 170px;
+      letter-spacing: 0; white-space: nowrap; text-align: center;
+      transform: translateY(240px); transition: transform 450ms cubic-bezier(0.55, 0, 0.9, 0.4); }
+    .l3l-timer-glow, .l3l-timer-fill { position: absolute; left: 0; top: 0; width: 100%; }
+    .l3l-timer-glow { color: #f2f2f2; transform: translate(-4px, 0); }
+    .l3l-timer-fill { color: #0a0a0a; }
+    .l3l-timer-digit { display: inline-block; width: 0.5em; text-align: center; }
+
+    #l3l-sponsor { position: absolute; left: 457px; top: 910px; width: 318px; height: 112px; z-index: 6;
+      opacity: 0; transform: translateY(50px); transition: opacity 300ms ease, transform 300ms ease; }
+    #l3l-sponsor-cat { position: absolute; left: 0; top: 0; width: 100%; height: 34px; z-index: 2;
+      display: flex; align-items: center; justify-content: center; text-align: center; overflow: hidden;
+      background: linear-gradient(to right, #fde067 0%, #f4d459 25%, #efcd52 60%, #f2d157 100%);
+      box-shadow: inset 0 -2px 0 #dfbd4e, 0 2px 7px rgba(0, 0, 0, 0.22);
+      font-family: 'General Sans', sans-serif; font-weight: 700; font-size: 19px; letter-spacing: 0.02em;
+      color: #0a0a0a; text-transform: uppercase; white-space: nowrap; }
+    #l3l-sponsor-loop { position: absolute; left: 0; right: 0; top: 34px; bottom: 0; overflow: hidden; padding: 6px 12px;
+      background:
+        radial-gradient(ellipse 45% 75% at 0% 100%, rgba(0, 0, 0, 0.17), rgba(0, 0, 0, 0) 100%),
+        radial-gradient(ellipse 45% 75% at 100% 100%, rgba(0, 0, 0, 0.17), rgba(0, 0, 0, 0) 100%),
+        linear-gradient(to bottom, #ffffff 55%, #eeeeee 100%); }
+    #l3l-sponsor-loop img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain;
+      padding: 6px 12px; box-sizing: border-box; transform: translateX(-110%); }
+    #l3l-sponsor-loop img.spon-in  { transform: translateX(0); transition: transform 0.4s cubic-bezier(0, 0, 0.2, 1); }
+    #l3l-sponsor-loop img.spon-out { transform: translateX(110%); transition: transform 0.35s cubic-bezier(0.4, 0, 1, 1); }
+
+    /* Player photos: same two stacked layers per side + JS-driven cross-fade/glide as Waiting Lobby. */
+    .l3l-player { position: absolute; top: 770px; width: 520px; height: 520px; z-index: 4; contain: layout style; }   /* swap-time style/layout work stays inside the player box */
+    .l3l-player-blue { left: 627px; }
+    .l3l-player-red  { left: 1520px; }
+    .l3l-player-photo { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain;
+      object-position: 50% 0%; display: block; opacity: 0; will-change: opacity, transform; }
+
+    /* Name plates: Waiting Lobby's 347x62 art scaled to 192x34 (team logo in the white square, name slides like WL). */
+    .l3l-namebox { position: absolute; top: 1027px; width: 347px; height: 62px; z-index: 8;
+      transform: scale(0.553); transform-origin: 0 0; font-family: 'Anton', sans-serif;
+      transition: clip-path 350ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .l3l-namebox-blue { left: 780px;  clip-path: inset(0 100% 0 0); }
+    .l3l-namebox-red  { left: 1714px; clip-path: inset(0 0 0 100%); }
+    .l3l-namebox img.l3l-namebox-bg { position: absolute; left: 0; top: 0; width: 347px; height: 62px; }
+    .l3l-namebox-logo { position: absolute; top: 0; width: 62px; height: 62px; display: flex; align-items: center; justify-content: center; }
+    .l3l-namebox-blue .l3l-namebox-logo { left: 6px; }
+    .l3l-namebox-red  .l3l-namebox-logo { right: 6px; }
+    .l3l-namebox-logo img { width: 40px; height: 40px; object-fit: contain; filter: brightness(0); }
+    .l3l-namebox-name { position: absolute; top: 0; width: 285px; height: 62px; display: flex; align-items: center; justify-content: center;
+      font-family: 'General Sans', sans-serif; font-weight: 700; font-size: 28px; color: #fff;
+      text-transform: uppercase; white-space: nowrap; text-align: center; }
+    .l3l-namebox-blue .l3l-namebox-name { left: 62px; }
+    .l3l-namebox-red  .l3l-namebox-name { left: 0; }
+    .l3l-slide-el { transition: opacity 260ms ease, transform 260ms ease; }
+    .l3l-slide-el.l3l-slide-out { opacity: 0; transform: translateY(28px); }
+    .l3l-slide-el.l3l-slide-in  { opacity: 0; transform: translateY(-28px); }
+    .l3l-slide-el.l3l-no-transition { transition: none !important; }
+
+    /* Match box: Waiting Lobby's playoffs box (724x219) scaled to 593 wide. */
+    #l3l-match { position: absolute; left: 1040px; top: 870px; width: 593px; height: 180px; z-index: 7;
+      font-family: 'General Sans', sans-serif;
+      opacity: 0; transform: translateY(50px); transition: opacity 300ms ease, transform 300ms ease; }
+    #l3l-match .l3m-box { position: absolute; left: 0; top: 0; width: 724px; height: 219px; transform: scale(0.819); transform-origin: 0 0; }
+    #l3l-match .l3m-bg { position: absolute; left: 0; top: 0; width: 724px; height: 219px; }
+    #l3l-match .l3m-label, #l3l-match .l3m-time, #l3l-match .l3m-bo {
+      position: absolute; top: 0; height: 49px; display: flex; align-items: center;
+      font-weight: 700; font-size: 24px; color: #0a0a0a; text-transform: uppercase; white-space: nowrap; }
+    #l3l-match .l3m-label { left: 18px; }
+    #l3l-match .l3m-time  { left: 0; width: 100%; justify-content: center; }
+    #l3l-match .l3m-bo    { right: 18px; }
+    #l3l-match .l3m-slot { position: absolute; top: 49px; height: 170px; display: flex; align-items: center; justify-content: center; }
+    #l3l-match .l3m-tri { font-family: 'Anton', sans-serif; font-size: 52px; color: #fff; text-transform: uppercase; white-space: nowrap; }
+    #l3l-match .l3m-tri.l3m-tri-gold { color: #0a0a0a; } /* Enduring Legacy's side panels are gold */
+    #l3l-match .l3m-tri-l { left: 0; width: 119px; }
+    #l3l-match .l3m-tri-r { right: 0; width: 119px; }
+    #l3l-match .l3m-logo-l { left: 130px; width: 166px; }
+    #l3l-match .l3m-logo-r { left: 430px; width: 166px; }
+    #l3l-match .l3m-logo-l img, #l3l-match .l3m-logo-r img { width: 155px; height: 137px; object-fit: contain; }
+    #l3l-match .l3m-center { left: 285px; width: 153px; }
+    #l3l-match .l3m-center img.l3m-vs { width: 90px; height: 49px; object-fit: contain; }
+    #l3l-match .l3m-score { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+    #l3l-match .l3m-score-l, #l3l-match .l3m-score-r { font-weight: 800; font-size: 41px; }
+    #l3l-match .l3m-score-l { color: #1656d5; }
+    #l3l-match .l3m-score-r { color: #d92027; }
+    #l3l-match .l3m-score-div { width: 46px; height: 4px; background: #0a0a0a; margin: 4px 0; }
+
+    /* IN state — everything settles into place; removing .l3l-in plays the reverse (OUT). */
+    #l3l-root.l3l-in #l3l-bg, #l3l-root.l3l-in #l3l-goldline, #l3l-root.l3l-in #l3l-timerbox,
+    #l3l-root.l3l-in #l3l-timer-label, #l3l-root.l3l-in #l3l-timer-value {
+      transform: none; transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1); }
+    #l3l-root.l3l-in #l3l-sponsor { opacity: 1; transform: none; transition: opacity 450ms ease 300ms, transform 600ms cubic-bezier(0.16, 1, 0.3, 1) 300ms; }
+    #l3l-root.l3l-in #l3l-match   { opacity: 1; transform: none; transition: opacity 450ms ease 400ms, transform 600ms cubic-bezier(0.16, 1, 0.3, 1) 400ms; }
+    #l3l-root.l3l-in .l3l-namebox { clip-path: inset(0 0 0 0); transition-delay: 800ms; }
+    #l3l-root:not(.l3l-in) .l3l-player { opacity: 0; transition: opacity 250ms ease; }
+  </style>
+</head>
+<body>
+
+<div id="canvas">
+  <div id="mapselect-page"></div>
+  <div id="ph2h-clip"><div id="ph2h-overlay"></div></div>
+  <!-- [FEATURE: match-card] see the IIFE at the bottom of this file's
+       script block for team resolution + show/hide. -->
+  <div id="mc-next-match"><div id="mc-next-match-text">NEXT MATCH</div></div>
+  <div id="mc-blue-clip"><div id="mc-blue-burst"></div><video id="mc-blue-video" loop muted playsinline preload="auto"></video></div>
+  <div id="mc-red-clip"><div id="mc-red-burst"></div><video id="mc-red-video" loop muted playsinline preload="auto"></video></div>
+  <div id="mc-vs-clip"><video id="mc-vs-video" src="/assets/overlay/matchcard/vs_matchcard.webm" muted playsinline preload="auto"></video></div>
+  <!-- [FEATURE: l3-lobby] special Waiting Lobby strip; see the last IIFE in this file's script block. -->
+  <div id="l3l-root">
+    <div id="l3l-bg"><video id="l3l-bg-video" src="/assets/webm/playoffs/playoffsbg_theme.webm" loop muted playsinline preload="auto"></video></div>
+    <div id="l3l-goldline"></div>
+    <div id="l3l-superfan"><div class="l3l-sf-inner">
+      <img src="/assets/overlay/Waiting Screen TVC/playoffs/superfanrunner.png" alt="">
+      <span class="l3l-sf-label">MPL PH SUPERFAN CITY</span>
+      <div class="l3l-sf-window"><div class="l3l-sf-track"><span>COME AND JOIN THE FUN FOR FREE</span><span>COME AND JOIN THE FUN FOR FREE</span></div></div>
+    </div></div>
+    <div id="l3l-timerbox"></div>
+    <div id="l3l-timer-label">SHOW STARTS IN:</div>
+    <div id="l3l-timer-value"><span class="l3l-timer-glow">30:30</span><span class="l3l-timer-fill">30:30</span></div>
+    <div id="l3l-sponsor">
+      <div id="l3l-sponsor-cat"></div>
+      <div id="l3l-sponsor-loop"><img id="l3l-sponsor-img" src="" alt=""></div>
+    </div>
+    <div class="l3l-player l3l-player-blue">
+      <img class="l3l-player-photo" id="l3l-blue-photo-0" src="" alt="">
+      <img class="l3l-player-photo" id="l3l-blue-photo-1" src="" alt="">
+    </div>
+    <div class="l3l-player l3l-player-red">
+      <img class="l3l-player-photo" id="l3l-red-photo-0" src="" alt="">
+      <img class="l3l-player-photo" id="l3l-red-photo-1" src="" alt="">
+    </div>
+    <div id="l3l-match"></div>
+    <div class="l3l-namebox l3l-namebox-blue">
+      <img class="l3l-namebox-bg" src="/assets/overlay/Waiting Lobby/Blue_NameBox.png" alt="">
+      <div class="l3l-namebox-logo"><img class="l3l-slide-el" id="l3l-blue-logo" src="" alt="" onerror="this.style.display='none'"></div>
+      <div class="l3l-namebox-name l3l-slide-el" id="l3l-blue-name"></div>
+    </div>
+    <div class="l3l-namebox l3l-namebox-red">
+      <img class="l3l-namebox-bg" src="/assets/overlay/Waiting Lobby/Red_NameBox.png" alt="">
+      <div class="l3l-namebox-logo"><img class="l3l-slide-el" id="l3l-red-logo" src="" alt="" onerror="this.style.display='none'"></div>
+      <div class="l3l-namebox-name l3l-slide-el" id="l3l-red-name"></div>
+    </div>
+  </div>
+  <!-- [FEATURE: bpm-meter] built dynamically via the IIFE at the bottom
+       of this file's <script> block. -->
+  <div id="bpmtag-clip">
+    <div id="bpmtag-slide">
+      <div id="bpmtag-sizewrap">
+        <div class="bpmtag-shell" id="bpmtag-shell">
+          <div class="bpmtag-img-slot">
+            <div class="bpmtag-img-slot-inner"></div>
+          </div>
+          <div class="bpmtag-area">
+            <div class="bpmtag-bar-track" id="bpmtag-track-a"></div>
+            <div class="bpmtag-scale-row"><div class="bpmtag-scale-inner" id="bpmtag-scale-inner"></div></div>
+            <div class="bpmtag-bar-track" id="bpmtag-track-b"></div>
+          </div>
+        </div>
+        <div class="bpmtag-spice-fx" id="bpmtag-spice-fx">
+          <canvas class="bpmtag-fire" id="bpmtag-fire" width="128" height="48"></canvas>
+          <div class="bpmtag-spicy-pop" id="bpmtag-spicy-pop"><img class="bpmtag-spicy" id="bpmtag-spicy" alt=""></div>
+          <div class="bpmtag-spicetext-pop" id="bpmtag-spicetext-pop"><img class="bpmtag-spicetext" id="bpmtag-spicetext" alt=""></div>
+        </div>
+        <video class="bpmtag-boom" id="bpmtag-boom" src="/assets/overlay/noisemeter/boom.webm" muted playsinline preload="auto"></video>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="debug-bar">
+  <span class="dbg-label">Map Selection (local test)</span>
+  <button id="dbg-show">▶ SHOW (next game)</button>
+  <button class="hide" id="dbg-hide">■ HIDE ALL</button>
+  <span id="dbg-msg"></span>
+  <span class="dbg-label" style="margin-left:16px;">Player H2H (local test)</span>
+  <button id="ph2h-dbg-gold">GOLD</button>
+  <button id="ph2h-dbg-jungler">JUNGLER</button>
+  <button id="ph2h-dbg-exp">EXP</button>
+  <button id="ph2h-dbg-mid">MID</button>
+  <button id="ph2h-dbg-roamer">ROAMER</button>
+  <button class="hide" id="ph2h-dbg-hide">■ HIDE</button>
+  <span class="dbg-label" style="margin-left:16px;">L3 Lobby (local test)</span>
+  <button id="l3l-dbg-show">▶ SHOW</button>
+  <button class="hide" id="l3l-dbg-hide">■ HIDE</button>
+</div>
+
+<script>
+(function () {
+  var MAPSEL_PAGE = document.getElementById('mapselect-page');
+  var blocks = {}; // gameIndex -> { wrap, sidebox/mapbox/winbox, *Content, *text els, game }
+  var pageOn = false;
+  function isPlayoffs() { return document.documentElement.getAttribute('data-theme') === 'playoffs'; }
+  function isAnniv() { return document.documentElement.getAttribute('data-theme') === '10th_anniversary'; }
+
+  // Consecutive game blocks sit fully side-by-side (not stacked/overlapping):
+  // block N's left edge is 20px past block (N-1)'s RIGHT edge, i.e. each
+  // step is a full panel width plus the 20px gap.
+  var PANEL_WIDTH = 353;
+  var PANEL_GAP   = 20;
+  var STEP        = PANEL_WIDTH + PANEL_GAP;
+
+  // 10th Anniversary — every game's map is forced to the 'NONE' sentinel
+  // (see map-selection-dashboard.html/server.js), so the anniversary tag
+  // always takes the isNone branch below, but unlike Regular's single
+  // replace-in-place Side Selection card (per its own explicit-request
+  // comment), each game gets its OWN persistent card that accumulates
+  // left-to-right — same left-to-right history idea as .ms-gameblock
+  // above, just sized to .ms-sideonly's own wider 495px card instead of
+  // the 353px side/map column.
+  var sideOnlyBlocks = {}; // gameIndex -> { wrap, card, logo, label, sideText, gameText, winbox, winContent, winText, game }
+  var SIDEONLY_PANEL_WIDTH = 495;
+  var SIDEONLY_STEP        = SIDEONLY_PANEL_WIDTH + PANEL_GAP;
+
+  // Games 1-5 fit at natural size (5*353 + 4*20 = 1845 <= 1862 = 1920 - 2*29
+  // margin). From game 6 on, scale the whole tag so N games still fit between
+  // the two 29px margins: 6 games -> ~0.84, 7 games -> ~0.72.
+  var MAPSEL_MARGIN = 29;
+  function applyMapselScale() {
+    var n = 0;
+    Object.keys(blocks).forEach(function (k) { n = Math.max(n, (+k) + 1); });
+    var total = n * PANEL_WIDTH + Math.max(0, n - 1) * PANEL_GAP;
+    var avail = 1920 - 2 * MAPSEL_MARGIN;
+    var scale = n > 0 && total > avail ? avail / total : 1;
+    MAPSEL_PAGE.style.transform = scale < 1 ? 'scale(' + scale.toFixed(4) + ')' : '';
+  }
+
+  function logoUrl(short)  { return '/assets/team/logos/' + encodeURIComponent((short || '').toUpperCase()) + '.png'; }
+  function mapIconUrl(name) { return '/assets/game/maps/' + encodeURIComponent(name || '') + '.png'; }
+  function sideAssetUrl(side) { return '/assets/overlay/mapselect/' + (isAnniv() ? 'anniversary/' : isPlayoffs() ? 'playoffs/' : '') + 'mapselect' + (side === 'red' ? 'red' : 'blue') + '.png'; }
+
+  function fitText(el, maxSize, minSize) {
+    var size = maxSize;
+    el.style.fontSize = size + 'px';
+    while ((el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) && size > minSize) {
+      size--;
+      el.style.fontSize = size + 'px';
+    }
+  }
+
+  function teamName(side, homeTeam, awayTeam) { return side === 'home' ? (homeTeam.name || 'Home Team') : (awayTeam.name || 'Away Team'); }
+  function teamShort(side, homeTeam, awayTeam) { return side === 'home' ? (homeTeam.short || 'HME') : (awayTeam.short || 'AWY'); }
+
+  function boxWithContent(boxClass, maskClass) {
+    var box = document.createElement('div');
+    box.className = 'ms-box ms-box-enter ' + boxClass;
+    var content = document.createElement('div');
+    content.className = 'ms-content ms-content-enter';
+    box.appendChild(content);
+    var outer = box;
+    if (maskClass) {
+      outer = document.createElement('div');
+      outer.className = 'ms-reveal-mask ' + maskClass;
+      outer.appendChild(box);
+    }
+    return { box: box, content: content, outer: outer };
+  }
+
+  function populateWinBox(rec, game, homeTeam, awayTeam) {
+    rec.winText.textContent = teamShort(game.winner, homeTeam, awayTeam) + ' WIN';
+    requestAnimationFrame(function () { fitText(rec.winText, 24, 10); });
+  }
+
+  /* Builds (or returns the existing) DOM for a game's recap block, side by
+     side with earlier blocks, and fills in whatever data is known so far.
+     The winner may not be known yet — the win box is always created so it
+     exists for a later reveal, but its text is only populated once
+     game.winner is actually set (here, or later via populateWinBox). */
+  function ensureBlock(gameIndex, game, matchNum, homeTeam, awayTeam) {
+    if (blocks[gameIndex]) return blocks[gameIndex];
+
+    var wrap = document.createElement('div');
+    wrap.className = 'ms-gameblock';
+    wrap.style.transform = 'translateX(' + (gameIndex * STEP) + 'px)';
+
+    var side = boxWithContent('ms-sidebox');
+    side.box.style.backgroundImage = "url('" + sideAssetUrl(game.tossSide) + "')";
+    var title = document.createElement('div');
+    title.className = 'ms-title';
+    title.textContent = matchLabelFor(matchNum || 1) + ' - GAME ' + game.game;
+    var tossLogo = document.createElement('img');
+    tossLogo.className = 'ms-toss-logo';
+    tossLogo.src = logoUrl(teamShort(game.tossWinner, homeTeam, awayTeam));
+    tossLogo.onerror = function () { tossLogo.style.display = 'none'; };
+    var tossTricode = document.createElement('div');
+    tossTricode.className = 'ms-toss-tricode';
+    tossTricode.textContent = teamShort(game.tossWinner, homeTeam, awayTeam);
+    side.content.appendChild(title); side.content.appendChild(tossLogo); side.content.appendChild(tossTricode);
+
+    var map = boxWithContent('ms-mapbox', 'ms-mapbox-mask');
+    var mapIcon = document.createElement('div');
+    mapIcon.className = 'ms-map-icon';
+    mapIcon.style.backgroundImage = "url('" + mapIconUrl(game.map) + "')";
+    var mapName = document.createElement('div');
+    mapName.className = 'ms-map-name';
+    mapName.textContent = game.map || '';
+    var mapLabel = document.createElement('div');
+    mapLabel.className = 'ms-map-label';
+    mapLabel.textContent = Number(game.game) === 4 ? 'REMAINING MAP' : 'MAP SELECTED'; /* 4th map = the remaining map */
+    map.content.appendChild(mapIcon); map.content.appendChild(mapName); map.content.appendChild(mapLabel);
+
+    var win = boxWithContent('ms-winbox', 'ms-winbox-mask');
+    var winText = document.createElement('div');
+    winText.className = 'ms-win-text';
+    win.content.appendChild(winText);
+
+    wrap.appendChild(side.outer); wrap.appendChild(map.outer); wrap.appendChild(win.outer);
+    MAPSEL_PAGE.appendChild(wrap);
+
+    var rec = {
+      wrap: wrap, game: game,
+      sidebox: side.box, sideContent: side.content, title: title, tossTricode: tossTricode,
+      mapbox: map.box, mapContent: map.content, mapName: mapName,
+      winbox: win.box, winContent: win.content, winText: winText,
+    };
+    blocks[gameIndex] = rec;
+    applyMapselScale();
+
+    if (game.winner) populateWinBox(rec, game, homeTeam, awayTeam);
+
+    // Fit text after the elements are in the DOM (needs layout to measure).
+    requestAnimationFrame(function () {
+      fitText(title, 18, 9);
+      fitText(tossTricode, 92, 24);
+      fitText(mapName, 34, 14);
+    });
+
+    return rec;
+  }
+
+  /* Container-first-then-contents reveal for one box: the box itself
+     starts sliding/fading in immediately, and its content wrapper follows
+     a beat later (while the box is still mid-transition) for a snappy,
+     cascading feel rather than two fully sequential steps. cb (if given)
+     fires once the content's own transition has finished. */
+  var CONTENT_DELAY = 130;
+  var CONTENT_DURATION = 320;
+  var PHASE_GAP = 90;
+
+  function revealPhase(box, content, cb) {
+    box.classList.remove('ms-no-anim');
+    void box.offsetWidth; /* flush the .ms-box-enter starting position before changing it */
+    box.classList.remove('ms-box-enter');
+    box.classList.add('ms-box-visible');
+    setTimeout(function () {
+      content.classList.remove('ms-no-anim');
+      void content.offsetWidth;
+      content.classList.remove('ms-content-enter');
+      content.classList.add('ms-content-visible');
+    }, CONTENT_DELAY);
+    if (cb) setTimeout(cb, CONTENT_DELAY + CONTENT_DURATION + PHASE_GAP);
+  }
+
+  function revealPhaseInstant(box, content) {
+    box.classList.add('ms-no-anim'); box.classList.add('ms-box-visible'); box.classList.remove('ms-box-enter');
+    content.classList.add('ms-no-anim'); content.classList.add('ms-content-visible'); content.classList.remove('ms-content-enter');
+  }
+
+  /* Side → map → (win, only if the winner is already known). */
+  function revealSideAndMap(rec, instant) {
+    if (instant) {
+      revealPhaseInstant(rec.sidebox, rec.sideContent);
+      revealPhaseInstant(rec.mapbox, rec.mapContent);
+      if (rec.game.winner) revealPhaseInstant(rec.winbox, rec.winContent);
+      return;
+    }
+    revealPhase(rec.sidebox, rec.sideContent, function () {
+      revealPhase(rec.mapbox, rec.mapContent, function () {
+        if (rec.game.winner) revealPhase(rec.winbox, rec.winContent, null);
+      });
+    });
+  }
+
+  function revealWinOnly(rec, instant) {
+    if (instant) { revealPhaseInstant(rec.winbox, rec.winContent); return; }
+    revealPhase(rec.winbox, rec.winContent, null);
+  }
+
+  /* ── Side Selection card (see its own CSS comment) ──
+     Single persistent instance (not keyed by gameIndex like blocks{}) —
+     always shows whichever game most recently triggered it. */
+  var sideOnlyRec = null;
+  var sideOnlyVisible = false;
+
+  function ensureSideOnlyCard() {
+    if (sideOnlyRec) return sideOnlyRec;
+    var card = document.createElement('div');
+    card.className = 'ms-sideonly';
+    var logo = document.createElement('img');
+    logo.className = 'ms-sideonly-logo';
+    logo.onerror = function () { logo.style.display = 'none'; };
+    var label = document.createElement('div');
+    label.className = 'ms-sideonly-label';
+    label.textContent = 'SIDE SELECTION';
+    var sideText = document.createElement('div');
+    sideText.className = 'ms-sideonly-side';
+    var gameText = document.createElement('div');
+    gameText.className = 'ms-sideonly-game';
+    card.appendChild(logo); card.appendChild(label); card.appendChild(sideText); card.appendChild(gameText);
+    MAPSEL_PAGE.appendChild(card);
+    sideOnlyRec = { card: card, logo: logo, label: label, sideText: sideText, gameText: gameText };
+    return sideOnlyRec;
+  }
+
+  /* Fluid single-motion reveal, deliberately different from
+     revealSideAndMap's fully-sequential box-by-box chain: the card
+     itself fades/slides in from the left, then (starting while the
+     card is still mid-transition, same CONTENT_DELAY stagger idiom
+     used everywhere else in this file) the logo pops in alongside the
+     SIDE SELECTION label fading in, then — after the same
+     CONTENT_DELAY + CONTENT_DURATION + PHASE_GAP beat
+     revealPhase()'s own box→content chain uses — the BLUE/RED SIDE
+     text pops in together with the game number sliding down into
+     place. */
+  function revealSideOnly(rec, instant) {
+    var card = rec.card, logo = rec.logo, label = rec.label, sideText = rec.sideText, gameText = rec.gameText;
+    var els = [card, logo, label, sideText, gameText];
+    if (instant) {
+      els.forEach(function (el) { el.classList.add('ms-no-anim'); el.classList.add('ms-sideonly-visible'); });
+      return;
+    }
+    // Reset to the hidden entrance state first, even if this card is
+    // already on screen for a DIFFERENT game (consecutive NONE games,
+    // e.g. game 2 NONE -> game 3 NONE) — content (logo/text) is already
+    // swapped to the new game by showGame() before this runs, but
+    // re-adding a class that's already present is a no-op, so without
+    // this reset the new game's content would just silently swap in
+    // with no animation at all. This makes every NONE reveal "jump"
+    // straight to the latest game via the same fresh entrance, per
+    // explicit request, instead of only the very first one animating.
+    els.forEach(function (el) { el.classList.add('ms-no-anim'); el.classList.remove('ms-sideonly-visible'); });
+    void card.offsetWidth;
+    els.forEach(function (el) { el.classList.remove('ms-no-anim'); });
+    void card.offsetWidth;
+    card.classList.add('ms-sideonly-visible');
+    setTimeout(function () {
+      logo.classList.add('ms-sideonly-visible');
+      label.classList.add('ms-sideonly-visible');
+    }, CONTENT_DELAY);
+    setTimeout(function () {
+      sideText.classList.add('ms-sideonly-visible');
+      gameText.classList.add('ms-sideonly-visible');
+    }, CONTENT_DELAY + CONTENT_DURATION + PHASE_GAP);
+  }
+
+  function hideSideOnly(instant) {
+    if (!sideOnlyRec) return;
+    if (!sideOnlyVisible) return;
+    sideOnlyVisible = false;
+    var rec = sideOnlyRec;
+    [rec.card, rec.logo, rec.label, rec.sideText, rec.gameText].forEach(function (el) {
+      if (instant) el.classList.add('ms-no-anim');
+      el.classList.remove('ms-sideonly-visible');
+    });
+  }
+
+  /* ── 10th Anniversary — per-game accumulating Side Selection card ──
+     Same .ms-gameblock full-canvas wrapper + translateX offset as the
+     regular side+map+win blocks above, and the SAME .ms-winbox/
+     .ms-winbox-mask/.ms-win-text win banner (via the same boxWithContent()
+     helper, unmodified) for the winner — only the "map" box is skipped,
+     since there's no map to show. One persistent instance per gameIndex
+     (unlike the singleton ms-sideonly card above), so earlier games stay
+     on screen exactly like blocks{} does. */
+  function ensureSideOnlyBlock(gameIndex) {
+    if (sideOnlyBlocks[gameIndex]) return sideOnlyBlocks[gameIndex];
+
+    var wrap = document.createElement('div');
+    wrap.className = 'ms-gameblock';
+    wrap.style.transform = 'translateX(' + (gameIndex * SIDEONLY_STEP) + 'px)';
+
+    var card = document.createElement('div');
+    card.className = 'ms-sideonly';
+    var logo = document.createElement('img');
+    logo.className = 'ms-sideonly-logo';
+    logo.onerror = function () { logo.style.display = 'none'; };
+    var label = document.createElement('div');
+    label.className = 'ms-sideonly-label';
+    label.textContent = 'SIDE SELECTION';
+    var sideText = document.createElement('div');
+    sideText.className = 'ms-sideonly-side';
+    var gameText = document.createElement('div');
+    gameText.className = 'ms-sideonly-game';
+    card.appendChild(logo); card.appendChild(label); card.appendChild(sideText); card.appendChild(gameText);
+
+    var win = boxWithContent('ms-winbox', 'ms-winbox-mask');
+    var winText = document.createElement('div');
+    winText.className = 'ms-win-text';
+    win.content.appendChild(winText);
+
+    wrap.appendChild(card); wrap.appendChild(win.outer);
+    MAPSEL_PAGE.appendChild(wrap);
+
+    var rec = {
+      wrap: wrap, card: card, logo: logo, label: label, sideText: sideText, gameText: gameText,
+      winbox: win.box, winContent: win.content, winText: winText,
+    };
+    sideOnlyBlocks[gameIndex] = rec;
+    return rec;
+  }
+
+  /* Same fluid single-motion card reveal as revealSideOnly above, minus
+     the "reset to hidden first" step — this instance is brand new per
+     game index, never reused for a different game, so there's no stale
+     content to reset away from. Chains into the win banner's own
+     revealPhase() (same as ensureBlock's side→map→win chain) once the
+     card's own reveal finishes, if the winner is already known. */
+  function revealSideOnlyBlock(rec, instant) {
+    var els = [rec.card, rec.logo, rec.label, rec.sideText, rec.gameText];
+    if (instant) {
+      els.forEach(function (el) { el.classList.add('ms-no-anim'); el.classList.add('ms-sideonly-visible'); });
+      if (rec.game && rec.game.winner) revealPhaseInstant(rec.winbox, rec.winContent);
+      return;
+    }
+    void rec.card.offsetWidth; // force layout at the hidden entrance state before animating in (freshly-appended node, same idiom as revealPhase())
+    rec.card.classList.add('ms-sideonly-visible');
+    setTimeout(function () {
+      rec.logo.classList.add('ms-sideonly-visible');
+      rec.label.classList.add('ms-sideonly-visible');
+    }, CONTENT_DELAY);
+    setTimeout(function () {
+      rec.sideText.classList.add('ms-sideonly-visible');
+      rec.gameText.classList.add('ms-sideonly-visible');
+      if (rec.game && rec.game.winner) revealPhase(rec.winbox, rec.winContent, null);
+    }, CONTENT_DELAY + CONTENT_DURATION + PHASE_GAP);
+  }
+
+  /* Hides every already-revealed game's normal block — "skip all
+     previous games, just show the latest game in progress" — per
+     explicit request, the Side Selection card fully replaces the
+     normal history-stacking display while it's active, rather than
+     appearing alongside it. */
+  function hideAllGameblocks() {
+    Object.keys(blocks).forEach(function (k) { blocks[k].wrap.style.display = 'none'; });
+  }
+  function showAllGameblocks() {
+    Object.keys(blocks).forEach(function (k) { blocks[k].wrap.style.display = ''; });
+  }
+
+  function showGame(gameIndex, game, matchNum, homeTeam, awayTeam, instant) {
+    if (!pageOn) { MAPSEL_PAGE.classList.add('ms-on'); pageOn = true; }
+    // 'NONE' — this game's map hasn't been picked yet (an explicit
+    // choice, not just "not set" — see the sentinel's own doc comment
+    // above .ms-sideonly). Regular/Playoffs: show the alternate Side
+    // Selection card instead of the normal side+map+win sequence, and
+    // hide every other already-revealed game's block while it's up (per
+    // explicit request, unchanged). 10th Anniversary: every game is
+    // 'NONE' (map choice is locked to it during that theme), so instead
+    // it gets its own accumulating per-game card, same left-to-right
+    // history as the normal blocks{} — see ensureSideOnlyBlock() above.
+    if (game.map === 'NONE') {
+      if (isAnniv()) {
+        var annivRec = ensureSideOnlyBlock(gameIndex);
+        annivRec.game = game;
+        annivRec.logo.src = logoUrl(teamShort(game.tossWinner, homeTeam, awayTeam));
+        annivRec.sideText.textContent = (game.tossSide === 'red' ? 'RED' : 'BLUE') + ' SIDE';
+        annivRec.gameText.textContent = 'GAME ' + game.game;
+        annivRec.card.classList.remove('ms-sideonly-blue', 'ms-sideonly-red');
+        annivRec.card.classList.add(game.tossSide === 'red' ? 'ms-sideonly-red' : 'ms-sideonly-blue');
+        if (game.winner) populateWinBox(annivRec, game, homeTeam, awayTeam);
+        revealSideOnlyBlock(annivRec, instant);
+        return;
+      }
+      hideAllGameblocks();
+      var sideRec = ensureSideOnlyCard();
+      sideRec.logo.src = logoUrl(teamShort(game.tossWinner, homeTeam, awayTeam));
+      sideRec.sideText.textContent = (game.tossSide === 'red' ? 'RED' : 'BLUE') + ' SIDE';
+      sideRec.gameText.textContent = 'GAME ' + game.game;
+      sideRec.card.classList.remove('ms-sideonly-blue', 'ms-sideonly-red');
+      sideRec.card.classList.add(game.tossSide === 'red' ? 'ms-sideonly-red' : 'ms-sideonly-blue');
+      sideOnlyVisible = true;
+      revealSideOnly(sideRec, instant);
+      return;
+    }
+    // A real map — make sure the Side Selection card (if it was up for
+    // an earlier restore/reconnect pass over this same index) and any
+    // stale hidden-gameblock state from a previous NONE reveal are both
+    // cleared before proceeding normally.
+    hideSideOnly(instant);
+    showAllGameblocks();
+    var rec = ensureBlock(gameIndex, game, matchNum, homeTeam, awayTeam);
+    revealSideAndMap(rec, instant);
+  }
+
+  function showWinner(gameIndex, game, homeTeam, awayTeam, instant) {
+    // blocks[gameIndex] for a real-map game, sideOnlyBlocks[gameIndex] for
+    // a 10th Anniversary 'NONE' game — both record shapes carry the same
+    // winbox/winContent fields (see ensureBlock()/ensureSideOnlyBlock()),
+    // so revealWinOnly() below works unchanged either way. Regular's
+    // singleton NONE card has no per-index record at all and is
+    // intentionally not handled here — it never showed a winner before
+    // this change, and still doesn't.
+    var rec = blocks[gameIndex] || sideOnlyBlocks[gameIndex];
+    if (!rec) return; // the side+map (or side-only) reveal should always precede this
+    rec.game = game;
+    populateWinBox(rec, game, homeTeam, awayTeam);
+    revealWinOnly(rec, instant);
+  }
+
+  function hideAll() {
+    if (!pageOn) return;
+    pageOn = false;
+    Object.keys(blocks).forEach(function (k) {
+      var rec = blocks[k];
+      [rec.sidebox, rec.sideContent, rec.mapbox, rec.mapContent, rec.winbox, rec.winContent].forEach(function (el) {
+        el.classList.remove('ms-box-visible', 'ms-content-visible');
+      });
+    });
+    Object.keys(sideOnlyBlocks).forEach(function (k) {
+      var rec = sideOnlyBlocks[k];
+      [rec.card, rec.logo, rec.label, rec.sideText, rec.gameText].forEach(function (el) {
+        el.classList.remove('ms-sideonly-visible');
+      });
+      [rec.winbox, rec.winContent].forEach(function (el) {
+        el.classList.remove('ms-box-visible', 'ms-content-visible');
+      });
+    });
+    if (sideOnlyRec) {
+      [sideOnlyRec.card, sideOnlyRec.logo, sideOnlyRec.label, sideOnlyRec.sideText, sideOnlyRec.gameText].forEach(function (el) {
+        el.classList.remove('ms-sideonly-visible');
+      });
+    }
+    setTimeout(function () {
+      MAPSEL_PAGE.classList.remove('ms-on');
+      MAPSEL_PAGE.innerHTML = '';
+      blocks = {};
+      applyMapselScale();
+      sideOnlyBlocks = {};
+      sideOnlyRec = null;
+      sideOnlyVisible = false;
+    }, 360);
+  }
+
+  /* ── Restore-on-load ── */
+  // Set by showMpltagForEdit() — the Edit tab's showFn runs synchronously
+  // on iframe load, i.e. always BEFORE this fetch's promise can resolve,
+  // so this flag reliably wins the race: real state is never allowed to
+  // clobber (or partially mix into) the deterministic sample block the
+  // Edit tab depends on.
+  var editModeActive = false;
+
+  // Also called again on SSE reconnect (see connectSSE below) to re-sync
+  // after a network gap — EventSource auto-reconnects the transport but
+  // never replays a show/hide that fired while disconnected. Safe to call
+  // repeatedly: showGame()/showWinner() only add CSS classes that may
+  // already be present (a no-op, not a re-animation), unlike mplfs.html's
+  // exclusive-scene transitions. The one case that needs an explicit
+  // check is a missed HIDE — revealedGames back at 0 while this page is
+  // still showing something from before the gap.
+  function restore() {
+    Promise.all([
+      fetch('/mapselection/state', { cache: 'no-store' }).then(function (r) { return r.json(); }),
+      fetch('/overlay/mapselecttag-state', { cache: 'no-store' }).then(function (r) { return r.json(); }),
+    ]).then(function (results) {
+      if (editModeActive) return;
+      var ms = results[0], tagState = results[1];
+      var revealedGames = tagState.revealedGames || 0;
+      var revealedWins  = tagState.revealedWins  || 0;
+      if (revealedGames === 0) { if (pageOn) hideAll(); return; }
+      for (var i = 0; i < revealedGames; i++) {
+        var game = ms.games[i];
+        if (!game) continue;
+        showGame(i, game, ms.match, ms.home, ms.away, true);
+        if (i < revealedWins && game.winner) showWinner(i, game, ms.home, ms.away, true);
+      }
+    }).catch(function () {});
+  }
+
+  /* ── SSE ── */
+  // Backed by the shared SharedWorker (html/js/overlay-shared-worker.js) —
+  // this page opens zero real connections of its own now, so having
+  // several overlay browser sources/tabs open at once no longer eats into
+  // the browser's shared connection pool per page.
+  var _sseWasDisconnected = false;
+  function connectSSE() {
+    var es = createOverlaySSE();
+    es.addEventListener('theme', function (e) { applyTheme(JSON.parse(e.data).theme); });
+    es.onopen = function () {
+      if (_sseWasDisconnected && !editModeActive) restore();
+      _sseWasDisconnected = false;
+    };
+    es.onerror = function () { _sseWasDisconnected = true; };
+    es.addEventListener('mapselecttag', function (e) {
+      if (editModeActive) return; // real show/hide from elsewhere must not touch the Edit tab's sample block
+      var msg = JSON.parse(e.data);
+      if (msg.action === 'show') {
+        showGame(msg.gameIndex, msg.game, msg.match, msg.home, msg.away, false);
+      } else if (msg.action === 'showWinner') {
+        showWinner(msg.gameIndex, msg.game, msg.home, msg.away, false);
+      } else if (msg.action === 'hide') {
+        hideAll();
+      }
+    });
+    // Dashboard Edit tab saved a new position/size/font-size — reload to
+    // pick it up, same as mplfs.html/Draft.html do.
+    es.addEventListener('reload', function () { window.location.reload(); });
+  }
+
+  /* ── Dashboard Edit-tab position/size/font-size overrides ───
+     Same mechanism as mplfs.html's loadMplfsOverrides(): fetch whatever
+     was saved for this file and inject it as an !important stylesheet,
+     keyed by the raw selector — works for free across every game block
+     sharing a class (.ms-map-name etc), not just one instance. A saved
+     fontSize here intentionally wins over fitText()'s own inline size
+     (same tradeoff MVP Scene's KDA/GPM/KP already accepts elsewhere in
+     this codebase) — acceptable since the map pool is a small fixed set,
+     not arbitrary text. */
+  (function loadMpltagOverrides() {
+    fetch('/api/overlay-styles?file=mpltag').then(function (r) { return r.json(); }).then(function (styles) {
+      if (!styles || !Object.keys(styles).length) return;
+      var css = Object.keys(styles).map(function (sel) {
+        var props = styles[sel];
+        /* #bpmtag-sizewrap's saved width/height are NOT literal CSS box
+           dimensions — .bpmtag-shell inside it is a fixed 508x97 flex
+           layout, so resizing the container would just clip/underfill it
+           instead of resizing anything inside. Read them as a target box
+           and convert to transform:scale() against the natural 508x97
+           size instead (right top origin so growing it expands into the
+           canvas, not past the right edge). Same conversion
+           dashboard.html's applyToEditIframe() does for the live Edit-tab
+           preview via TW_MATCHES_SCALE_NATIVE, and overlay-scoreboard.js's
+           loadSbOverrides() does for mploverlay_v7's own copy. */
+        if (sel === '#bpmtag-sizewrap') {
+          var bw = props.width  !== undefined ? parseFloat(props.width)  : 508;
+          var bh = props.height !== undefined ? parseFloat(props.height) : 97;
+          return sel + '{transform:scale(' + (bw / 508) + ',' + (bh / 97) + ') !important;transform-origin:right top !important;}';
+        }
+        var decls = Object.keys(props).map(function (prop) {
+          var cssProp = prop === 'fontSize' ? 'font-size' : prop;
+          return cssProp + ':' + props[prop] + ' !important';
+        }).join(';');
+        return sel + '{' + decls + '}';
+      }).join('\n');
+      var style = document.createElement('style');
+      style.id = 'mpltag-overrides';
+      style.textContent = css;
+      document.head.appendChild(style);
+    }).catch(function () {});
+  })();
+
+  /* ── Dashboard Edit-tab entry point ──────────────────────────
+     Called via editIframe.contentWindow.showMpltagForEdit() once the
+     Edit tab loads this file — there's normally nothing in the DOM
+     until a real game is revealed, so this forces one sample block
+     into view (instantly, no animation) purely so the Edit sidebar has
+     real elements to select/drag/resize. Uses placeholder data, not
+     live match state, so editing works with no match configured. */
+  window.showMpltagForEdit = function () {
+    editModeActive = true;
+    var sampleHome = { name: 'Team Alpha', short: 'TMA' };
+    var sampleAway = { name: 'Team Beta', short: 'TMB' };
+    var sampleGame = {
+      game: 1, tossWinner: 'home', tossSide: 'blue',
+      homeSide: 'blue', awaySide: 'red',
+      map: 'Flying Cloud', winner: 'home', locked: true,
+    };
+    showGame(0, sampleGame, 1, sampleHome, sampleAway, true);
+  };
+
+  /* ── Dashboard Control-tab "◈ Preview" hook ──────────────────
+     Called as window.previewTrigger('mapselecttag', 'show'|'hide')
+     from the parent dashboard's preview iframe (see dashboard.html's
+     buildControlBody) — same mechanism mplfs.html uses. This must
+     NEVER call the real /overlay/mapselecttag/show|hide routes: those
+     mutate the shared server-side reveal counter and broadcast to
+     every other connected client/OBS source. Preview mirrors the same
+     two-priority logic as the real route (catch up a pending win first,
+     else reveal the next ready game), but against counters that are
+     local to this iframe instance only, using real data read via a
+     plain GET. */
+  var previewRevealedGames = 0;
+  var previewRevealedWins  = 0;
+
+  window.previewTrigger = function (event, action) {
+    if (event !== 'mapselecttag') return;
+    if (action === 'hide') { hideAll(); previewRevealedGames = 0; previewRevealedWins = 0; return; }
+    fetch('/mapselection/state', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (ms) {
+      if (previewRevealedWins < previewRevealedGames) {
+        var pendingIdx = previewRevealedWins;
+        var pending = ms.games[pendingIdx];
+        if (pending && pending.winner) {
+          previewRevealedWins = pendingIdx + 1;
+          showWinner(pendingIdx, pending, ms.home, ms.away, false);
+          return;
+        }
+      }
+      var idx = previewRevealedGames;
+      // Skip-ahead — same as the real route's Priority 2 (routes/
+      // overlay.js), mirrored here so Preview matches the real
+      // behavior instead of silently diverging from it.
+      var currentIdx = (ms.currentGame || 1) - 1;
+      if (currentIdx > idx && currentIdx < ms.maxGames) {
+        var currentGame = ms.games[currentIdx];
+        var currentReady = currentGame && currentGame.tossWinner && currentGame.tossSide && currentGame.map;
+        if (currentReady && currentGame.map === 'NONE') {
+          idx = currentIdx;
+          previewRevealedWins = idx;
+        }
+      }
+      var game = ms.games[idx];
+      var ready = game && game.tossWinner && game.tossSide && game.map;
+      if (idx >= ms.maxGames || !ready) return; // nothing ready to preview yet
+      previewRevealedGames = idx + 1;
+      if (game.winner) previewRevealedWins = previewRevealedGames;
+      showGame(idx, game, ms.match, ms.home, ms.away, false);
+    }).catch(function () {});
+  };
+
+  restore();
+  matchStateCacheStart(); connectSSE();
+
+  /* ── Local debug bar ── */
+  document.addEventListener('keydown', function (e) {
+    if (e.key === '`') document.getElementById('debug-bar').classList.toggle('open');
+  });
+  document.getElementById('dbg-show').addEventListener('click', function () {
+    fetch('/overlay/mapselecttag/show').then(function (r) { return r.json(); }).then(function (d) {
+      document.getElementById('dbg-msg').textContent = d.ok ? '' : (d.reason || 'Blocked');
+    });
+  });
+  document.getElementById('dbg-hide').addEventListener('click', function () {
+    fetch('/overlay/mapselecttag/hide');
+    document.getElementById('dbg-msg').textContent = '';
+  });
+})();
+
+/* ── Player H2H (Gold) tag ──────────────────────────────────────
+   Simple checkOverlays-pattern panel (see CLAUDE.md "Simpler show/hide"),
+   NOT part of Map Selection's sequential-reveal state above — its own
+   independent on/off toggle. Data isn't pushed over SSE (there's no
+   continuous poll for this file, unlike mploverlay_v7.html) — every
+   show fetches a fresh snapshot from /api/playerh2h-data itself, same
+   as how mplfs.html's Post scenes fetch their own data on each show. */
+(function () {
+  var CLIP    = document.getElementById('ph2h-clip');
+  var OVERLAY = document.getElementById('ph2h-overlay');
+  var COUNT_MS = 700;
+  var REVEAL_DELAY = 350; // matches the slide-in transition duration
+
+  // seat = which HOME_PLAYER_N / AWAY_PLAYER_N the role reads from the
+  // API (fixed seat->lane convention used everywhere else in this repo,
+  // e.g. overlay-golddiffcheck.js's GDC_ROW_TOPS).
+  var ROLE_META = {
+    gold:    { seat: 1, title: 'GOLD LANER HEAD-TO-HEAD' },
+    jungler: { seat: 2, title: 'JUNGLER HEAD-TO-HEAD' },
+    exp:     { seat: 3, title: 'EXP LANER HEAD-TO-HEAD' },
+    mid:     { seat: 4, title: 'MID LANER HEAD-TO-HEAD' },
+    roamer:  { seat: 5, title: 'ROAMER HEAD-TO-HEAD' },
+  };
+
+  var photoNameMap = null; // {UPPERNAME: "Exact_FRONT.png"} from /api/hires-front-names
+  fetch('/api/hires-front-names', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+    photoNameMap = (d && d.names) || {};
+  }).catch(function () { photoNameMap = {}; });
+
+  function photoUrl(name) {
+    var key = String(name || '').toUpperCase();
+    var file = photoNameMap && photoNameMap[key];
+    return '/assets/photo/hires/FRONT/' + (file ? file : encodeURIComponent(name || '') + '_FRONT.png');
+  }
+  function heroUrl(heroId) { return '/assets/hero/full/HERO_' + heroId + '_KOTAK.png'; }
+  // assets/game/role/*.png on disk are named in fixed uppercase ("GOLD LANER.png"),
+  // not whatever case the API's ROLE_NAME happens to send — same
+  // roleFile() normalization mplfs.html uses everywhere it draws a role
+  // icon (matched on a substring so "Gold Laner"/"GOLD"/etc all resolve).
+  function roleFile(role) {
+    var r = (role || '').toLowerCase();
+    if (r.indexOf('gold') !== -1) return 'GOLD LANER';
+    if (r.indexOf('exp')  !== -1) return 'EXP LANER';
+    if (r.indexOf('mid')  !== -1) return 'MID LANER';
+    if (r.indexOf('roam') !== -1) return 'ROAMER';
+    if (r.indexOf('jung') !== -1) return 'JUNGLER';
+    return (role || '').toUpperCase();
+  }
+  function roleUrl(roleName) { return '/assets/game/role/' + encodeURIComponent(roleFile(roleName)) + '.png'; }
+
+  function fitText(el, maxSize, minSize) {
+    var size = maxSize;
+    el.style.fontSize = size + 'px';
+    while (el.scrollWidth > el.clientWidth && size > minSize) {
+      size--;
+      el.style.fontSize = size + 'px';
+    }
+  }
+
+  // KP has no '%' in its own title text ("KP"); "DMG DEALT %"/"DMG TKN %"
+  // already carry a literal '%' in their title, which doubles as the
+  // signal that their VALUE also needs a trailing '%' appended.
+  function isPercentStat(title) {
+    var t = String(title || '');
+    return /%/.test(t) || t.trim().toUpperCase() === 'KP';
+  }
+  function formatValue(raw, title) {
+    var v = Number(raw) || 0;
+    if (Math.abs(v) >= 10000) return (v / 1000).toFixed(1) + 'k';
+    var s = (Math.round(v * 100) / 100).toString();
+    return isPercentStat(title) ? s + '%' : s;
+  }
+
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+  function countTo(el, from, to, title) {
+    var startTime = performance.now();
+    cancelAnimationFrame(el._ph2hRaf);
+    function tick(now) {
+      var t = Math.min(1, (now - startTime) / COUNT_MS);
+      var eased = easeOutCubic(t);
+      var val = from + (to - from) * eased;
+      el.textContent = formatValue(val, title);
+      if (t < 1) el._ph2hRaf = requestAnimationFrame(tick);
+      else       el.textContent = formatValue(to, title);
+    }
+    el._ph2hRaf = requestAnimationFrame(tick);
+  }
+
+  /* ── Build (once) ── */
+  var rows = []; // 1-indexed, rows[1..5]
+  var refs = {};
+
+  function buildSide(side) {
+    // Photo, plate, and hero are all independent siblings inside
+    // .ph2h-back (the main container) — the plate's left/top (0/192
+    // home, mirrored 1011/192 away) are given "in relation to the main
+    // container", not the photo, despite visually sitting over it.
+    // Stacking (front to back): plate > photo > hero (see z-index).
+    var photo = document.createElement('img');
+    photo.className = 'ph2h-photo ph2h-' + side;
+    photo.alt = '';
+    photo.onerror = function () { photo.onerror = null; photo.removeAttribute('src'); };
+
+    var plate = document.createElement('div');
+    plate.className = 'ph2h-plate ph2h-' + side;
+    var role = document.createElement('img');
+    role.className = 'ph2h-role';
+    role.alt = '';
+    role.onerror = function () { role.onerror = null; role.removeAttribute('src'); };
+    var name = document.createElement('div');
+    name.className = 'ph2h-name';
+    plate.appendChild(role);
+    plate.appendChild(name);
+
+    var hero = document.createElement('img');
+    hero.className = 'ph2h-hero ph2h-' + side;
+    hero.alt = '';
+    hero.onerror = function () { hero.onerror = null; hero.removeAttribute('src'); };
+
+    refs[side] = { photo: photo, plate: plate, role: role, name: name, hero: hero };
+    return [photo, plate, hero];
+  }
+
+  function buildRow(i) {
+    var row = document.createElement('div');
+    row.className = 'ph2h-row';
+    row.style.top = Math.round((i - 1) * (203 / 5)) + 'px';
+
+    var label = document.createElement('div');
+    label.className = 'ph2h-row-label';
+
+    var homeText = document.createElement('div');
+    homeText.className = 'ph2h-value ph2h-value-home';
+
+    var track = document.createElement('div');
+    track.className = 'ph2h-bar-track';
+    var fill = document.createElement('div');
+    fill.className = 'ph2h-bar-fill';
+    track.appendChild(fill);
+
+    var awayText = document.createElement('div');
+    awayText.className = 'ph2h-value ph2h-value-away';
+
+    var diffHome = document.createElement('div');
+    diffHome.className = 'ph2h-diff ph2h-diff-home';
+    var diffAway = document.createElement('div');
+    diffAway.className = 'ph2h-diff ph2h-diff-away';
+
+    row.appendChild(label);
+    row.appendChild(homeText);
+    row.appendChild(track);
+    row.appendChild(awayText);
+    row.appendChild(diffHome);
+    row.appendChild(diffAway);
+
+    rows[i] = {
+      row: row, label: label, fill: fill, track: track,
+      homeText: homeText, homeVal: 0,
+      awayText: awayText, awayVal: 0,
+      diffHome: diffHome, diffAway: diffAway,
+      title: '',
+    };
+    return row;
+  }
+
+  var titleTextEl = null; // set by buildPanel(), read by startReveal() per role
+
+  function buildPanel() {
+    var back = document.createElement('div');
+    back.className = 'ph2h-back';
+
+    buildSide('home').forEach(function (el) { back.appendChild(el); });
+    buildSide('away').forEach(function (el) { back.appendChild(el); }); // photo, plate, hero
+
+    var title = document.createElement('div');
+    title.className = 'ph2h-title';
+    title.id = 'ph2h-title';
+    var titleSheen = document.createElement('div');
+    titleSheen.className = 'ph2h-title-sheen';
+    titleTextEl = document.createElement('div');
+    titleTextEl.className = 'ph2h-title-text';
+    title.appendChild(titleSheen);
+    title.appendChild(titleTextEl);
+    back.appendChild(title);
+
+    var stats = document.createElement('div');
+    stats.className = 'ph2h-stats';
+    for (var i = 1; i <= 5; i++) stats.appendChild(buildRow(i));
+    back.appendChild(stats);
+
+    OVERLAY.appendChild(back);
+  }
+  buildPanel();
+
+  /* ── Apply data ── */
+  function applySide(side, player) {
+    var ref = refs[side];
+    if (!player) return;
+    ref.photo.src = photoUrl(player.PLAYER);
+    ref.role.src  = roleUrl(player.ROLE_NAME);
+    ref.name.textContent = player.PLAYER || '';
+    requestAnimationFrame(function () { fitText(ref.name, 26, 12); });
+    if (player.HERO_1) ref.hero.src = heroUrl(player.HERO_1);
+  }
+
+  function applyStats(home, away) {
+    for (var i = 1; i <= 5; i++) {
+      var r = rows[i];
+      var title = (home && home['STATSTITILE_' + i]) || (away && away['STATSTITILE_' + i]) || '';
+      var homeVal = Number(home && home['VALUE_' + i]) || 0;
+      var awayVal = Number(away && away['VALUE_' + i]) || 0;
+      var total = Math.abs(homeVal) + Math.abs(awayVal);
+      var homePct = total > 0 ? Math.abs(homeVal) / total : 0.5;
+      var awayPct = 1 - homePct;
+
+      r.title = title;
+      r.label.textContent = title;
+
+      // ONE bar, one color animates "over" the other from whichever side
+      // is ahead: home/blue ahead -> blue grows from the left over a red
+      // base (track). away/red ahead -> red grows from the right over a
+      // blue base. Equal falls into the same left-growing default.
+      var diff = homeVal - awayVal;
+      if (diff < 0) {
+        r.track.style.background = '#1E64FF';
+        r.fill.style.background = '#FF3232';
+        r.fill.classList.add('ph2h-fill-right');
+        r.fill.style.width = (awayPct * 100) + '%';
+      } else {
+        r.track.style.background = '#FF3232';
+        r.fill.style.background = '#1E64FF';
+        r.fill.classList.remove('ph2h-fill-right');
+        r.fill.style.width = (homePct * 100) + '%';
+      }
+
+      countTo(r.homeText, r.homeVal, homeVal, title);
+      countTo(r.awayText, r.awayVal, awayVal, title);
+      r.homeVal = homeVal;
+      r.awayVal = awayVal;
+
+      // Advantage badge — only the leading side's box gets text.
+      if (diff > 0) {
+        r.diffHome.textContent = '+' + formatValue(Math.abs(diff), title);
+        r.diffAway.textContent = '';
+      } else if (diff < 0) {
+        r.diffAway.textContent = '+' + formatValue(Math.abs(diff), title);
+        r.diffHome.textContent = '';
+      } else {
+        r.diffHome.textContent = '';
+        r.diffAway.textContent = '';
+      }
+    }
+  }
+
+  function resetToZero() {
+    for (var i = 1; i <= 5; i++) {
+      var r = rows[i];
+      r.fill.style.transition = 'none';
+      r.fill.style.width = '0%';
+      r.homeText.textContent = formatValue(0, r.title);
+      r.awayText.textContent = formatValue(0, r.title);
+      r.diffHome.textContent = '';
+      r.diffAway.textContent = '';
+      r.homeVal = 0; r.awayVal = 0;
+      void r.row.offsetWidth; // force reflow before re-enabling the transition
+      r.fill.style.transition = '';
+    }
+  }
+
+  function playTitleFlourish() {
+    var title = document.getElementById('ph2h-title');
+    if (!title) return;
+    title.classList.remove('ph2h-bounce-play', 'ph2h-sheen-play');
+    void title.offsetWidth;
+    title.classList.add('ph2h-bounce-play', 'ph2h-sheen-play');
+  }
+
+  var revealTimer = null;
+  var shouldShow = false;
+
+  // Background poll — same reasoning as golddiff-check's lastData: fetch
+  // /api/playerh2h-data on a low-frequency timer (this is an aggregate
+  // stat comparison, not a per-second live value) so it's already sitting
+  // in memory the instant Show is pressed. Without this, every Show press
+  // paid for a live round-trip to the external API before the slide-in
+  // could even start, which read as a noticeable animation delay.
+  var lastData = null;
+  var waitingForData = false;
+  var POLL_MS = 5000;
+
+  function pollPlayerH2H() {
+    fetch('/api/playerh2h-data', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (data) {
+      lastData = data;
+      if (waitingForData && shouldShow && waitingRole) {
+        waitingForData = false;
+        startReveal(waitingRole, lastData);
+      }
+    }).catch(function () {});
+  }
+  pollPlayerH2H();
+  setInterval(pollPlayerH2H, POLL_MS);
+
+  function startReveal(role, data) {
+    var meta = ROLE_META[role];
+    var home = data && data['HOME_PLAYER_' + meta.seat];
+    var away = data && data['AWAY_PLAYER_' + meta.seat];
+    titleTextEl.textContent = meta.title;
+    CLIP.style.display = 'block';
+    resetToZero();
+    applySide('home', home);
+    applySide('away', away);
+    applyStats(home, away);
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      OVERLAY.classList.add('ph2h-in');
+    }); });
+    clearTimeout(revealTimer);
+    revealTimer = setTimeout(function () {
+      if (!shouldShow) return;
+      playTitleFlourish();
+    }, REVEAL_DELAY);
+  }
+
+  // Only one role is ever on screen — currentRole tracks it (null =
+  // hidden). Requesting a DIFFERENT role while one is already showing
+  // must animate the old one fully out first, then animate the new one
+  // in — never a hard cut or both on screen together. pendingRole holds
+  // the next role to reveal once that out-transition's 350ms finishes.
+  var currentRole = null;
+  var pendingRole = null;
+  var waitingRole = null;
+  var outTimer = null;
+
+  function doShow(role) {
+    shouldShow = true;
+    currentRole = role;
+    clearTimeout(outTimer);
+    if (!lastData) {
+      // No poll has landed yet (e.g. Show pressed within the first
+      // instant of page load) — hold off; pollPlayerH2H() starts the
+      // reveal itself the moment its first response arrives.
+      waitingForData = true;
+      waitingRole = role;
+      return;
+    }
+    waitingForData = false;
+    startReveal(role, lastData);
+  }
+
+  function animateOutThenShow(nextRole) {
+    pendingRole = nextRole;
+    shouldShow = false;
+    clearTimeout(revealTimer);
+    OVERLAY.classList.remove('ph2h-in');
+    clearTimeout(outTimer);
+    outTimer = setTimeout(function () {
+      CLIP.style.display = 'none';
+      currentRole = null;
+      if (pendingRole) {
+        var next = pendingRole;
+        pendingRole = null;
+        doShow(next);
+      }
+    }, 350);
+  }
+
+  function ph2hShow(role) {
+    if (!ROLE_META[role]) return;
+    if (currentRole && currentRole !== role) {
+      animateOutThenShow(role);
+      return;
+    }
+    pendingRole = null;
+    doShow(role);
+  }
+
+  function ph2hHide() {
+    shouldShow = false;
+    currentRole = null;
+    pendingRole = null;
+    waitingForData = false;
+    clearTimeout(revealTimer);
+    OVERLAY.classList.remove('ph2h-in');
+    clearTimeout(outTimer);
+    outTimer = setTimeout(function () { CLIP.style.display = 'none'; }, 350);
+  }
+
+  /* ── Restore-on-load + SSE ──
+     A Control-tab preview copy (?preview=1) must not mirror the real
+     broadcast (CLAUDE.md "Control-tab Preview") — there, Player H2H is
+     driven ONLY by window.previewTrigger below, so skip restore + the real
+     show/hide events. */
+  var PH2H_PREVIEW_ONLY = /[?&]preview=1(?:&|$)/.test(location.search);
+  function restore() {
+    if (PH2H_PREVIEW_ONLY) return;
+    fetch('/overlay/playerh2h-state', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.role) ph2hShow(d.role);
+    }).catch(function () {});
+  }
+
+  var wasDisconnected = false;
+  var es = createOverlaySSE();
+  es.onopen = function () {
+    if (wasDisconnected) restore();
+    wasDisconnected = false;
+  };
+  es.onerror = function () { wasDisconnected = true; };
+  es.addEventListener('playerh2h', function (e) {
+    if (PH2H_PREVIEW_ONLY) return;
+    var msg = JSON.parse(e.data);
+    if (msg.action === 'show') ph2hShow(msg.role);
+    else if (msg.action === 'hide') ph2hHide();
+  });
+
+  restore();
+
+  /* ── Preview hook — chain onto mapselect's window.previewTrigger,
+     defined by the IIFE above (script order guarantees it already ran).
+     ph2hShow()'s only side effect is a GET fetch of stat data, never a
+     write to shared state, so no PREVIEW_ONLY-style guard is needed. */
+  var prevTrigger = window.previewTrigger;
+  window.previewTrigger = function (event, action) {
+    if (event === 'playerh2h') {
+      if (action === 'hide') ph2hHide(); else ph2hShow(action);
+      return;
+    }
+    if (prevTrigger) prevTrigger(event, action);
+  };
+
+  /* ── Local debug bar ── */
+  Object.keys(ROLE_META).forEach(function (role) {
+    var btn = document.getElementById('ph2h-dbg-' + role);
+    if (btn) btn.addEventListener('click', function () { fetch('/overlay/playerh2h/' + role + '/show'); });
+  });
+  document.getElementById('ph2h-dbg-hide').addEventListener('click', function () {
+    fetch('/overlay/playerh2h/hide');
+  });
+})();
+
+/* ── [FEATURE: match-card] Match Card ──────────────────────────────────
+   Simple checkOverlays-pattern panel (see CLAUDE.md "Simpler show/hide")
+   — two independently-positioned team-logo video loops
+   (assets/overlay/matchcard/<TRICODE>_LOOP_1000x1000_5mbps.webm, already-animated
+   art baked in — the entrance transition below on TOP of that loop is
+   this page's own "eye-catching" reveal) for the live match's blue/red
+   teams.
+
+   Team identity is resolved from /match/state's home/away + swapped —
+   the SAME convention mplfs.html's Final Team scene uses for its series
+   score bars (see updateFtScoreBars there), NOT the live game feed's
+   campid identity (updateFtTeamIdentity), because Match Card is meant to
+   be shown pre-game, before any camp data exists at all. */
+(function () {
+  var BLUE_CLIP  = document.getElementById('mc-blue-clip');
+  var RED_CLIP   = document.getElementById('mc-red-clip');
+  var BLUE_BURST = document.getElementById('mc-blue-burst');
+  var RED_BURST  = document.getElementById('mc-red-burst');
+  var BLUE_VIDEO = document.getElementById('mc-blue-video');
+  var RED_VIDEO  = document.getElementById('mc-red-video');
+  var VS_CLIP    = document.getElementById('mc-vs-clip');
+  var VS_VIDEO   = document.getElementById('mc-vs-video');
+  // Freeze on frame 130 of the source (30fps, see the ffprobe check when
+  // this asset was added) instead of playing through to its own end and
+  // holding there — never loops either way (no `loop` attribute), this
+  // just picks an earlier hold frame than the clip's last one.
+  var VS_FREEZE_TIME = 130 / 30;
+  VS_VIDEO.addEventListener('timeupdate', function () {
+    if (VS_VIDEO.currentTime >= VS_FREEZE_TIME) {
+      VS_VIDEO.pause();
+      VS_VIDEO.currentTime = VS_FREEZE_TIME;
+    }
+  });
+  // Matches the mc-pop-out hide animation's own duration, plus a small margin.
+  var HIDE_MS = 320;
+
+  // Restarting a CSS `animation` by re-adding a class the browser thinks
+  // is already applied is a silent no-op without a forced reflow in
+  // between (same idiom mplfs.html uses everywhere for its show/hide
+  // transitions, e.g. `void fooPage.offsetWidth`) — needed here because
+  // a fast hide-then-reshow can re-add 'mc-in'/'mc-burst-play' before the
+  // browser ever drops the previous animation state.
+  function restartAnimation(el, cls) {
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+
+  function cardUrl(tricode) {
+    return tricode ? '/assets/overlay/matchcard/' + encodeURIComponent(tricode) + '_LOOP_1000x1000_5mbps.webm' : '';
+  }
+
+  function setSide(video, tricode) {
+    var src = cardUrl(tricode);
+    video.onerror = function () { video.onerror = null; video.removeAttribute('src'); };
+    if (src && video.getAttribute('src') !== src) video.src = src;
+    else if (!src) video.removeAttribute('src');
+  }
+
+  function applyTeams(ms) {
+    var home = (ms && ms.home) || {};
+    var away = (ms && ms.away) || {};
+    var isSwapped = !!(ms && ms.swapped);
+    var blueTri = ((isSwapped ? away.short : home.short) || '').toUpperCase().trim();
+    var redTri  = ((isSwapped ? home.short : away.short) || '').toUpperCase().trim();
+    setSide(BLUE_VIDEO, blueTri);
+    setSide(RED_VIDEO, redTri);
+  }
+
+  var NEXT_MATCH      = document.getElementById('mc-next-match');
+  var NEXT_MATCH_TEXT = document.getElementById('mc-next-match-text');
+  var NM_SLIDE_MS  = 350;  // matches #mc-next-match-text's own transition duration
+  var NM_TO_CARDS_MS = 1000; // "1 second later" gap between the label settling and the cards starting
+
+  var shouldShow  = false;
+  var hideTimer   = null;
+  var cardsTimer  = null;
+  var logosTimer  = null;
+  var VS_TO_LOGOS_MS = 400; // VS leads the team logos in by this much
+
+  // Team logos + bursts — fired 500ms after mcShowVs() below, so VS
+  // reads as the lead-in beat and the logos as the payoff.
+  function mcShowLogos() {
+    if (!shouldShow) return;
+    BLUE_CLIP.classList.add('mc-on');
+    RED_CLIP.classList.add('mc-on');
+    BLUE_VIDEO.play().catch(function () {});
+    RED_VIDEO.play().catch(function () {});
+    BLUE_VIDEO.classList.remove('mc-out');
+    RED_VIDEO.classList.remove('mc-out');
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      if (!shouldShow) return;
+      restartAnimation(BLUE_VIDEO, 'mc-in');
+      restartAnimation(RED_VIDEO, 'mc-in');
+      restartAnimation(BLUE_BURST, 'mc-burst-play');
+      restartAnimation(RED_BURST, 'mc-burst-play');
+    }); });
+  }
+
+  // VS + team data — the second half of the overall sequence, fired by
+  // mcAnimateIn() only after NEXT MATCH has slid in and settled. Leads
+  // the team logos in by VS_TO_LOGOS_MS (see mcShowLogos above).
+  function mcShowCards() {
+    if (!shouldShow) return;
+    clearTimeout(logosTimer);
+    fetch('/match/state', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (ms) {
+      if (!shouldShow) return; // hidden again before the fetch landed
+      applyTeams(ms);
+      VS_CLIP.classList.add('mc-on');
+      VS_VIDEO.currentTime = 0; // one-shot reveal, always plays from the top
+      VS_VIDEO.play().catch(function () {});
+      VS_VIDEO.classList.remove('mc-out');
+      logosTimer = setTimeout(mcShowLogos, VS_TO_LOGOS_MS);
+    }).catch(function () {});
+  }
+
+  function mcAnimateIn() {
+    shouldShow = true;
+    clearTimeout(hideTimer);
+    clearTimeout(cardsTimer);
+    clearTimeout(logosTimer);
+    NEXT_MATCH.classList.add('mc-on');
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      if (!shouldShow) return;
+      restartAnimation(NEXT_MATCH_TEXT, 'mc-nm-in');
+    }); });
+    cardsTimer = setTimeout(mcShowCards, NM_SLIDE_MS + NM_TO_CARDS_MS);
+  }
+
+  function mcAnimateOut() {
+    shouldShow = false;
+    clearTimeout(cardsTimer);
+    clearTimeout(logosTimer);
+    NEXT_MATCH_TEXT.classList.remove('mc-nm-in');
+    NEXT_MATCH.classList.remove('mc-on');
+    BLUE_VIDEO.classList.remove('mc-in');
+    RED_VIDEO.classList.remove('mc-in');
+    VS_VIDEO.classList.remove('mc-in');
+    BLUE_BURST.classList.remove('mc-burst-play');
+    RED_BURST.classList.remove('mc-burst-play');
+    BLUE_VIDEO.classList.add('mc-out');
+    RED_VIDEO.classList.add('mc-out');
+    VS_VIDEO.classList.add('mc-out');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(function () {
+      BLUE_CLIP.classList.remove('mc-on');
+      RED_CLIP.classList.remove('mc-on');
+      VS_CLIP.classList.remove('mc-on');
+      BLUE_VIDEO.classList.remove('mc-out');
+      RED_VIDEO.classList.remove('mc-out');
+      VS_VIDEO.classList.remove('mc-out');
+      BLUE_VIDEO.pause();
+      RED_VIDEO.pause();
+      VS_VIDEO.pause();
+      VS_VIDEO.currentTime = 0; // reset off its last frame so it never flashes stale on the next Show
+    }, HIDE_MS);
+  }
+
+  /* Keep the logos in sync with a live match_state change while the
+     card is already on screen (e.g. a side swap decided right before
+     the game starts) — same reasoning as mplfs.html's own 'match' SSE
+     listener. */
+  var es = createOverlaySSE();
+  /* ?preview=1 (Control-tab iframe): driven only by previewTrigger, never by real SSE/restore. */
+  var MC_PREVIEW_ONLY = /[?&]preview=1(?:&|$)/.test(location.search);
+  es.addEventListener('matchcard', function (e) {
+    if (MC_PREVIEW_ONLY) return;
+    try {
+      var d = JSON.parse(e.data);
+      if (d.action === 'show') mcAnimateIn();
+      else if (d.action === 'hide') mcAnimateOut();
+    } catch (err) {}
+  });
+  es.addEventListener('match', function (e) {
+    if (!shouldShow) return;
+    try { applyTeams(JSON.parse(e.data)); } catch (err) {}
+  });
+
+  /* Restore real server-side shown/hidden state on load (checkOverlays.
+     matchcard), so a (re)loaded page picks up an already-shown card
+     instead of guessing — default is hidden (CSS default), matching the
+     server default of false, so there's no flash either way. */
+  fetch('/overlay/check-overlays', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) { if (d && d.matchcard && !MC_PREVIEW_ONLY) mcAnimateIn(); })
+    .catch(function () {});
+
+  /* ── Preview hook — chain onto whatever window.previewTrigger already
+     exists (mapselect's own, itself chained onto by playerh2h below).
+     mcAnimateIn()'s only side effect is a GET fetch of live match state,
+     never a write to shared state, so no PREVIEW_ONLY-style guard is
+     needed — same reasoning as playerh2h's own chain. */
+  var prevTrigger = window.previewTrigger;
+  window.previewTrigger = function (event, action) {
+    if (event === 'matchcard') {
+      if (action === 'hide') mcAnimateOut(); else mcAnimateIn();
+      return;
+    }
+    if (prevTrigger) prevTrigger(event, action);
+  };
+
+  window.mcAnimateIn = mcAnimateIn;
+})();
+
+/* ── [FEATURE: bpm-meter] "Heart-Stopping Moment" BPM meter ───────────
+   Independent twin of mploverlay_v7's overlay-bpmmeter.js — same engine,
+   own DOM/show-hide state, own 'bpmmeter_tag' SSE event (routes/overlay.js)
+   so it can be shown/hidden on this page without affecting the
+   mploverlay_v7 copy. The level itself is shared: both copies listen for
+   the SAME 'meter' event (routes/overlay.js's /meter/plus|minus|clear),
+   so the existing BPM +/−/Clear buttons under the MPL Player Overlay v7
+   Control-tab card drive both meters at once — no separate buttons here.
+   See overlay-bpmmeter.js for the fully-commented reference; this copy
+   keeps the same behavior (overload/break mechanic removed, max level is
+   just the strongest shake + glow-throb; while hidden the rAF loop is
+   fully stopped and +/- are dropped before touching any state at all). */
+(function () {
+  const BASE_LEVEL = 10;
+  const SEG_GAP = 6, PAD_X = 10, PAD_Y = 8;
+  const SHELL_W = 508, SHELL_H = 97, SHELL_BORDER = 2;
+  const SLOT_W = 182, SLOT_BORDER = 2, SCALE_H = 21;
+  const METER_W = SHELL_W - SLOT_W - SLOT_BORDER - SHELL_BORDER * 2;
+  const AVAIL_H = SHELL_H - SHELL_BORDER * 2 - PAD_Y * 2 - SCALE_H;
+  const SEG_H   = Math.floor(AVAIL_H / 2);
+  const AVAIL_W = METER_W - PAD_X * 2;
+
+  let SEGS = 1, SEG_W = AVAIL_W;
+  { let n = 1;
+    while (true) {
+      const next = n + 1;
+      if (Math.floor((AVAIL_W - (next - 1) * SEG_GAP) / next) < 8) break;
+      n = next;
+    }
+    SEGS = n; SEG_W = Math.floor((AVAIL_W - (n - 1) * SEG_GAP) / n);
+  }
+
+  const COLOR_HEX = new Array(SEGS);
+  const COLOR_RGB = new Array(SEGS);
+  for (let i = 0; i < SEGS; i++) {
+    const t = i / (SEGS - 1);
+    let r, g, b, h;
+    if      (t < 0.55) { r=0;   g=224; b=64;  h='#00e040'; }
+    else if (t < 0.68) { r=136; g=238; b=0;   h='#88ee00'; }
+    else if (t < 0.78) { r=255; g=221; b=0;   h='#ffdd00'; }
+    else if (t < 0.88) { r=255; g=136; b=0;   h='#ff8800'; }
+    else               { r=255; g=24;  b=0;   h='#ff1800'; }
+    COLOR_HEX[i] = h;
+    COLOR_RGB[i] = `${r},${g},${b}`;
+  }
+
+  const OFF_BG = COLOR_RGB.map(rgb => `rgba(${rgb},0.10)`);
+  const ON_BG  = COLOR_RGB.map(rgb => `rgb(${rgb})`);
+
+  const THROB_STEPS = 20;
+  const glowCache = new Map();
+
+  function buildGlow(i, throbM) {
+    const f = level / BASE_LEVEL;
+    const hex = COLOR_HEX[i];
+    // Max level uses this same static glow at f=1 — the old throbbing 4-layer
+    // glow (restyled every frame) was the perf hit, so it's gone.
+    const px1 = (2 + f * 5).toFixed(0);
+    const px2 = (6 + f * 14).toFixed(0);
+    const a2  = Math.round((0.25 + f * 0.45) * 255).toString(16).padStart(2,'0');
+    return `0 0 ${px1}px 1px ${hex},0 0 ${px2}px 2px ${hex}${a2}`;
+  }
+
+  function getGlow(i, throbM) {
+    if (level === 0) return 'none';
+    const bucket = level;
+    const key = i * 100 + bucket;
+    let s = glowCache.get(key);
+    if (s === undefined) { s = buildGlow(i, bucket / (level === BASE_LEVEL ? THROB_STEPS : 1)); glowCache.set(key, s); }
+    return s;
+  }
+
+  const clip   = document.getElementById('bpmtag-clip');
+  const slide  = document.getElementById('bpmtag-slide');
+  const shell  = document.getElementById('bpmtag-shell');
+  const fx     = document.getElementById('bpmtag-spice-fx');
+  const spicyEl = document.getElementById('bpmtag-spicy');
+  const spicyPop = document.getElementById('bpmtag-spicy-pop');
+  const spiceTextPop = document.getElementById('bpmtag-spicetext-pop');
+  const spiceTextEl = document.getElementById('bpmtag-spicetext');
+
+  /* Spice tier from level/BASE_LEVEL: 0-30% low (1), 30%+ medium
+     (2), 80%+ max (3). spicyN + spicetextN swap together; spicy2 is 10%
+     bigger than spicy1, spicy3 another 10% (the CSS transition overshoots,
+     so each step reads as a pop). */
+  const SPICE_AT = [0, 0.30, 0.80];
+  const SPICE_SCALE = [1, 1.1, 1.2];
+  const SPICY_SHAKE = 2.5; // rumble was tuned for the small meter box; the spicy art is much bigger
+  const fireEl = document.getElementById('bpmtag-fire');
+  ['spicy','spicetext'].forEach(n => [1,2,3].forEach(t => { new Image().src = `/assets/overlay/noisemeter/${n}${t}.png`; }));
+  /* Heat-diffusion fire sim. Per-tier source heat + cooling set the flame
+     height/brightness. 30fps cap; stops itself when hidden or tier is off. */
+  const FW = 128, FH = 48;
+  // Fire steps: 0 off (level 0); 1-2 grow inside the low tier (levels 1, 2); 3 medium; 4 max.
+  const FIRE_STEPS = [null, { src: 165, cool: 36 }, { src: 215, cool: 24 }, { src: 240, cool: 17 }, { src: 255, cool: 12 }];
+  const fireCtx = fireEl.getContext('2d');
+  const fireImg = fireCtx.createImageData(FW, FH);
+  const fireHeat = new Uint8Array(FW * FH);
+  const FIRE_PAL = new Uint8ClampedArray(256 * 4);
+  for (let h = 0; h < 256; h++) {
+    FIRE_PAL[h*4]   = 255;
+    FIRE_PAL[h*4+1] = Math.max(0, Math.min(255, (h - 40) * 1.7));
+    FIRE_PAL[h*4+2] = Math.max(0, Math.min(255, (h - 190) * 3.5));
+    FIRE_PAL[h*4+3] = Math.min(255, h * 2.2);
+  }
+  let fireTier = 0, fireRaf = null, fireLast = 0;
+  function fireFrame(ts) {
+    fireRaf = null;
+    if ((!shouldShow && !exploding) || !fireTier) { fireHeat.fill(0); return; }
+    fireRaf = requestAnimationFrame(fireFrame);
+    if (ts - fireLast < 33) return;
+    fireLast = ts;
+    const T = FIRE_STEPS[fireTier];
+    const last = (FH - 1) * FW;
+    for (let x = 0; x < FW; x++) {
+      const edge = x < 5 || x > FW - 6;
+      // per-column wobble so the base forms separate tongues instead of a flat wall
+      const w = 0.55 + 0.25 * Math.sin(x * 0.55 + ts * 0.006) + 0.2 * Math.sin(x * 1.3 - ts * 0.011);
+      fireHeat[last + x] = edge ? 0 : Math.max(0, T.src * w - Math.random() * 30);
+    }
+    for (let y = 0; y < FH - 1; y++) {
+      for (let x = 0; x < FW; x++) {
+        const sx = Math.max(0, Math.min(FW - 1, x + ((Math.random() * 3) | 0) - 1));
+        const below = fireHeat[(y + 1) * FW + sx];
+        const v = below - ((Math.random() * T.cool) | 0);
+        fireHeat[y * FW + x] = v > 0 ? v : 0;
+      }
+    }
+    const d = fireImg.data;
+    for (let i = 0; i < fireHeat.length; i++) {
+      const h = fireHeat[i] * 4, o = i * 4;
+      d[o] = FIRE_PAL[h]; d[o+1] = FIRE_PAL[h+1]; d[o+2] = FIRE_PAL[h+2]; d[o+3] = FIRE_PAL[h+3];
+    }
+    fireCtx.putImageData(fireImg, 0, 0);
+  }
+  function startFire() { if (!fireRaf && shouldShow && fireTier) fireRaf = requestAnimationFrame(fireFrame); }
+  function spicePop(el, base) {
+    el.style.transition = 'transform 110ms ease-out';
+    el.style.transform = `scale(${base * 1.35})`;
+    setTimeout(() => { el.style.transition = ''; el.style.transform = `scale(${base})`; }, 120);
+  }
+  let spiceTier = 0;
+  function applyFire() {
+    const step = level === 0 ? 0 : (spiceTier === 1 ? level : spiceTier + 1);
+    if (step === fireTier) return;
+    fireTier = step;
+    if (!step) { fireEl.classList.remove('on'); return; }
+    fireEl.classList.add('on'); startFire();
+  }
+  function applySpice() {
+    const f = level / BASE_LEVEL;
+    let t = 0;
+    for (let i = 0; i < SPICE_AT.length; i++) if (f >= SPICE_AT[i] - 1e-9) t = i + 1;
+    if (t === spiceTier) return;
+    spiceTier = t;
+    if (!t) { spicyEl.classList.remove('on'); spiceTextEl.classList.remove('on'); return; }
+    spicyEl.src = `/assets/overlay/noisemeter/spicy${t}.png`;
+    spiceTextEl.src = `/assets/overlay/noisemeter/spicetext${t}.png`;
+    // Individual `scale` property (not `transform`) so the tier pop and the shake don't fight.
+    // Big, obvious pop: snap up to 1.35x fast, then settle to the tier size with an overshoot.
+    spicePop(spicyPop, SPICE_SCALE[t-1]);
+    spicePop(spiceTextPop, 1);
+    spicyEl.classList.add('on'); spiceTextEl.classList.add('on');
+  }
+  const trackA = document.getElementById('bpmtag-track-a');
+  const trackB = document.getElementById('bpmtag-track-b');
+  const segsA  = [], segsB  = [];
+  const stA    = [], stB    = [];
+
+  function makeSeg() {
+    const d = document.createElement('div');
+    d.className = 'bpmtag-seg';
+    d.style.width  = SEG_W + 'px';
+    d.style.height = SEG_H + 'px';
+    return d;
+  }
+
+  function buildTrack(track, arr, st) {
+    for (let i = 0; i < SEGS; i++) {
+      const d = makeSeg();
+      d.style.background = OFF_BG[i];
+      track.appendChild(d);
+      arr.push(d);
+      st.push({ on: false, glowKey: -1 });
+    }
+  }
+
+  function buildScale() {
+    const inner = document.getElementById('bpmtag-scale-inner');
+    [-12,-10,-8,-6,-4,-2,0,2,4,6,8,10,12].forEach(v => {
+      const sp = document.createElement('span');
+      sp.className = 'bpmtag-scale-num';
+      sp.textContent = v > 0 ? '+' + v : v;
+      inner.appendChild(sp);
+    });
+  }
+
+  let shouldShow = false;
+  let level = 0;
+  let displayA = 0, displayB = 0;
+  let idleTargetA = 0, idleTargetB = 0;
+  let rumblePhase = 0, throbPhase = 0, throbMult = 0;
+
+  let lastIdleTime = 0;
+  const IDLE_INTERVAL = 30;
+
+  let rafId = null;
+  function startLoop() { if (rafId === null) rafId = requestAnimationFrame(masterLoop); }
+  function stopLoop()  { if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; } }
+
+  function forceFullRedraw() {
+    for (let i = 0; i < SEGS; i++) {
+      stA[i].on = null; stA[i].glowKey = null;
+      stB[i].on = null; stB[i].glowKey = null;
+    }
+  }
+
+  let lastShellTransform = '';
+
+  function levelToSegs(lvl) { return Math.round((lvl / BASE_LEVEL) * SEGS); }
+
+  function getRumble() {
+    if (level === 0) return null;
+    if (level <= 2) return { tx:0.15, ty:0.10, rx:0.04, speed:0.025 };
+    if (level <= 4) return { tx:0.30, ty:0.20, rx:0.06, speed:0.04  };
+    if (level <= 6) return { tx:0.50, ty:0.35, rx:0.10, speed:0.05  };
+    if (level <= 8) return { tx:0.80, ty:0.55, rx:0.14, speed:0.075 };
+    // Level 9 and 10 share one intensity — max spice deliberately doesn't shake harder.
+                    return { tx:1.25, ty:0.88, rx:0.20, speed:0.11  };
+  }
+
+  function updateTrack(segs, st, vis, throbM) {
+    const bucket = level; // throb removed with the max-level glow
+    for (let i = 0; i < SEGS; i++) {
+      const on = i < vis;
+      const glowKey = on ? bucket : -1;
+      const s = st[i];
+      if (s.on === on && s.glowKey === glowKey) continue;
+      const el = segs[i];
+      if (s.on !== on)           el.style.background = on ? ON_BG[i] : OFF_BG[i];
+      if (s.glowKey !== glowKey) el.style.boxShadow  = on ? getGlow(i, throbM) : 'none';
+      s.on = on; s.glowKey = glowKey;
+    }
+  }
+
+  function render(throbM) {
+    updateTrack(segsA, stA, Math.round(displayA), throbM);
+    updateTrack(segsB, stB, Math.round(displayB), throbM);
+  }
+
+  let idleTick = 0;
+  function masterLoop(ts) {
+    rafId = null;
+    if (!shouldShow && !exploding) return;   // keep shaking through the explosion
+
+    const p = getRumble();
+    let dx = 0, dy = 0, rot = 0;
+    if (p) {
+      rumblePhase += p.speed;
+      dx  = Math.sin(rumblePhase * 7.3)  * p.tx + Math.sin(rumblePhase * 13.1) * p.tx * 0.5;
+      dy  = Math.sin(rumblePhase * 9.7)  * p.ty + Math.sin(rumblePhase * 17.3) * p.ty * 0.4;
+      rot = Math.sin(rumblePhase * 5.9)  * p.rx;
+    }
+    if (dx === 0 && dy === 0 && rot === 0) {
+      if (lastShellTransform !== 'none') { spicyEl.style.transform = 'none'; lastShellTransform = 'none'; }
+    } else {
+      const tr = `translate(${(dx*SPICY_SHAKE).toFixed(2)}px,${(dy*SPICY_SHAKE).toFixed(2)}px) rotate(${(rot*SPICY_SHAKE).toFixed(3)}deg)`;
+      if (tr !== lastShellTransform) { spicyEl.style.transform = tr; lastShellTransform = tr; }
+    }
+
+    if (level === BASE_LEVEL) {
+      throbPhase += 0.065;
+      const fast  = Math.sin(throbPhase * 3.1);
+      const slow  = Math.sin(throbPhase * 1.1);
+      const spike = Math.pow(Math.max(0, Math.sin(throbPhase * 1.7)), 3) * 0.6;
+      const raw   = fast * 0.5 + slow * 0.35 + spike + 0.15;
+      throbMult = Math.min(1, Math.max(0, raw));
+    }
+
+    if (ts - lastIdleTime >= IDLE_INTERVAL) {
+      lastIdleTime = ts;
+      idleTick++;
+      if (level === BASE_LEVEL) {
+        displayA = displayB = SEGS;
+      } else {
+        if (idleTick % 26 === 0) {
+          const base   = levelToSegs(level);
+          const jitter = level === 0 ? 0 : Math.max(1, Math.round(level * 0.22));
+          const flip   = () => (Math.random() < 0.5 ? -1 : 1) * jitter * (Math.random() < 0.65 ? 1 : 0);
+          idleTargetA  = Math.max(0, Math.min(SEGS, base + flip()));
+          idleTargetB  = Math.max(0, Math.min(SEGS, base + flip()));
+        }
+        displayA += (idleTargetA - displayA) * 0.2;
+        displayB += (idleTargetB - displayB) * 0.2;
+      }
+    }
+
+    render(throbMult);
+
+    if (level > 0 || Math.round(displayA) > 0 || Math.round(displayB) > 0) rafId = requestAnimationFrame(masterLoop);
+  }
+
+  function setLevel(v) {
+    level = Math.max(0, Math.min(BASE_LEVEL, v));
+    if (level !== BASE_LEVEL) maxPresses = 0;
+    glowCache.clear();
+    applySpice();
+    applyFire();
+    if (level === BASE_LEVEL) {
+      idleTargetA = idleTargetB = displayA = displayB = SEGS;
+    } else {
+      idleTargetA = idleTargetB = levelToSegs(level);
+      throbPhase = 0; throbMult = 0;
+    }
+    if (!shouldShow) return;
+    if (level === 0 && lastShellTransform !== 'none') { spicyEl.style.transform = 'none'; lastShellTransform = 'none'; }
+    render(0);
+    startLoop();
+  }
+
+  /* Explosion exit — see the .bpmtag-boom CSS note. `exploding` blocks
+     re-entry (a second hide, more + presses) until cleanup. */
+  const boomEl = document.getElementById('bpmtag-boom');
+  const sizewrapEl = document.getElementById('bpmtag-sizewrap');
+  // Explosion exit is shelved for now (set true to bring it back) — hide at max
+  // uses the normal slide-out, and extra + presses at max do nothing.
+  const BOOM_ENABLED = false;
+  const BOOM_PRESSES = 5;     // + presses while already at max that trigger it
+  let maxPresses = 0, exploding = false, boomTimer = null;
+
+  function boomCleanup() {
+    clearTimeout(boomTimer);
+    boomEl.pause();
+    boomEl.style.display = 'none';
+    sizewrapEl.classList.remove('bpmtag-exploding');
+    if (exploding) {
+      exploding = false;
+      stopLoop();
+      clip.style.display = 'none';
+      slide.classList.remove('bpmtag-in');   // hidden now, so no visible slide-out
+      bpmTagPressClear();
+    }
+  }
+  function bpmTagExplode() {
+    if (exploding) return;
+    exploding = true; shouldShow = false; maxPresses = 0;   // loops + fire keep running until cleanup
+    clearTimeout(hideTimer);
+    boomEl.style.display = 'block';
+    boomEl.currentTime = 0;
+    const p = boomEl.play(); if (p && p.catch) p.catch(boomCleanup);
+    sizewrapEl.classList.add('bpmtag-exploding');
+    boomEl.onended = boomCleanup;
+    boomTimer = setTimeout(boomCleanup, 3000); // safety net if 'ended' never fires
+  }
+
+  function bpmTagPressPlus() {
+    if (!shouldShow) return;
+    if (level < BASE_LEVEL) { setLevel(level + 1); return; }
+    if (BOOM_ENABLED && ++maxPresses >= BOOM_PRESSES) {
+      bpmTagExplode();
+      // keep the dashboard's Showing/Hidden state truthful (echo is ignored while exploding)
+      fetch('/overlay/bpmmeter_tag/hide', { cache: 'no-store' }).catch(function () {});
+    }
+  }
+  function bpmTagPressMinus() { if (!shouldShow) return; setLevel(level - 1); }
+  function bpmTagPressClear() { forceFullRedraw(); setLevel(0); }
+
+  let hideTimer = null;
+
+  function bpmTagAnimateIn() {
+    if (exploding) boomCleanup();
+    shouldShow = true;
+    maxPresses = 0;
+    startFire();
+    clearTimeout(hideTimer);
+    forceFullRedraw();
+    render(0);
+    clip.style.display = 'block';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      slide.classList.add('bpmtag-in');
+    }));
+    startLoop();
+  }
+
+  function bpmTagAnimateOut() {
+    if (exploding) return;
+    if (BOOM_ENABLED && shouldShow && level === BASE_LEVEL) { bpmTagExplode(); return; }
+    shouldShow = false;
+    stopLoop();
+    slide.classList.remove('bpmtag-in');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => {
+      clip.style.display = 'none';
+      bpmTagPressClear();
+    }, 420);
+  }
+
+  buildScale();
+  buildTrack(trackA, segsA, stA);
+  buildTrack(trackB, segsB, stB);
+  setLevel(0);
+
+  var es = createOverlaySSE();
+  es.addEventListener('bpmmeter_tag', function (e) {
+    try {
+      var d = JSON.parse(e.data);
+      if (d.action === 'show') bpmTagAnimateIn();
+      if (d.action === 'hide') bpmTagAnimateOut();
+    } catch (err) {}
+  });
+  // Shared with mploverlay_v7's copy — same event, same routes
+  // (/meter/plus|minus|clear), so one set of dashboard buttons nudges
+  // both meters at once.
+  es.addEventListener('meter', function (e) {
+    try {
+      var d = JSON.parse(e.data);
+      if (d.cmd === 'plus')  bpmTagPressPlus();
+      if (d.cmd === 'minus') bpmTagPressMinus();
+      if (d.cmd === 'clear') bpmTagPressClear();
+    } catch (err) {}
+  });
+
+  window.bpmTagAnimateIn  = bpmTagAnimateIn;
+  window.bpmTagAnimateOut = bpmTagAnimateOut;
+})();
+
+/* ── [FEATURE: l3-lobby] "L3 Lobby" — special Waiting Lobby strip ─────
+   Ported from mplfs.html's Waiting Lobby (match box, countdown, sponsor
+   loop, player-photo rotation + name plates) into the bottom strip of the
+   mpltag canvas, over playoffsbg_theme.webm. Plain checkOverlays pattern
+   (key + SSE event 'l3lobby'). Data = /match/state (home = blue/left, away
+   = red/right, same as Waiting Lobby): lineup photos from /hires, countdown
+   from state.timer (server-authoritative endAt, skew-corrected via
+   serverNow), sponsors from /api/sponsors. Only runs timers / video / loops
+   while shown. Reads only (GETs) — no PREVIEW_ONLY guard needed. */
+(function () {
+  var ROOT = document.getElementById('l3l-root');
+  var BGV  = document.getElementById('l3l-bg-video');
+  var TIMER = document.getElementById('l3l-timer-value');
+  var HOLD = 4200 + 250, FADE_IN = 450, MOVE_IN = 750, FADE_OUT = 350;
+  var OUT_MS = 800;
+
+  var on = false, state = null, clockOffset = 0;
+  var timerInt = null, playerInt = null, hideTimer = null, startTimer = null;
+  var photoLayer = { blue: 0, red: 0 }, lineupKey = '', lineups = { blue: [], red: [] }, playerIdx = 0;
+
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  /* ── countdown ── */
+  function digits(t) { return t.replace(/[0-9]/g, function (d) { return '<span class="l3l-timer-digit">' + d + '</span>'; }); }
+  function renderTimer() {
+    var t = (state && state.timer) || { running: false, endAt: null, remaining: 30 * 60 + 30 };
+    var remain = (t.running && t.endAt)
+      ? Math.max(0, Math.round((t.endAt - (Date.now() + clockOffset)) / 1000))
+      : Math.max(0, t.remaining || 0);
+    var text = String(Math.floor(remain / 60)).padStart(2, '0') + ':' + String(remain % 60).padStart(2, '0');
+    var html = digits(text);
+    TIMER.querySelector('.l3l-timer-fill').innerHTML = html;
+    TIMER.querySelector('.l3l-timer-glow').innerHTML = html;
+  }
+
+  /* ── match box ── */
+  function buildMatch(ms) {
+    var root = document.getElementById('l3l-match');
+    if (!ms) { root.innerHTML = ''; return; }
+    var num = ms.match || 1, tm = (ms.todayMatches || [])[num - 1] || {};
+    var home = ms.home || {}, away = ms.away || {};
+    var lt = home.short || tm.team1Short || '', rt = away.short || tm.team2Short || '';
+    var s1 = home.score || tm.score1 || 0, s2 = away.score || tm.score2 || 0;
+    var logo = function (side, tri) {
+      return '<div class="l3m-slot l3m-logo-' + side + '">' + (tri ? '<img src="/assets/team/logos/' + encodeURIComponent(tri) + '.png" onerror="this.style.display=\'none\'" alt="">' : '') + '</div>';
+    };
+    var center = (s1 === 0 && s2 === 0)
+      ? '<img class="l3m-vs" src="/assets/overlay/Waiting Screen TVC/SCORES/vs.png" alt="VS">'
+      : '<div class="l3m-score"><span class="l3m-score-l">' + s1 + '</span><span class="l3m-score-div"></span><span class="l3m-score-r">' + s2 + '</span></div>';
+    var boxByType = { epic: 'MatchBox_EPIC RIVALRY', enduring: 'MatchBox_ENDURING LEGACY', golden: 'MatchBox_GOLDEN-RIVALRY' };
+    var mt = tm.matchType || (tm.star ? 'clash' : 'regular');
+    var boxFile = boxByType[mt] || 'MatchBox_REGULAR MATCH';
+    var gold = mt === 'enduring' ? ' l3m-tri-gold' : '';
+    root.innerHTML =
+      '<div class="l3m-box"><img class="l3m-bg" src="/assets/overlay/Waiting Screen TVC/playoffs/' + boxFile + '.png" alt="">' +
+      '<span class="l3m-label">' + esc(matchLabelFor(num, ms)) + '</span><span class="l3m-time">' + esc(tm.time || '') + '</span>' +
+      '<span class="l3m-bo">' + esc((ms.series || 'BO3').toUpperCase()) + '</span>' +
+      '<div class="l3m-slot l3m-tri l3m-tri-l' + gold + '">' + esc(lt) + '</div>' + logo('l', lt) +
+      '<div class="l3m-slot l3m-center">' + center + '</div>' + logo('r', rt) +
+      '<div class="l3m-slot l3m-tri l3m-tri-r' + gold + '">' + esc(rt) + '</div></div>';
+  }
+
+  /* ── sponsor loop (same /api/sponsors + slide timing as Waiting Lobby) ── */
+  var sponsors = [], sIdx = 0, sActive = false, sHold = null, sIn = null, sOut = null;
+  function fitCat(el) {
+    var size = 19; el.style.fontSize = size + 'px';
+    while (el.scrollWidth > el.clientWidth && size > 9) el.style.fontSize = (size -= 0.5) + 'px';
+  }
+  function sponsorRun() {
+    if (!sActive) return;
+    var img = document.getElementById('l3l-sponsor-img'), cat = document.getElementById('l3l-sponsor-cat');
+    var sp = sponsors[sIdx];
+    img.className = ''; img.src = sp.src;
+    cat.textContent = sp.category || ''; fitCat(cat);
+    void img.offsetWidth;
+    img.classList.add('spon-in');
+    sIn = function (ev) {
+      if (ev.propertyName !== 'transform') return;
+      img.removeEventListener('transitionend', sIn);
+      sHold = setTimeout(function () {
+        if (!sActive) return;
+        img.classList.remove('spon-in'); img.classList.add('spon-out');
+        sOut = function (ev2) {
+          if (ev2.propertyName !== 'transform') return;
+          img.removeEventListener('transitionend', sOut);
+          if (!sActive) return;
+          sIdx = (sIdx + 1) % sponsors.length; sponsorRun();
+        };
+        img.addEventListener('transitionend', sOut);
+      }, sp.dur);
+    };
+    img.addEventListener('transitionend', sIn);
+  }
+  function sponsorStart() {
+    sActive = true;
+    fetch('/api/sponsors').then(function (r) { return r.json(); }).then(function (list) {
+      if (!sActive || !list || !list.length) return;
+      sponsors = list; sIdx = 0; sponsorRun();
+    }).catch(function () {});
+  }
+  function sponsorStop() {
+    sActive = false; clearTimeout(sHold);
+    var img = document.getElementById('l3l-sponsor-img');
+    if (img) { img.removeEventListener('transitionend', sIn); img.removeEventListener('transitionend', sOut); }
+  }
+
+  /* ── player rotation (Waiting Lobby's exact photo + name animation) ── */
+  /* Perf (vMix): the originals are 1000x1000 PNGs (~1 MB each) and a swap loads + decodes TWO of them at once (blue + red) while the video
+     background / ticker / sponsor loop run — that stalled the whole page in vMix's embedded browser. Overlay-only 640x640 WebP copies live in
+     /assets/photo/hires_l3/ (~55 KB, same framing, 5x fewer pixels to decode); if one is missing the original PNG is used. */
+  function photoUrl(ign, side) {
+    var f = side === 'blue' ? 'LEFT' : 'RIGHT';
+    return '/assets/photo/hires_l3/' + f + '/' + encodeURIComponent(ign + '_' + f + '.webp');
+  }
+  function photoUrlOriginal(ign, side) {
+    var f = side === 'blue' ? 'LEFT' : 'RIGHT';
+    return '/assets/photo/hires/' + f + '/' + encodeURIComponent(ign + '_' + f + '.png');
+  }
+  /* Pre-load + pre-decode the whole lineup in the background, one photo at a time with gaps, so by the time a player's turn comes the image is
+     already in the cache and decoded (decode() runs off the main thread). Holds the Image objects so they stay cached. */
+  var photoPre = {}, prePending = [], preTimer = null;
+  function preloadLineup() {
+    prePending = [];
+    ['blue', 'red'].forEach(function (sd) {
+      (lineups[sd] || []).forEach(function (p) { if (p && p.ign) prePending.push({ ign: p.ign, side: sd }); });
+    });
+    clearTimeout(preTimer);
+    (function next() {
+      var job = prePending.shift();
+      if (!job) return;
+      var url = photoUrl(job.ign, job.side);
+      if (photoPre[url]) { preTimer = setTimeout(next, 0); return; }
+      var im = new Image(); im.decoding = 'async'; photoPre[url] = im;
+      im.onerror = function () { var o = new Image(); o.decoding = 'async'; o.src = photoUrlOriginal(job.ign, job.side); photoPre[url] = o; };
+      im.src = url;
+      (im.decode ? im.decode() : Promise.resolve()).catch(function () {}).then(function () { preTimer = setTimeout(next, 120); });
+    })();
+  }
+  function roleFile(role) {
+    var r = (role || '').toLowerCase();
+    if (r.indexOf('gold') >= 0) return 'GOLD LANER';
+    if (r.indexOf('exp') >= 0)  return 'EXP LANER';
+    if (r.indexOf('mid') >= 0)  return 'MID LANER';
+    if (r.indexOf('roam') >= 0) return 'ROAMER';
+    if (r.indexOf('jung') >= 0) return 'JUNGLER';
+    return (role || '').toUpperCase();
+  }
+  /* group (optional) = { ready: [], starts: [] } shared by the two sides of one swap: each side registers when ITS photo is ready
+     (old one faded out + new one decoded) and the function that fades it in; showPlayers() then fires both starts in the same frame. */
+  function applyPlayer(side, player, group) {
+    var ign = player && player.ign;
+    var nameEl = document.getElementById('l3l-' + side + '-name');
+    var logoEl = document.getElementById('l3l-' + side + '-logo');
+    var els = [nameEl, logoEl];
+    els.forEach(function (el) { el.classList.add('l3l-slide-out'); });
+    setTimeout(function () {
+      nameEl.textContent = ign || '';
+      logoEl.style.display = '';
+      logoEl.src = (player && player.role) ? '/assets/game/role/' + encodeURIComponent(roleFile(player.role)) + '.png' : '';
+      els.forEach(function (el) { el.classList.add('l3l-no-transition'); el.classList.remove('l3l-slide-out'); el.classList.add('l3l-slide-in'); });
+      void nameEl.offsetWidth;
+      els.forEach(function (el) { el.classList.remove('l3l-no-transition', 'l3l-slide-in'); });
+    }, 260);
+
+    var cur = photoLayer[side], next = 1 - cur;
+    var curEl = document.getElementById('l3l-' + side + '-photo-' + cur);
+    var nextEl = document.getElementById('l3l-' + side + '-photo-' + next);
+    var startX = side === 'blue' ? -60 : 60, failed = false;
+    var triedOriginal = false;
+    nextEl.onerror = function () {
+      if (!triedOriginal && ign) { triedOriginal = true; nextEl.src = photoUrlOriginal(ign, side); return; }   // no small copy -> original PNG
+      nextEl.onerror = null; failed = true; nextEl.style.transition = 'none'; nextEl.style.opacity = '0';
+    };
+    nextEl.style.transition = 'none'; nextEl.style.opacity = '0'; nextEl.style.transform = 'translateX(' + startX + 'px)';
+    if (ign) nextEl.src = photoUrl(ign, side); else nextEl.removeAttribute('src');
+    void nextEl.offsetWidth;
+    curEl.style.transition = 'opacity ' + FADE_OUT + 'ms ease';
+    curEl.style.opacity = '0';
+    /* Fade the new photo in only after it is DECODED (async, off the main thread) as well as after the old one has faded out — starting the
+       transition on an image that still has to decode is what made the frame hitch. Wait is capped so a slow/broken load can't hold it forever. */
+    var decoded = (ign && nextEl.decode) ? Promise.race([nextEl.decode().catch(function () {}), new Promise(function (r) { setTimeout(r, 1500); })]) : Promise.resolve();
+    var ready = Promise.all([new Promise(function (r) { setTimeout(r, FADE_OUT); }), decoded]);
+    function start() {
+      if (!ign || failed || !on) return;
+      nextEl.style.transition = 'opacity ' + FADE_IN + 'ms cubic-bezier(0.16,1,0.3,1), transform ' + MOVE_IN + 'ms cubic-bezier(0.16,1,0.3,1)';
+      nextEl.style.opacity = '1'; nextEl.style.transform = 'translateX(0)';
+    }
+    if (group) { group.ready.push(ready); group.starts.push(start); }
+    else ready.then(start);
+    photoLayer[side] = next;
+  }
+  function showPlayers() {
+    var b = lineups.blue, r = lineups.red;
+    var bp = b[playerIdx % (b.length || 1)], rp = r[playerIdx % (r.length || 1)];
+    /* Both photos animate TOGETHER: both sides are prepared in the same tick and their fade-ins start in one frame, once BOTH are decoded
+       (the whole lineup is pre-decoded by preloadLineup, so this no longer needs the old 140ms stagger that made red lag blue). */
+    var group = { ready: [], starts: [] };
+    applyPlayer('blue', bp, group);
+    applyPlayer('red', rp, group);
+    Promise.all(group.ready).then(function () {
+      requestAnimationFrame(function () { group.starts.forEach(function (fn) { fn(); }); });
+    });
+  }
+  /* playersStarted: the first photo must fade in exactly once per show. applyState() (fresh lineup => startPlayers) runs
+     while the strip is still opening, and the 700ms intro timer below would start them AGAIN — the first photo then faded
+     in, out and in. introHold keeps applyState from starting them during the intro; the timer does it once. */
+  var playersStarted = false, introHold = false;
+  function startPlayers() {
+    playersStarted = true;
+    clearInterval(playerInt);
+    playerIdx = 0; showPlayers();
+    if (lineups.blue.length > 1 || lineups.red.length > 1) {
+      playerInt = setInterval(function () { playerIdx++; showPlayers(); }, HOLD);
+    }
+  }
+
+  /* ── state ── */
+  function applyState(ms, restartPlayers) {
+    if (!ms) return;
+    state = ms;
+    if (typeof ms.serverNow === 'number') clockOffset = ms.serverNow - Date.now();
+    buildMatch(ms);
+    var label = document.getElementById('l3l-timer-label');
+    var txt = (ms.countdownLabel === 'SHOW RESUMES IN' ? 'SHOW RESUMES IN' : 'SHOW STARTS IN') + ':';
+    if (label.textContent !== txt) label.textContent = txt;
+    renderTimer();
+    lineups.blue = (ms.home && ms.home.lineup) || [];
+    lineups.red  = (ms.away && ms.away.lineup) || [];
+    var key = JSON.stringify([lineups.blue.map(function (p) { return p.ign + '|' + p.role; }), lineups.red.map(function (p) { return p.ign + '|' + p.role; }),
+                              ms.home && ms.home.short, ms.away && ms.away.short]);
+    if (restartPlayers || key !== lineupKey) { lineupKey = key; preloadLineup(); if (on && !introHold) startPlayers(); }
+  }
+  function fetchState() {
+    return fetch('/match/state', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  }
+
+  /* SUPERFAN ticker text: Dynamic tab "Superfan Ticker" (dynamic_content.json superfan_text), same logic as mplfs.html's applyWsSuperfan —
+     canvas measureText (the strip is display:none when this runs), text repeated until one copy fills the 503px window, scroll speed ~70px/s. */
+  var SF_DEFAULT = 'COME AND JOIN THE FUN FOR FREE', sfCtx = null;
+  function applySuperfanTitle(raw) {
+    var text = String(raw || '').trim() || 'MPL PH SUPERFAN CITY';
+    var el = document.querySelector('#l3l-superfan .l3l-sf-label');
+    if (!el || el.dataset.text === text) return;
+    el.dataset.text = text;
+    el.textContent = text;
+    if (!sfCtx) sfCtx = document.createElement('canvas').getContext('2d');
+    sfCtx.font = "800 27px 'General Sans'";
+    var w = sfCtx.measureText(text.toUpperCase()).width || 1;
+    el.style.fontSize = Math.min(27, 27 * 350 / w) + 'px';   // shrink long titles to fit the 360px title area
+  }
+  function applySuperfan(raw) {
+    var text = String(raw || '').trim() || SF_DEFAULT;
+    var track = document.querySelector('#l3l-superfan .l3l-sf-track');
+    if (!track || track.dataset.text === text) return;
+    track.dataset.text = text;
+    if (!sfCtx) sfCtx = document.createElement('canvas').getContext('2d');
+    sfCtx.font = "800 27px 'General Sans'";
+    var GAP = '    ';
+    var unit = sfCtx.measureText(text.toUpperCase() + GAP).width || 1;
+    var copies = Math.max(1, Math.ceil(503 / unit));
+    var content = Array(copies).fill(text).join(GAP);
+    [].forEach.call(track.querySelectorAll('span'), function (sp) { sp.textContent = content; });
+    track.style.animationDuration = Math.max(4, (unit * copies + 120) / 70) + 's';
+  }
+  /* Overall size: scale the fixed 899x51 inner to the container's (Edit-tab) width. offsetWidth = layout width, unaffected by the slide-in transform. */
+  function fitSuperfan() {
+    var box = document.getElementById('l3l-superfan'), inner = box && box.querySelector('.l3l-sf-inner');
+    if (!inner) return;
+    var sc = (box.offsetWidth || 899) / 899;
+    inner.style.transform = 'scale(' + sc + ')';
+    var h = Math.round(51 * sc) + 'px';
+    if (box.style.height !== h) box.style.height = h;
+  }
+  (function () {
+    var box = document.getElementById('l3l-superfan');
+    fitSuperfan();
+    if (box && window.ResizeObserver) new ResizeObserver(fitSuperfan).observe(box);   // Edit-tab width changes (also fires once the strip is shown)
+  })();
+  function loadSuperfan() {
+    fetch('/api/dynamic-content', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { applySuperfan(d && d.superfan_text); applySuperfanTitle(d && d.superfan_title); })
+      .catch(function () {});
+  }
+
+  function l3lAnimateIn() {
+    if (on) return;
+    on = true;
+    playersStarted = false;
+    clearTimeout(hideTimer);
+    ROOT.classList.add('l3l-on');
+    BGV.play().catch(function () {});
+    fitSuperfan();
+    loadSuperfan();
+    fetchState().then(function (ms) {
+      if (!on) return;
+      introHold = true; applyState(ms, false); introHold = false;
+      clearInterval(timerInt); timerInt = setInterval(renderTimer, 250);
+      sponsorStart();
+      void ROOT.offsetWidth;
+      ROOT.classList.add('l3l-in');
+      clearTimeout(startTimer);
+      startTimer = setTimeout(function () { if (on && !playersStarted) startPlayers(); }, 700);
+    });
+  }
+  function l3lAnimateOut() {
+    if (!on) return;
+    on = false;
+    playersStarted = false;
+    clearTimeout(startTimer);
+    ROOT.classList.remove('l3l-in');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(function () {
+      ROOT.classList.remove('l3l-on');
+      BGV.pause();
+      clearInterval(timerInt); clearInterval(playerInt);
+      sponsorStop();
+      ['blue', 'red'].forEach(function (sd) { [0, 1].forEach(function (i) {
+        var el = document.getElementById('l3l-' + sd + '-photo-' + i); el.style.transition = 'none'; el.style.opacity = '0';
+      }); });
+    }, OUT_MS);
+  }
+
+  var es = createOverlaySSE();
+  var L3L_PREVIEW_ONLY = /[?&]preview=1(?:&|$)/.test(location.search);
+  es.addEventListener('l3lobby', function (e) {
+    if (L3L_PREVIEW_ONLY) return;
+    try {
+      var d = JSON.parse(e.data);
+      if (d.action === 'show') l3lAnimateIn(); else if (d.action === 'hide') l3lAnimateOut();
+    } catch (err) {}
+  });
+  es.addEventListener('match', function (e) {
+    if (!on) return;
+    try { applyState(JSON.parse(e.data), false); } catch (err) {}
+  });
+
+  fetch('/overlay/check-overlays', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) { if (d && d.l3lobby && !L3L_PREVIEW_ONLY) l3lAnimateIn(); })
+    .catch(function () {});
+
+  var prevTrigger = window.previewTrigger;
+  window.previewTrigger = function (event, action) {
+    if (event === 'l3lobby') {
+      if (action === 'hide') l3lAnimateOut(); else l3lAnimateIn();
+      return;
+    }
+    if (prevTrigger) prevTrigger(event, action);
+  };
+
+  document.getElementById('l3l-dbg-show').addEventListener('click', l3lAnimateIn);
+  document.getElementById('l3l-dbg-hide').addEventListener('click', l3lAnimateOut);
+
+  window.l3lAnimateIn = l3lAnimateIn;
+  window.l3lAnimateOut = l3lAnimateOut;
+})();
+</script>
+</body>
+</html>

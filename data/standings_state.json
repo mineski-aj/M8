@@ -1,0 +1,151 @@
+{
+  "teams": [
+    {
+      "tri": "TLPH",
+      "move": "up",
+      "status": "upperbracket",
+      "mp": 12,
+      "mwl": "12-2",
+      "gwl": "25-6",
+      "ngw": 19,
+      "medals": [
+        {
+          "type": "silver",
+          "wk": 2
+        },
+        {
+          "type": "gold",
+          "wk": 3
+        },
+        {
+          "type": "gold",
+          "wk": 4
+        },
+        {
+          "type": "gold",
+          "wk": 5
+        },
+        {
+          "type": "silver",
+          "wk": 6
+        },
+        {
+          "type": "silver",
+          "wk": 7
+        },
+        {
+          "type": "gold",
+          "wk": 8
+        }
+      ]
+    },
+    {
+      "tri": "FLCN",
+      "move": "down",
+      "status": "upperbracket",
+      "mp": 12,
+      "mwl": "12-2",
+      "gwl": "26-10",
+      "ngw": 16,
+      "medals": [
+        {
+          "type": "silver",
+          "wk": 1
+        },
+        {
+          "type": "silver",
+          "wk": 4
+        },
+        {
+          "type": "silver",
+          "wk": 5
+        },
+        {
+          "type": "gold",
+          "wk": 6
+        },
+        {
+          "type": "gold",
+          "wk": 7
+        },
+        {
+          "type": "silver",
+          "wk": 8
+        }
+      ]
+    },
+    {
+      "tri": "ONIC",
+      "move": "neutral",
+      "status": "secured",
+      "mp": 9,
+      "mwl": "9-5",
+      "gwl": "21-14",
+      "ngw": 7,
+      "medals": [
+        {
+          "type": "gold",
+          "wk": 1
+        },
+        {
+          "type": "gold",
+          "wk": 2
+        },
+        {
+          "type": "silver",
+          "wk": 3
+        }
+      ]
+    },
+    {
+      "tri": "RORA",
+      "move": "neutral",
+      "status": "secured",
+      "mp": 9,
+      "mwl": "9-5",
+      "gwl": "20-13",
+      "ngw": 7,
+      "medals": []
+    },
+    {
+      "tri": "OMG",
+      "move": "neutral",
+      "status": "secured",
+      "mp": 7,
+      "mwl": "7-7",
+      "gwl": "15-18",
+      "ngw": -3,
+      "medals": []
+    },
+    {
+      "tri": "TNC",
+      "move": "neutral",
+      "status": "secured",
+      "mp": 4,
+      "mwl": "4-10",
+      "gwl": "14-22",
+      "ngw": -8,
+      "medals": []
+    },
+    {
+      "tri": "APBR",
+      "move": "neutral",
+      "status": "eliminated",
+      "mp": 3,
+      "mwl": "3-11",
+      "gwl": "10-23",
+      "ngw": -13,
+      "medals": []
+    },
+    {
+      "tri": "TWIS",
+      "move": "neutral",
+      "status": "eliminated",
+      "mp": 0,
+      "mwl": "0-14",
+      "gwl": "3-28",
+      "ngw": -25,
+      "medals": []
+    }
+  ]
+}

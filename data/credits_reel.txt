@@ -1,0 +1,449 @@
+#TALENTS
+Odin
+Thea
+Denisse
+Naisou
+Athena
+Hans
+Renmar
+Uomi
+Rockhart
+Brigida
+Midnight
+Leo
+Joshycakes	
+Wolf
+Burrito	
+Santie
+Qwerty
+
+#COUNTRY MANAGER
+Dar Andrew Cayabyab
+
+#OPERATIONS MANAGER
+Christine Yuson
+
+#ACCOUNT MANAGER
+Marcus Joaquin Gonzales
+
+#LEAD PROJECT MANAGER
+Katherine Denise "KD" Sy
+
+#ASST. PROJECT MANAGER
+Jessica Jane Felicilda
+
+#BROADCAST CONSULTANT
+AJ Sarmiento
+
+#BROADCAST MANAGER
+Nicole Ann "IKOY CUTIE"  Fajardo
+
+#BROADCAST MANAGER/
+#TECHNICAL DIRECTOR
+CJ “DagZ” Dagumboy
+
+#BROADCAST MANAGER/
+#HTML ENGINEER
+Shawn “Mumei” Manabat
+
+#BROADCAST ASSOCIATES
+Alioth “Wiggy” Cabatingan
+JM Valdez
+
+#SHOW DIRECTOR
+Karl Durante
+
+#ASST. SHOW DIRECTOR / VISION MIXER
+James “Chuts” Concepcion
+
+#SHOW AND CONTENT PRODUCER
+Maouie Reyes
+
+#SHOW CO-PRODUCER
+Sheilla Mae Songalia
+
+#ASST. CONTENT PRODUCER
+Jesus Evan Bonjibod
+
+#CONTENT STATISTICIAN
+John Paulo “Bok” De Guzman
+
+#AI DRAFT PREDICTION / RECAP
+David “Boss A” Gamboa
+
+
+#CREATIVE LEAD
+Edfrancis Gador
+
+#LEAD MOTION GRAPHICS
+Ron Albert Ramos
+
+#ASST. MOTION GRAPHICS
+Jimwell Peña
+
+#GRAPHIC DESIGNERS
+Preanne Parojinog
+Mj Maca
+
+#CONTENT DYNAMIC DESIGNERS
+Adrian Navarro
+Clinton Pradilla
+
+#HEAD OF IT
+Kel Rosales
+
+#IT ASSOCIATES
+Marlon Descartin
+Rommel Lopera
+
+#HEAD OF HOSPITALITY
+Jeremiah Obial
+
+#TALENT MANAGER
+Matthew Militar
+
+#ASST. TALENT MANAGER
+DM Mabborang
+
+#HEAD OF LOGISTICS
+Angelo Masongsong
+
+#SPONSOR LOGISTICS PIC
+Zyrone Nery
+
+#FLOOR DIRECTOR
+Jayar Estrada
+
+#STAGE HANDS
+Chao Desamparado
+Charlene Sanchez
+Don Agustin II
+
+#STAGING TECHNICAL DIRECTOR
+Jordan Swing
+
+#ASST. STAGING TECHNICAL DIRECTOR
+Allen Bert Araño
+
+#LIGHTING DIRECTOR
+Mac Flor
+
+#MAIN CG OPERATOR
+Emir Ryan Concepcion
+
+#EN CG DIRECTOR
+JM Navarro
+
+#CG DYNAMIC OPERATOR
+Rence Antonio
+
+#LED OPERATOR
+Vaan Balatbat
+
+#“MIC CHECK” OPERATOR / POV RECORDER
+Kenneth Bayona
+
+#API ENGINEER
+MR. F5
+
+#GAME DIRECTOR
+Rgee Garcia
+
+#GAME OBSERVER
+Troy Berris
+
+#HIGHLIGHTS OPERATOR
+Avin Francis Kais
+
+#AUDIO ENGINEER
+James Romero
+
+#LEAD STREAM ENGINEER
+Sean Arago
+
+#STREAM ENGINEER
+Annejeleeka Ho
+
+#STREAM MODERATORS
+Yuri Domasig
+Juan Nikholas
+
+#SCRIPT WRITER
+Calvin Angeles Trilles
+
+#TELEPROMPTER
+Glenn Vincent Guinto
+Nathaniel Esguera
+
+
+#STAGE & ONGROUND DESIGNER
+Daryl Raihan
+
+#HEAD OF LEAGUE OPERATIONS
+Rinzcent Gueco
+
+#HEAD REFEREE
+Wilbert “WILBEEEERT”  Manabat
+
+#REFEREES
+Patrick Pablico
+Jefferson Serrano
+Mico “Chico” Tabernilla
+Dominique “JD” Galvez
+Joshua “G4bsolute” Gabriel
+Miko Sevilla
+
+#TECHNICAL CONSULTANTS
+Duane Cadangan
+
+#LIAISON OFFICERS
+FLCN - Lorenzo Joaquin
+OMG - Charles Martin
+ONIC - Justine Cerezo
+RORA - Renzo Lacsamana
+TLPH - Honey Vertudes
+TNC - LordJC Reyes
+VIP - Kyne Lao
+Gimmick - JJ Sanchez
+
+#CAMERA CREW
+#MAXIONE PRODUCTION
+Jireh “Gimbal Standard” Alvarez
+Ruel "Pao" San Luis
+Allan Mejia
+Ronald Sarco
+Reymerson San Luis
+
+#DRONE OPERATOR
+Ramil Gasangue
+
+#MASTER CAM OPERATOR
+Joseph Ay-Ay
+
+#CONTENT TEAM
+#THE CREATIVE BAGGAGES PRODUCTIONS
+#PRODUCTION LEAD
+Samuel Polidario
+ 
+#DIRECTOR
+Kenneth Esteban
+
+#VIDEO EDITOR
+Alvin Santos
+
+#PRODUCERS
+Anna Francisco
+Franz Valles
+
+#CREATIVE VIDEOGRAPHERS
+Jeremiah Patio
+David Chico
+Aldrin Cruz
+Savvy Saddie
+Tracer Tolentino
+
+#MAIN CAM
+James Hernandez
+Michael Biag
+
+#PRODUCTION ASSISTANTS
+Vaughn Bentayao
+Bonifacio “Sipag” Verzosa
+
+#HMUA
+Grace Filomeno
+Theresse Angela Filomeno
+Khaye Nemis
+Bobby Rhenz Penequito
+
+#STYLISTS
+George Palmiano
+Michael De Guzman 
+
+#ASST STYLIST 
+Karen Ferrer
+
+#LOGISTICS TEAM
+Bernadeth Villaflor
+Ariel Gonzales
+Regie Rhein Aram
+Mark Dueñas
+Christian Arellano
+Christopher Borja
+Artimus Bernardo
+John Paul San Gabriel
+Mark Cambaya
+Saimon Santos
+Nathaniel Esguerra
+Danilo A. Escanilla Jr.
+
+#SPONSOR LOGISTICS TEAM
+Ric Jaca
+Jude Mark Herrera
+
+#HEAD USHER
+Dan Abella
+
+#USHERS
+Lau Cortes
+Khian Mendoza
+Hans Steve Nieva
+Jerome Castro
+Justine Carlos Francisco
+Jhems Mae Angco
+Moises Paolo Nieva
+
+
+#FANSIKLABAN TEAM
+Marjon Bensig
+Karl Chester Alarcon
+Nathan Enriquez
+
+#PROCUREMENT TEAM
+Arlyn Castillo
+Rushelle Capistrano
+Zaira Villar
+Maridell Frias
+
+#SOCIAL MEDIA TEAM
+#AGUIRRE ADVERTISING
+Antonio Aguirre
+Bea Decipulo
+Ella Garcia
+GeeJay Guay
+Aldous Jerusalem
+Jm Javillonar
+Jane Estrada
+Marcus Fabro
+
+#HEAD OF SAFETY AND SECURITY
+Jerome T. Capoquian EMT, CSSP
+
+#SAFETY TEAM/MEDICAL TEAM
+Dexter Lazaro EIM NCII, SO2
+Jasmine Singson EMT, SO2
+Marc Kenndy Calleja EMT, SO2
+Mario Evangelista SO2
+
+#AMBULANCE TEAM
+#ARMSAFE EMERGENCY MEDICAL SERVICES
+Russel James Aranas
+Steve Oling
+
+#EVENT SECURITY MARHALLS
+Raymund Sagarang
+Jasper Tavermin
+Joinalyn Portem
+Dennis Casimiro
+Ryan Rotone
+Gentle De Asis
+Richard Talagtag
+Kenneth Javier
+Alibsar Ayyub
+Democrito Gapo
+Remer Macabacyao
+Rodel Vistal
+Kevin Guino
+Roselyn Timbagan
+Jayson Azores
+Junel Almerio
+Emil Falculan
+Morris Febrer
+Reymar Galimba
+Joelito Cabarlen
+Alcasid Kauyag
+Daniel Tabra
+Frank Anthony De Ocampo
+Masil Jainal
+Rodrigo Recamara
+Jayson Azores
+Ariel Tamayo
+Junrie Parilla Cosep
+Rogine Bolante
+Jupeter Lucero
+Jayson Mejano
+Raymund Quintoya
+Aluddin Alimuddin
+Mark Sevillano
+Victor Herrera
+Niland Terado
+Raul Montero
+Miko Pagadura
+Herbert Sunio
+John Mark Dawaton
+
+#STAGING & FABRICATION
+Stage One Events
+
+#COLLATERALS FABRICATION
+iLight Production
+
+#LIGHTS & SOUNDS AND TECHNICALS
+Xstatic Event System Inc.
+
+#LED TECHNICALS
+APEX Ventures
+
+# SUPERFAN CITY FESTIVAL - MANILA
+
+#AAI
+Hadassah Reyes
+Emer Rempillo
+Adrian Quinlog
+
+#SUPERFAN CITY SHOW TEAM
+
+#PRODUCER/BROADCAST MANAGER
+Remar John Bayona
+
+#CG DIRECTOR
+Mac Garcia
+
+#FLOOR DIRECTOR
+Ben Laceda
+
+#TECHNICAL ASSISTANT 
+Elly Lepana
+
+#TALENT MANAGER
+JJ Kais
+
+#GIMBAL OPERATOR
+Kiel Sumalabe
+
+#CEBU WATCHPARTY SHOW TEAM
+
+#DIRECTOR
+Chriz Ian Mesa
+
+#SCRIPTWRITER & RUNNER
+Marlon Ado
+
+#CAMERA MAN
+Mc Edrian Bacarisas
+
+#GRAPHICS OPERATOR
+Earl Gabriel Yamson
+
+#AUDIO SPINNER
+Albert Temblon
+
+#CAMERA MAN
+Daniel Mercado
+
+#FLOOR DIRECTOR
+Frenchy Rondina
+
+#FLOOR DIRECTOR
+Gracielle Cuizon
+
+#PHOTOGRAPHER
+Ishi Ysabel Datan
+
+#VIDEOGRAPHER
+Charles Henricks Dela Peña
+
+
+
+
+#THANK YOU FOR WATCHING!

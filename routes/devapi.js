@@ -1,0 +1,1190 @@
+// routes/devapi.js — GET /api/sub-info/
+const express = require('express');
+const router  = express.Router();
+const fs      = require('fs');
+const path    = require('path');
+const state   = require('../lib/state');
+const { getApiMode, setApiMode, readUrlForMode, writeUrlForMode } = require('../lib/apiMode');
+const { getTheme, setTheme } = require('../lib/theme');
+const { normalizeGameFeed } = require('../lib/rawAdapter');
+const feedDerived = require('../lib/feedDerived');
+const { getGameRefreshMs, setGameRefreshMs, MIN_MS: GAME_REFRESH_MIN, MAX_MS: GAME_REFRESH_MAX } = require('../lib/gameRefresh');
+
+// LIVE/DEBUG API mode — Settings page's "dangerous debug button". Every
+// per-API URL setting below stores BOTH a live and a debug value; this
+// flips which one every reader (these routes, lib/pollers.js, lib/hrmPoller.js)
+// resolves to. See lib/apiMode.js.
+router.get('/api/api-mode', (req, res) => {
+  res.json({ mode: getApiMode() });
+});
+
+router.post('/api/api-mode', (req, res) => {
+  const mode = setApiMode((req.body || {}).mode);
+  res.json({ ok: true, mode });
+});
+
+// Broadcast theme — Settings page picker. One global value, applied by
+// EVERY overlay page (html/js/theme-apply.js sets `data-theme` on
+// <html>), same GET/POST/SSE-broadcast shape as heatmap_config/h2h_config
+// below. A theme changes NOTHING by default — it only takes effect once a
+// page's own CSS adds an opt-in `[data-theme="..."] #selector { ... }`
+// override; see CLAUDE.md's "Theme system" section before adding one.
+// Actual read/write lives in lib/theme.js — routes/overlayStyles.js's
+// Edit-tab theme-scoping needs the same accessor.
+router.get('/api/theme', (req, res) => {
+  res.set('Cache-Control', 'no-store').json({ theme: getTheme() });
+});
+
+router.post('/api/theme', (req, res) => {
+  const theme = setTheme((req.body || {}).theme);
+  const cfg = { theme };
+  // Live nudge — every open overlay page (mplfs/ENTVC/mpltag/Draft/
+  // DraftIndex/mploverlay_v7/fights) applies the new theme immediately via
+  // this event instead of only picking it up on next reload.
+  state.overlayClients.forEach(c => {
+    try { c.write('event: theme\ndata: ' + JSON.stringify(cfg) + '\n\n'); } catch {}
+  });
+  res.json({ ok: true, ...cfg });
+});
+
+router.get('/api/sub-info', (req, res) => {
+  const samplePath = path.join(__dirname, '..', 'data', 'sub-info_sample.json');
+  try {
+    const data = fs.readFileSync(samplePath, "utf8");
+    res.setHeader("Content-Type", "application/json");
+    res.send(data);
+  } catch (e) {
+    res.status(500).json({ error: "sub-info_sample.json not found" });
+  }
+});
+
+// DEBUG-mode game feed for the M8 V2 branch: the RAW battle-feed sample. Point Settings ->
+// Game API (DEBUG) at http://localhost:<port>/api/battledata-m8 — it goes through the same
+// raw -> seat_N adapter as a live feed (lib/rawAdapter.js).
+router.get('/api/battledata-m8', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store').type('application/json')
+       .send(fs.readFileSync(path.join(__dirname, '..', 'data', 'battledata_sample_m8.txt'), 'utf8'));
+  } catch (e) { res.status(500).json({ error: 'battledata_sample_m8.txt not found' }); }
+});
+
+// Also handle trailing slash variant
+router.get('/api/sub-info/', (req, res) => {
+  const samplePath = path.join(__dirname, '..', 'data', 'sub-info_sample.json');
+  try {
+    const data = fs.readFileSync(samplePath, "utf8");
+    res.setHeader("Content-Type", "application/json");
+    res.send(data);
+  } catch (e) {
+    res.status(500).json({ error: "sub-info_sample.json not found" });
+  }
+});
+
+// Sponsor logos + categorization — logos live in /assets/sponsor/<SET>/, categorization
+// (grouping, per-category loop duration, display order) is edited from the
+// dashboard's Sponsors tab and persisted to sponsors_config.json.
+// Four independent logo sets live in assets/sponsor/<SET>/ (each with its own white/ subfolder).
+// Every sponsor route takes an optional ?set=MAIN|MY|PH|ID; default is MAIN.
+// Categories (sponsors_config.json) are shared: a logo filename missing from a set is simply skipped.
+const SPONSOR_SETS         = ['MAIN', 'MY', 'PH', 'ID'];
+const DEFAULT_SPONSOR_SET  = 'MAIN';
+const SPONSORS_ROOT        = path.join(__dirname, '..', 'assets', 'sponsor');
+function sponsorSet(req) {
+  const s = String((req && req.query && req.query.set) || '').toUpperCase();
+  return SPONSOR_SETS.includes(s) ? s : DEFAULT_SPONSOR_SET;
+}
+const SPONSORS_CONFIG_FILE = path.join(__dirname, '..', 'data', 'sponsors_config.json');
+const CONFIG_FILE          = path.join(__dirname, '..', 'data', 'config.json');
+
+function getDashboardPassword() {
+  try {
+    return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')).dashboard_password || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function readSponsorFiles(set) {
+  try {
+    return fs.readdirSync(path.join(SPONSORS_ROOT, set || DEFAULT_SPONSOR_SET)).filter(f => /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(f));
+  } catch (e) {
+    return [];
+  }
+}
+
+function readSponsorsConfig() {
+  try {
+    const data = JSON.parse(fs.readFileSync(SPONSORS_CONFIG_FILE, 'utf8'));
+    if (data && Array.isArray(data.categories)) {
+      return {
+        categories: data.categories,
+        hiddenInIngame: Array.isArray(data.hiddenInIngame) ? data.hiddenInIngame : [],
+        hiddenInSponsorsPage: Array.isArray(data.hiddenInSponsorsPage) ? data.hiddenInSponsorsPage : [],
+      };
+    }
+  } catch (e) {}
+  return { categories: [], hiddenInIngame: [], hiddenInSponsorsPage: [] };
+}
+
+// Public — overlays read this for the ordered, timed play list
+// (category order → each category's logo order, dur in ms). Two independent
+// opt-in filters, each its own query flag + config list, so hiding a logo
+// from one loop never affects the other:
+//   ?ingame=1       — the always-on scoreboard overlay (overlay-scoreboard.js),
+//                     filtered against hiddenInIngame.
+//   ?sponsorspage=1 — sponsors.html's own boxed + transparent in-game-style
+//                     loops, filtered against hiddenInSponsorsPage.
+// Every other loop (Waiting Lobby, Waiting Screen TVC, Today's/Tomorrow's
+// Schedule, Draft, Credit Reel) passes neither flag and always shows everything.
+router.get('/api/sponsors', (req, res) => {
+  const set    = sponsorSet(req);
+  const files  = new Set(readSponsorFiles(set));
+  const config = readSponsorsConfig();
+  const hiddenIngame = req.query.ingame ? new Set(config.hiddenInIngame) : null;
+  const hiddenSponsorsPage = req.query.sponsorspage ? new Set(config.hiddenInSponsorsPage) : null;
+  const sponsors = [];
+  config.categories.forEach(cat => {
+    const dur = Math.max(0.5, Number(cat.duration) || 3) * 1000;
+    (cat.logos || []).forEach(f => {
+      if (!files.has(f)) return;
+      if (hiddenIngame && hiddenIngame.has(f)) return;
+      if (hiddenSponsorsPage && hiddenSponsorsPage.has(f)) return;
+      sponsors.push({ src: '/assets/sponsor/' + set + '/' + encodeURIComponent(f), dur, category: cat.name });
+    });
+  });
+  res.set('Cache-Control', 'no-store').json(sponsors);
+});
+
+// Dashboard Sponsors tab — categorization + every available logo file
+// (so the UI can show unassigned logos alongside categorized ones).
+router.get('/api/sponsors-config', (req, res) => {
+  const config = readSponsorsConfig();
+  const set = sponsorSet(req);
+  res.set('Cache-Control', 'no-store').json({
+    set,
+    sets: SPONSOR_SETS,
+    base: '/assets/sponsor/' + set + '/',
+    categories: config.categories,
+    hiddenInIngame: config.hiddenInIngame,
+    hiddenInSponsorsPage: config.hiddenInSponsorsPage,
+    availableFiles: readSponsorFiles(set),
+  });
+});
+
+router.post('/api/sponsors-config', (req, res) => {
+  const body  = req.body || {};
+  const token = body.token;
+  if (!token || token !== getDashboardPassword()) return res.status(401).json({ error: 'Unauthorized' });
+  const data = body.data;
+  if (!data || !Array.isArray(data.categories)) {
+    return res.status(400).json({ error: 'Payload must include a categories array' });
+  }
+  const hiddenInIngame = Array.isArray(data.hiddenInIngame) ? data.hiddenInIngame.filter(f => typeof f === 'string') : [];
+  const hiddenInSponsorsPage = Array.isArray(data.hiddenInSponsorsPage) ? data.hiddenInSponsorsPage.filter(f => typeof f === 'string') : [];
+  try {
+    fs.writeFileSync(SPONSORS_CONFIG_FILE, JSON.stringify({ categories: data.categories, hiddenInIngame, hiddenInSponsorsPage }, null, 2));
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Could not write sponsors_config.json' });
+  }
+});
+
+// Credit Reel content — plain text, edited from the dashboard's Edit tab
+// (or by hand-editing this file / pasting into the textarea) and rendered
+// by mplfs.html's crParseText(). GET to read, POST { text } to update.
+const CREDITS_TEXT_FILE = path.join(__dirname, '..', 'data', 'credits_reel.txt');
+
+router.get('/api/credits-text', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store').type('text/plain').send(fs.readFileSync(CREDITS_TEXT_FILE, 'utf8'));
+  } catch (e) {
+    res.set('Cache-Control', 'no-store').type('text/plain').send('');
+  }
+});
+
+router.post('/api/credits-text', (req, res) => {
+  const text = (req.body || {}).text || '';
+  fs.writeFileSync(CREDITS_TEXT_FILE, text);
+  res.json({ ok: true });
+});
+
+// Credit Reel scroll speed, in px/sec — GET to read, POST { speed } to update
+const CREDITS_SPEED_FILE = path.join(__dirname, '..', 'data', 'credits_speed.json');
+
+router.get('/api/credits-speed', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store').json(JSON.parse(fs.readFileSync(CREDITS_SPEED_FILE, 'utf8')));
+  } catch (e) {
+    res.set('Cache-Control', 'no-store').json({ speed: 90 });
+  }
+});
+
+router.post('/api/credits-speed', (req, res) => {
+  const speed = Math.max(10, Math.min(1000, Number((req.body || {}).speed) || 90));
+  fs.writeFileSync(CREDITS_SPEED_FILE, JSON.stringify({ speed }));
+  res.json({ ok: true, speed });
+});
+
+// Jungle Resource Stolen banner — how long the AUTO pop-up (2/5/8/12min
+// game_time) stays on screen once shown, in seconds. GET to read, POST
+// { duration } to update. Fetched fresh (no caching) by
+// overlay-stolengold.js every time the banner is about to auto-show,
+// same pattern as credits-speed above. Does not affect the manual
+// show/hide toggle, which stays up until explicitly hidden.
+const STOLENGOLD_DURATION_FILE = path.join(__dirname, '..', 'data', 'stolengold_duration.json');
+
+router.get('/api/stolengold-duration', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store').json(JSON.parse(fs.readFileSync(STOLENGOLD_DURATION_FILE, 'utf8')));
+  } catch (e) {
+    res.set('Cache-Control', 'no-store').json({ duration: 8 });
+  }
+});
+
+router.post('/api/stolengold-duration', (req, res) => {
+  const duration = Math.max(1, Math.min(30, Number((req.body || {}).duration) || 8));
+  fs.writeFileSync(STOLENGOLD_DURATION_FILE, JSON.stringify({ duration }));
+  res.json({ ok: true, duration });
+});
+
+// Post Heatmap tunables (time window / playback speed / player-focus
+// selection) — GET to read, POST partial-update. Both the dashboard's
+// Control-tab box and mplfs.html's showPostHeatmap() fetch this fresh (no
+// caching), so tuning it from the dashboard affects the next time the scene
+// is shown, same pattern as credits-speed above.
+const HEATMAP_CONFIG_FILE = path.join(__dirname, '..', 'data', 'heatmap_config.json');
+const HEATMAP_CONFIG_DEFAULT = { camp: null, seat: 1, from: 0, to: 600, playbackSec: 15, photoOffsetX: 0, mapBrightness: 0.25 };
+
+router.get('/api/heatmap-config', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store').json(JSON.parse(fs.readFileSync(HEATMAP_CONFIG_FILE, 'utf8')));
+  } catch (e) {
+    res.set('Cache-Control', 'no-store').json(HEATMAP_CONFIG_DEFAULT);
+  }
+});
+
+router.post('/api/heatmap-config', (req, res) => {
+  const b = req.body || {};
+  const clampCampSeat = (v, max) => (v === null || v === '' || v === undefined) ? null : Math.max(1, Math.min(max, parseInt(v) || 1));
+  const cfg = {
+    camp:        clampCampSeat(b.camp, 2),
+    seat:        clampCampSeat(b.seat, 5) || 1, // player-focus card always needs a concrete seat
+    from:        Math.max(0, parseInt(b.from) || 0),
+    to:          Math.max(1, parseInt(b.to) || 600),
+    playbackSec: Math.max(1, Math.min(300, parseInt(b.playbackSec) || 15)),
+    photoOffsetX: Math.max(-400, Math.min(400, parseInt(b.photoOffsetX) || 0)),
+    mapBrightness: Math.max(0.1, Math.min(1.5, Number(b.mapBrightness) || 0.25)),
+  };
+  fs.writeFileSync(HEATMAP_CONFIG_FILE, JSON.stringify(cfg));
+  // Live nudge — if Post Heatmap is already showing on some connected
+  // client, it should pick up the new window/focus immediately rather
+  // than only on the next Show. Every mplfs.html tab listens for this and
+  // silently no-ops unless it's actually the heatmap scene right now.
+  state.overlayClients.forEach(c => {
+    try { c.write('event: heatmap_config\ndata: {}\n\n'); } catch {}
+  });
+  res.json({ ok: true, ...cfg });
+});
+
+// heatmap.html's own look controls (dashboard Control -> Heatmap -> Heatmap Style): map brightness/contrast,
+// a brightness multiplier per colour weight of the heat trail (9 stops, blue -> white-hot) and the size of each
+// event marker. GET to read, POST to update (partial OK); every POST is broadcast as the 'heatmap_style' SSE event
+// WITH the full style as its payload, so heatmap.html applies slider drags live without re-fetching anything.
+// mapBrightness null = "follow the shared Post Heatmap Controls brightness" (heatmap_config.json).
+const HEATMAP_STYLE_FILE = path.join(__dirname, '..', 'data', 'heatmap_style.json');
+const HEATMAP_STYLE_DEFAULT = { photo: true, mapBrightness: null, mapContrast: 1, heat: [1, 1, 1, 1, 1, 1, 1, 1, 1], markers: { kill: 30, death: 30, assist: 30 } };
+function heatmapStyleClean(b, base) {
+  const num = (v, lo, hi, d) => { const n = Number(v); return isFinite(n) && v !== null && v !== '' ? Math.max(lo, Math.min(hi, n)) : d; };
+  b = b || {}; base = base || HEATMAP_STYLE_DEFAULT;
+  const heat = Array.isArray(b.heat) ? b.heat : base.heat;
+  const mk = b.markers || {};
+  return {
+    photo: b.photo === undefined ? base.photo : !!b.photo,   // show the player photo (heatmap.html only)
+    mapBrightness: b.mapBrightness === null ? null : (b.mapBrightness === undefined ? base.mapBrightness : num(b.mapBrightness, 0.1, 1.5, base.mapBrightness)),
+    mapContrast:   num(b.mapContrast, 0.3, 2.5, base.mapContrast),
+    heat: HEATMAP_STYLE_DEFAULT.heat.map((_, i) => num(heat[i], 0, 2, base.heat[i])),
+    markers: {
+      kill:   num(mk.kill,   8, 100, base.markers.kill),
+      death:  num(mk.death,  8, 100, base.markers.death),
+      assist: num(mk.assist, 8, 100, base.markers.assist),
+    },
+  };
+}
+function readHeatmapStyle() {
+  try { return heatmapStyleClean(JSON.parse(fs.readFileSync(HEATMAP_STYLE_FILE, 'utf8'))); } catch (e) { return HEATMAP_STYLE_DEFAULT; }
+}
+router.get('/api/heatmap-style', (req, res) => {
+  res.set('Cache-Control', 'no-store').json(readHeatmapStyle());
+});
+router.post('/api/heatmap-style', (req, res) => {
+  const st = heatmapStyleClean(req.body, readHeatmapStyle());
+  fs.writeFileSync(HEATMAP_STYLE_FILE, JSON.stringify(st));
+  const line = 'event: heatmap_style\ndata: ' + JSON.stringify(st) + '\n\n';
+  state.overlayClients.forEach(c => { try { c.write(line); } catch {} });
+  res.json({ ok: true, ...st });
+});
+
+// Post H2H role selection (which role's head-to-head comparison is shown)
+// — GET to read, POST { role } to update. mplfs.html's showPostH2H() and
+// p2hLiveRefresh() fetch this fresh (no caching) each time, same pattern
+// as heatmap_config above; tuning it from the dashboard's role selector
+// affects an already-showing Post H2H scene immediately via the
+// 'h2h_config' SSE broadcast below, and the next Show either way.
+const H2H_CONFIG_FILE = path.join(__dirname, '..', 'data', 'h2h_config.json');
+const H2H_CONFIG_DEFAULT = { role: 'gold_laner' };
+const H2H_VALID_ROLES = ['jungler', 'gold_laner', 'exp_laner', 'mid_laner', 'roamer'];
+
+router.get('/api/h2h-config', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store').json(JSON.parse(fs.readFileSync(H2H_CONFIG_FILE, 'utf8')));
+  } catch (e) {
+    res.set('Cache-Control', 'no-store').json(H2H_CONFIG_DEFAULT);
+  }
+});
+
+router.post('/api/h2h-config', (req, res) => {
+  const b = req.body || {};
+  const role = H2H_VALID_ROLES.includes(b.role) ? b.role : H2H_CONFIG_DEFAULT.role;
+  const cfg = { role };
+  fs.writeFileSync(H2H_CONFIG_FILE, JSON.stringify(cfg));
+  // Live nudge — same reasoning as heatmap_config above: if Post H2H is
+  // already showing on some connected client, it should pick up the new
+  // role immediately rather than only on the next Show.
+  state.overlayClients.forEach(c => {
+    try { c.write('event: h2h_config\ndata: ' + JSON.stringify(cfg) + '\n\n'); } catch {}
+  });
+  res.json({ ok: true, ...cfg });
+});
+
+// Credit Reel font sizes, in px — GET to read, POST { headingSize, bodySize } to update
+const CREDITS_STYLE_FILE = path.join(__dirname, '..', 'data', 'credits_style.json');
+
+router.get('/api/credits-style', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store').json(JSON.parse(fs.readFileSync(CREDITS_STYLE_FILE, 'utf8')));
+  } catch (e) {
+    res.set('Cache-Control', 'no-store').json({ headingSize: 40, bodySize: 24 });
+  }
+});
+
+router.post('/api/credits-style', (req, res) => {
+  const headingSize = Math.max(8, Math.min(200, Number((req.body || {}).headingSize) || 40));
+  const bodySize     = Math.max(8, Math.min(200, Number((req.body || {}).bodySize) || 24));
+  fs.writeFileSync(CREDITS_STYLE_FILE, JSON.stringify({ headingSize, bodySize }));
+  res.json({ ok: true, headingSize, bodySize });
+});
+
+// Item Check panel layout tuning (mploverlay_v7's item-check panel) —
+// goldGap is the vertical space between gold-amount rows (px added on top
+// of each row's own 31px height); homeOffsetX/Y and awayOffsetY/Y shift
+// every element on that side (portraits, items, gold) together, so the
+// whole blue/red half can be nudged in one edit instead of repositioning
+// each row by hand. GET to read, POST the full object to update.
+const ITEMCHECK_LAYOUT_FILE = path.join(__dirname, '..', 'data', 'itemcheck_layout.json');
+const ITEMCHECK_LAYOUT_DEFAULTS = { goldGap: 26, homeOffsetX: 0, homeOffsetY: 0, awayOffsetX: 0, awayOffsetY: 0 };
+
+router.get('/api/itemcheck-layout', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store').json(JSON.parse(fs.readFileSync(ITEMCHECK_LAYOUT_FILE, 'utf8')));
+  } catch (e) {
+    res.set('Cache-Control', 'no-store').json(ITEMCHECK_LAYOUT_DEFAULTS);
+  }
+});
+
+router.post('/api/itemcheck-layout', (req, res) => {
+  const b = req.body || {};
+  const clampNum = (v, d, lo, hi) => Math.max(lo, Math.min(hi, Number(v) || d));
+  const layout = {
+    goldGap:     clampNum(b.goldGap,     26, 0,    200),
+    homeOffsetX: clampNum(b.homeOffsetX, 0,  -400, 400),
+    homeOffsetY: clampNum(b.homeOffsetY, 0,  -400, 400),
+    awayOffsetX: clampNum(b.awayOffsetX, 0,  -400, 400),
+    awayOffsetY: clampNum(b.awayOffsetY, 0,  -400, 400),
+  };
+  fs.writeFileSync(ITEMCHECK_LAYOUT_FILE, JSON.stringify(layout));
+  res.json({ ok: true, ...layout });
+});
+
+// Seat arrangement — { camp1: [1..5 perm], camp2: [1..5 perm] }. Deliberately
+// NOT applied to /api/gamedata-proxy or anything server-side (see
+// lib/seatArrangement.js's own header comment for why) — this route only
+// persists the permutation and pushes it live to mploverlay_v7.html pages,
+// which apply it themselves via getPlayerArranged() in overlay-core.js.
+const seatArrangement = require('../lib/seatArrangement');
+
+router.get('/api/seat-arrangement', (req, res) => {
+  res.set('Cache-Control', 'no-store').json(seatArrangement.readArrangement());
+});
+
+router.post('/api/seat-arrangement', (req, res) => {
+  const saved = seatArrangement.writeArrangement(req.body || {});
+  // Broadcast over the shared /overlay/events stream — every open
+  // mploverlay_v7.html tab/OBS browser source picks this up instantly via
+  // its 'seat_arrangement' SSE listener (overlay-debug.js), no reload
+  // needed. Same fan-out shape as the 'featuretoggle' event.
+  const payload = JSON.stringify(saved);
+  state.overlayClients.forEach(c => { try { c.write(`event: seat_arrangement\ndata: ${payload}\n\n`); } catch {} });
+  res.json({ ok: true, ...saved });
+});
+
+// Game API base URL — GET to read, POST { url } to update
+const GAME_URL_FILE = path.join(__dirname, '..', 'data', 'game_api_url.json');
+
+router.get('/api/game-url', (req, res) => {
+  res.json({ url: readUrlForMode(GAME_URL_FILE, '') });
+});
+
+router.post('/api/game-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim().replace(/\/$/, '');
+  writeUrlForMode(GAME_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Standings API base URL — GET to read, POST { url } to update. Read fresh
+// on every tick by lib/pollers.js's pollStandings(), same as GAME_URL_FILE.
+const STANDINGS_URL_FILE    = path.join(__dirname, '..', 'data', 'standings_api_url.json');
+const STANDINGS_API_DEFAULT = 'http://10.88.120.60:5001/api/standing/';
+
+router.get('/api/standings-url', (req, res) => {
+  res.json({ url: readUrlForMode(STANDINGS_URL_FILE, STANDINGS_API_DEFAULT) });
+});
+
+router.post('/api/standings-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(STANDINGS_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Player photo manifest — returns available filenames per pose for client-side lookup
+const PHOTOS_DIR = path.join(__dirname, '..', 'assets', 'photo');
+
+// GET /api/signature-photos — player names (igns) with a SIGNATURE cutout
+// available in assets/photo/SIGNATURE/, e.g. for the kill-event photo popup.
+// Filename convention: <ign>_SIGNATURE_resized.png
+router.get('/api/signature-photos', (req, res) => {
+  try {
+    const names = fs.readdirSync(path.join(PHOTOS_DIR, 'SIGNATURE'))
+      .filter(f => f.endsWith('_SIGNATURE_resized.png'))
+      .map(f => f.slice(0, -'_SIGNATURE_resized.png'.length));
+    res.set('Cache-Control', 'no-store').json({ names });
+  } catch (e) {
+    res.status(500).json({ names: [] });
+  }
+});
+
+// GET /api/team-logos — tricodes with a logo available in logos/, e.g. for
+// the dashboard's Wipe Out Random Test (see keTrigger in dashboard.html).
+const LOGOS_DIR = path.join(__dirname, '..', 'assets', 'team', 'logos');
+router.get('/api/team-logos', (req, res) => {
+  try {
+    const tricodes = fs.readdirSync(LOGOS_DIR)
+      .filter(f => f.endsWith('.png'))
+      .map(f => f.slice(0, -'.png'.length));
+    res.set('Cache-Control', 'no-store').json({ tricodes });
+  } catch (e) {
+    res.status(500).json({ tricodes: [] });
+  }
+});
+
+router.get('/api/photo-manifest', (req, res) => {
+  try {
+    const poses = ['VICTORY', 'DEFEAT'];
+    const manifest = {};
+    for (const pose of poses) {
+      const dir = path.join(PHOTOS_DIR, pose);
+      try {
+        manifest[pose] = fs.readdirSync(dir).filter(f => /\.png$/i.test(f));
+      } catch { manifest[pose] = []; }
+    }
+    res.set('Cache-Control', 'no-store').json(manifest);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Dynamic content — GET to read, POST { ph_ticker, en_ticker, ph_headline, en_headline, match_headline, superfan_text, superfan_title } to update
+const DYNAMIC_FILE = path.join(__dirname, '..', 'data', 'dynamic_content.json');
+const DYNAMIC_DEFAULTS = { ph_ticker: '', en_ticker: '', ph_headline: '', en_headline: '', match_headline: '', superfan_text: '', superfan_title: '' };
+
+router.get('/api/dynamic-content', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store').json(JSON.parse(fs.readFileSync(DYNAMIC_FILE, 'utf8')));
+  } catch {
+    res.set('Cache-Control', 'no-store').json(DYNAMIC_DEFAULTS);
+  }
+});
+
+router.post('/api/dynamic-content', (req, res) => {
+  const b = req.body || {};
+  const data = {
+    ph_ticker:      String(b.ph_ticker      || ''),
+    en_ticker:      String(b.en_ticker      || ''),
+    ph_headline:    String(b.ph_headline    || ''),
+    en_headline:    String(b.en_headline    || ''),
+    match_headline: String(b.match_headline || ''),
+    superfan_text:  String(b.superfan_text  || ''),
+    superfan_title: String(b.superfan_title || ''),
+  };
+  fs.writeFileSync(DYNAMIC_FILE, JSON.stringify(data, null, 2));
+  res.set('Cache-Control', 'no-store').json({ ok: true, data });
+});
+
+// vMix Data Sources needs the JSON root to be an array of row objects (it
+// binds title fields to columns of a table) — a bare object like the
+// editor's own /api/dynamic-content is treated as an invalid/unreadable
+// feed. Same underlying file, just wrapped in a one-row array for vMix.
+router.get('/api/dynamic-content/vmix', async (req, res) => {
+  let data;
+  try {
+    data = JSON.parse(fs.readFileSync(DYNAMIC_FILE, 'utf8'));
+  } catch {
+    data = DYNAMIC_DEFAULTS;
+  }
+  /* One link for everything: the Dynamic Stats row that is "on air" right now (rotating every saved Row duration, toggles
+     respected) is added to the same row under stats_* columns — stats_title, stats_subtitle, stats_data, stats_row,
+     stats_total and stats_hero1_name / _rate / _photo … stats_hero10_*. Never let it break the Dynamic fields. */
+  try {
+    const cur = await dstatsCurrentVmix(req);
+    Object.keys(cur).forEach(k => { data['stats_' + k] = cur[k]; });
+  } catch (e) { /* Dynamic fields still go out untouched */ }
+  res.set('Cache-Control', 'no-store').json([data]);
+});
+
+// Server-side proxy — serves the game API payload lib/pollers.js already
+// polls every second (state.lastGameData), so every mplfs.html board reads
+// an in-memory cache instead of each one triggering its own live round-trip
+// to the upstream game API. Falls back to a direct fetch only if the poller
+// hasn't landed a payload yet (e.g. right at server startup).
+//
+// ?fresh=1 skips state.lastGameData and always does a live fetch to the
+// upstream game API right then — for boards that need the API's current
+// value at the exact moment they read it (Player Board, Post Emblems, Post
+// Items, Post Stats, and now arrangement-dashboard.html's 2s poll) rather
+// than whatever the once-a-second poll last caught. Still goes through
+// this server, not the browser, so it works the same everywhere the
+// cached path already works (no new CORS/reachability requirements on
+// whatever machine renders mplfs.html).
+//
+// Two protections lib/pollers.js's httpGet() already has that this path
+// was missing until arrangement-dashboard.html started hitting it every
+// 2s from a static, always-mounted dashboard iframe (so it now runs
+// continuously for the life of any open dashboard tab, not just when a
+// Post board happens to show): a hard timeout, and in-flight coalescing.
+// Plain fetch() has no default timeout — a stalled upstream would hang
+// this request forever — and with no coalescing, a slow upstream plus a
+// setInterval-driven caller piles up one more overlapping live fetch to
+// the SAME upstream URL every 2s indefinitely, exactly the kind of thing
+// that reads as "everything got slow" (see HTTP_GET_TIMEOUT_MS's comment
+// in lib/pollers.js for the same lesson learned there).
+const GAMEDATA_FRESH_TIMEOUT_MS = 8000;
+let gamedataFreshInFlight = null;
+function fetchGamedataFresh(gameUrl) {
+  if (gamedataFreshInFlight) return gamedataFreshInFlight;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GAMEDATA_FRESH_TIMEOUT_MS);
+  gamedataFreshInFlight = fetch(gameUrl, { signal: controller.signal })
+    .then(async (r) => {
+      if (!r.ok) throw new Error(`upstream ${r.status}`);
+      return normalizeGameFeed(await r.json());   // raw M8 feed -> seat_N shape
+    })
+    .finally(() => {
+      clearTimeout(timer);
+      gamedataFreshInFlight = null;
+    });
+  return gamedataFreshInFlight;
+}
+
+// Game API refresh rate (ms) — Settings -> "Game API Refresh Rate". GET { ms, min, max }, POST { ms }.
+router.get('/api/game-refresh', (req, res) => {
+  res.set('Cache-Control', 'no-store').json({ ms: getGameRefreshMs(), min: GAME_REFRESH_MIN, max: GAME_REFRESH_MAX });
+});
+router.post('/api/game-refresh', (req, res) => {
+  try { res.json({ ok: true, ms: setGameRefreshMs((req.body || {}).ms), min: GAME_REFRESH_MIN, max: GAME_REFRESH_MAX }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+router.get('/api/gamedata-proxy', async (req, res) => {
+  // ?fresh=1 used to force a live upstream read. The poller now refreshes every game-refresh interval
+  // (150ms default), so a cache that recent IS fresh — serve it instead of hitting the upstream once per
+  // caller. Falls through to a live fetch only if the cache is missing or stale (poller stalled).
+  const freshEnough = state.lastGameData && state.lastGameDataAt && (Date.now() - state.lastGameDataAt) <= Math.max(1500, getGameRefreshMs() * 4);
+  if (state.lastGameData && (req.query.fresh !== '1' || freshEnough)) {
+    return res.set('Cache-Control', 'no-store').json(state.lastGameData);
+  }
+  try {
+    const gameUrl = readUrlForMode(GAME_URL_FILE, '').trim();
+    if (!gameUrl) return res.status(404).json({ error: 'no game URL configured' });
+    const data = await fetchGamedataFresh(gameUrl);
+    res.set('Cache-Control', 'no-store').json(data);
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// Post-Info API base URL — GET to read, POST { url } to update. Separate
+// feed from the main Game API: the live sub-info feed has no orange/purple
+// jungle-buff counts, but this one does, in camp_list[].enemy_area_get
+// (an array of per-time-window deltas — sum them for a running total, see
+// mplfs.html's fetchCmbData/fetchMiddleBoardData).
+const POST_INFO_URL_FILE    = path.join(__dirname, '..', 'data', 'post_info_api_url.json');
+const POST_INFO_URL_DEFAULT = 'http://10.88.120.60:5001/api/post-info/';
+
+router.get('/api/post-info-url', (req, res) => {
+  res.json({ url: readUrlForMode(POST_INFO_URL_FILE, POST_INFO_URL_DEFAULT) });
+});
+
+router.post('/api/post-info-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(POST_INFO_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Winrate API base URL — GET to read, POST { url } to update. Same
+// { live, web, debug } file shape as every other per-API URL; all three
+// modes start on the same endpoint. Setting only for now (no consumer yet).
+const WINRATE_URL_FILE    = path.join(__dirname, '..', 'data', 'winrate_api_url.json');
+const WINRATE_URL_DEFAULT = 'https://mlbb.mrf5.net/api/winrate/';
+
+router.get('/api/winrate-url', (req, res) => {
+  res.json({ url: readUrlForMode(WINRATE_URL_FILE, WINRATE_URL_DEFAULT) });
+});
+
+router.post('/api/winrate-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(WINRATE_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Most Pick API base URL (Settings → Most Pick API) — GET to read, POST { url } to update.
+// Same { live, web, debug } file shape as every other per-API URL. Feeds the Dynamic Stats tab's
+// PLAYOFFS TREND rows (most_Pick / most_Ban / most_BanPick, 10 heroes each).
+const MOSTPICK_URL_FILE    = path.join(__dirname, '..', 'data', 'mostpick_api_url.json');
+const MOSTPICK_URL_DEFAULT = 'http://10.88.120.60:5001/api/most-pick';
+
+router.get('/api/mostpick-url', (req, res) => {
+  res.json({ url: readUrlForMode(MOSTPICK_URL_FILE, MOSTPICK_URL_DEFAULT) });
+});
+
+router.post('/api/mostpick-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(MOSTPICK_URL_FILE, url);
+  mostPickCache = { t: 0, body: null }; // new source → drop the cached payload
+  res.json({ ok: true, url });
+});
+
+// 5s cache + one shared in-flight fetch (same shape as /api/winrate-proxy); stale beats blank.
+let mostPickCache = { t: 0, body: null };
+let mostPickInFlight = null;
+async function fetchMostPick() {
+  if (mostPickCache.body && Date.now() - mostPickCache.t < 5000) return mostPickCache.body;
+  const url = readUrlForMode(MOSTPICK_URL_FILE, MOSTPICK_URL_DEFAULT).trim();
+  if (!url) throw new Error('no most-pick URL configured');
+  try {
+    if (!mostPickInFlight) {
+      mostPickInFlight = fetch(url, { signal: AbortSignal.timeout(9500) })
+        .then(async r => {
+          if (!r.ok) throw new Error('upstream HTTP ' + r.status);
+          mostPickCache = { t: Date.now(), body: await r.json() };
+        })
+        .finally(() => { mostPickInFlight = null; });
+    }
+    await mostPickInFlight;
+  } catch (e) {
+    if (mostPickCache.body) return mostPickCache.body;
+    throw e;
+  }
+  return mostPickCache.body;
+}
+router.get('/api/mostpick-proxy', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try { res.json(await fetchMostPick()); }
+  catch (e) { res.status(502).json({ error: e.message }); }
+});
+
+// ── Dynamic Stats (dashboard "Dynamic Stats" tab) ──────────────────────────
+// Three fixed PLAYOFFS TREND rows whose Data is a ticker built from the Most Pick API
+// ("HERO 12.3% • HERO 11.0% • …", slots 0-9), plus user-added custom rows (title / subtitle /
+// data text, lockable). File: { toggles: { most_pick, most_ban, most_banpick }, rows: [{ id, title, subtitle, data, locked, on }] }.
+const DSTATS_FILE = path.join(__dirname, '..', 'data', 'dynamic_stats.json');
+const DSTATS_STATIC = [
+  { id: 'most_pick',    title: 'PLAYOFFS TREND', subtitle: 'Most_Pick',    list: 'most_Pick',    rate: 'pickRate' },
+  { id: 'most_ban',     title: 'PLAYOFFS TREND', subtitle: 'Most_Ban',     list: 'most_Ban',     rate: 'banRate' },
+  { id: 'most_banpick', title: 'PLAYOFFS TREND', subtitle: 'Most_BanPick', list: 'most_BanPick', rate: 'banPickRate' },
+];
+// Ticker belt speed (px/s) for the Headline Ticker Stats overlay — set on the Dynamic Stats tab.
+const DSTATS_SPEED_DEFAULT = 120, DSTATS_SPEED_MIN = 20, DSTATS_SPEED_MAX = 600;
+function dstatsSpeed(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(DSTATS_SPEED_MIN, Math.min(DSTATS_SPEED_MAX, Math.round(n))) : DSTATS_SPEED_DEFAULT;
+}
+// How long each Dynamic Stats row stays up before the ticker switches to the next one (seconds).
+const DSTATS_DURATION_DEFAULT = 10, DSTATS_DURATION_MIN = 3, DSTATS_DURATION_MAX = 120;
+function dstatsDuration(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(DSTATS_DURATION_MIN, Math.min(DSTATS_DURATION_MAX, Math.round(n))) : DSTATS_DURATION_DEFAULT;
+}
+function dstatsRead() {
+  try {
+    const j = JSON.parse(fs.readFileSync(DSTATS_FILE, 'utf8'));
+    return { toggles: (j.toggles && typeof j.toggles === 'object') ? j.toggles : {}, rows: Array.isArray(j.rows) ? j.rows : [], titles: (j.titles && typeof j.titles === 'object') ? j.titles : {}, titleLocks: (j.titleLocks && typeof j.titleLocks === 'object') ? j.titleLocks : {}, speed: dstatsSpeed(j.speed === undefined ? DSTATS_SPEED_DEFAULT : j.speed), duration: dstatsDuration(j.duration === undefined ? DSTATS_DURATION_DEFAULT : j.duration) };
+  } catch (e) { return { toggles: {}, rows: [], titles: {}, titleLocks: {}, speed: DSTATS_SPEED_DEFAULT, duration: DSTATS_DURATION_DEFAULT }; }
+}
+function dstatsTicker(body, def) {
+  const list = body && Array.isArray(body[def.list]) ? body[def.list] : [];
+  return list.slice(0, 10).map(h => h.heroname + ' ' + h[def.rate] + '%').join(' • ');
+}
+// Structured version of the same list for overlays that draw hero photos: [{ heroid, name, rate }]
+function dstatsItems(body, def) {
+  const list = body && Array.isArray(body[def.list]) ? body[def.list] : [];
+  return list.slice(0, 10).map(h => ({ heroid: h.heroid, name: h.heroname, rate: h[def.rate] }));
+}
+router.get('/api/dynamic-stats', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const saved = dstatsRead();
+  let body = null, error = null;
+  /* ?overlay=1 (the on-air Headline Ticker): custom rows are plain typed text and must never wait on the Most Pick API.
+     Only ask the API when one of the three trend rows is toggled ON, and then give it at most 1.5 s (stale cache otherwise). */
+  const overlayMode = req.query.overlay === '1';
+  const anyTrendOn = DSTATS_STATIC.some(d => saved.toggles[d.id]);
+  if (!overlayMode || anyTrendOn) {
+    try {
+      body = overlayMode
+        ? await Promise.race([fetchMostPick(), new Promise((_, rej) => setTimeout(() => rej(new Error('Most Pick API slow')), 1500))])
+        : await fetchMostPick();
+    } catch (e) {
+      error = e.message;
+      if (overlayMode) body = mostPickCache.body;
+    }
+  }
+  const rows = DSTATS_STATIC.map(d => ({
+    id: d.id, static: true, title: String(saved.titles[d.id] || '').trim() || d.title, subtitle: d.subtitle,
+    locked: saved.titleLocks[d.id] === undefined ? true : !!saved.titleLocks[d.id],
+    data: dstatsTicker(body, d), items: dstatsItems(body, d), on: !!saved.toggles[d.id],
+  })).concat(saved.rows.map(r => ({
+    id: String(r.id), static: false, title: String(r.title || ''), subtitle: String(r.subtitle || ''),
+    data: String(r.data || ''), locked: !!r.locked, on: !!r.on,
+  })));
+  res.json({ rows, error, speed: saved.speed, duration: saved.duration });
+});
+
+// ── vMix feeds for the Dynamic Stats ticker ────────────────────────────────
+// vMix Data Sources needs a JSON ARRAY of flat row objects (same reason as /api/dynamic-content/vmix), so these
+// return arrays of { row, total, title, subtitle, data, hero1_name, hero1_rate, hero1_photo … hero10_* }.
+//   GET /api/dynamic-stats/vmix          every row toggled ON (let vMix's own "auto next row" rotate them)
+//   GET /api/dynamic-stats/vmix/current  ONE row, rotating server-side every saved Row duration — poll it and the
+//                                        shown row follows the Dynamic Stats tab's setting (and toggles) automatically
+const DSTATS_SUB_NAMES = { most_pick: 'MOST PICK', most_ban: 'MOST BAN', most_banpick: 'MOST CONTESTED' };
+async function dstatsOnAirRows() {
+  const saved = dstatsRead();
+  let body = null;
+  if (DSTATS_STATIC.some(d => saved.toggles[d.id])) {
+    try { body = await Promise.race([fetchMostPick(), new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 3000))]); }
+    catch (e) { body = mostPickCache.body; }
+  }
+  const rows = [];
+  DSTATS_STATIC.forEach(d => {
+    if (!saved.toggles[d.id]) return;
+    const items = dstatsItems(body, d);
+    if (!items.length) return;
+    rows.push({ title: String(saved.titles[d.id] || '').trim() || d.title, subtitle: DSTATS_SUB_NAMES[d.id], data: dstatsTicker(body, d), items });
+  });
+  saved.rows.forEach(r => {
+    if (!r.on) return;
+    rows.push({ title: String(r.title || ''), subtitle: String(r.subtitle || ''), data: String(r.data || ''), items: [] });
+  });
+  return { rows, saved };
+}
+function dstatsVmixRow(r, index, total, base) {
+  const pretty = s => String(s || '').replace(/_/g, ' ').trim().toUpperCase();
+  const o = { row: index, total, title: pretty(r && r.title), subtitle: pretty(r && r.subtitle), data: (r && r.data) || '' };
+  for (let k = 0; k < 10; k++) {
+    const h = r && r.items && r.items[k];
+    o['hero' + (k + 1) + '_name']  = h ? h.name : '';
+    o['hero' + (k + 1) + '_rate']  = h ? h.rate + '%' : '';
+    o['hero' + (k + 1) + '_photo'] = h ? base + '/assets/hero/full/thumb/HERO_' + h.heroid + '_KOTAK.png' : '';   /* absolute URL — vMix needs one */
+  }
+  return o;
+}
+/* The flat vMix row that is on air right now (time-based rotation over the rows toggled ON). */
+async function dstatsCurrentVmix(req) {
+  const { rows, saved } = await dstatsOnAirRows();
+  const base = req.protocol + '://' + req.get('host');
+  if (!rows.length) return dstatsVmixRow(null, 0, 0, base);
+  const idx = Math.floor(Date.now() / (saved.duration * 1000)) % rows.length;   /* every pull, from any machine, agrees on the row */
+  return dstatsVmixRow(rows[idx], idx + 1, rows.length, base);
+}
+router.get('/api/dynamic-stats/vmix', async (req, res) => {
+  const { rows } = await dstatsOnAirRows();
+  const base = req.protocol + '://' + req.get('host');
+  const out = rows.map((r, i) => dstatsVmixRow(r, i + 1, rows.length, base));
+  res.set('Cache-Control', 'no-store').json(out.length ? out : [dstatsVmixRow(null, 0, 0, base)]);
+});
+router.get('/api/dynamic-stats/vmix/current', async (req, res) => {
+  res.set('Cache-Control', 'no-store').json([await dstatsCurrentVmix(req)]);
+});
+router.post('/api/dynamic-stats', (req, res) => {
+  const b = req.body || {};
+  const toggles = {};
+  DSTATS_STATIC.forEach(d => { toggles[d.id] = !!(b.toggles && b.toggles[d.id]); });
+  const rows = (Array.isArray(b.rows) ? b.rows : []).slice(0, 100).map(r => ({
+    id: String(r.id || ''), title: String(r.title || ''), subtitle: String(r.subtitle || ''),
+    data: String(r.data || ''), locked: !!r.locked, on: !!r.on,
+  })).filter(r => r.id);
+  const prev = dstatsRead();
+  const titles = {}, titleLocks = {};
+  DSTATS_STATIC.forEach(d => {
+    const t = b.titles && b.titles[d.id] !== undefined ? String(b.titles[d.id]).trim().slice(0, 80) : String(prev.titles[d.id] || '');
+    titles[d.id] = t === d.title ? '' : t;   /* the default isn't stored — an empty entry just means "PLAYOFFS TREND" */
+    titleLocks[d.id] = b.titleLocks && b.titleLocks[d.id] !== undefined ? !!b.titleLocks[d.id] : (prev.titleLocks[d.id] === undefined ? true : !!prev.titleLocks[d.id]);
+  });
+  fs.writeFileSync(DSTATS_FILE, JSON.stringify({
+    toggles, rows, titles, titleLocks,
+    speed: dstatsSpeed(b.speed === undefined ? prev.speed : b.speed),
+    duration: dstatsDuration(b.duration === undefined ? prev.duration : b.duration),
+  }, null, 2));
+  res.set('Cache-Control', 'no-store').json({ ok: true });
+});
+
+// Gold Info API base URL (Gold Graph Check V2) — GET to read, POST { url } to update.
+// Same { live, web, debug } file shape as every other per-API URL.
+const GOLDINFO_URL_FILE    = path.join(__dirname, '..', 'data', 'goldinfo_api_url.json');
+const GOLDINFO_URL_DEFAULT = 'https://mlbb.mrf5.net/api/gold-info/';
+
+router.get('/api/goldinfo-url', (req, res) => {
+  res.json({ url: readUrlForMode(GOLDINFO_URL_FILE, GOLDINFO_URL_DEFAULT) });
+});
+
+router.post('/api/goldinfo-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(GOLDINFO_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Proxy for Gold Graph Check V2 — 1s cache + shared in-flight fetch (same shape as /api/winrate-proxy).
+let goldinfoCache = { t: 0, body: null };
+let goldinfoInFlight = null;
+router.get('/api/goldinfo-proxy', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (goldinfoCache.body && Date.now() - goldinfoCache.t < 1000) return res.json(goldinfoCache.body);
+  try {
+    const url = readUrlForMode(GOLDINFO_URL_FILE, GOLDINFO_URL_DEFAULT).trim();
+    if (!url) return res.status(404).json({ error: 'no gold-info URL configured' });
+    if (!goldinfoInFlight) {
+      goldinfoInFlight = fetch(url, { signal: AbortSignal.timeout(2500) })
+        .then(async r => {
+          if (!r.ok) throw new Error('upstream HTTP ' + r.status);
+          goldinfoCache = { t: Date.now(), body: await r.json() };
+        })
+        .finally(() => { goldinfoInFlight = null; });
+    }
+    await goldinfoInFlight;
+    res.json(goldinfoCache.body);
+  } catch (e) {
+    // Only serve a stale copy briefly — past that, 502 so Gold Graph Check falls back to V1.
+    if (goldinfoCache.body && Date.now() - goldinfoCache.t < 5000) return res.json(goldinfoCache.body);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// Server-side proxy for the Live Win Rate overlay (mploverlay_v7) — fetches
+// the Winrate API above ({ camp1: [%...], camp2: [%...], time: [s...] }, one
+// sample per 10s of game time) with a 1s in-memory cache so several open
+// overlay pages don't each hit the upstream.
+// The upstream can take several seconds, so concurrent requests share one
+// in-flight fetch (winrateInFlight) instead of stacking up.
+let winrateCache = { t: 0, body: null };
+let winrateInFlight = null;
+router.get('/api/winrate-proxy', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (winrateCache.body && Date.now() - winrateCache.t < 1000) return res.json(winrateCache.body);
+  try {
+    const url = readUrlForMode(WINRATE_URL_FILE, WINRATE_URL_DEFAULT).trim();
+    if (!url) return res.status(404).json({ error: 'no winrate URL configured' });
+    if (!winrateInFlight) {
+      winrateInFlight = fetch(url, { signal: AbortSignal.timeout(9500) })
+        .then(async r => {
+          if (!r.ok) throw new Error('upstream HTTP ' + r.status);
+          winrateCache = { t: Date.now(), body: await r.json() };
+        })
+        .finally(() => { winrateInFlight = null; });
+    }
+    await winrateInFlight;
+    res.json(winrateCache.body);
+  } catch (e) {
+    if (winrateCache.body) return res.json(winrateCache.body); // stale beats blank
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// Server-side proxy — serves the post-info payload lib/pollers.js polls
+// (state.lastPostInfoData), same caching pattern as /api/gamedata-proxy.
+router.get('/api/postinfo-proxy', async (req, res) => {
+  if (state.lastPostInfoData) {
+    return res.set('Cache-Control', 'no-store').json(state.lastPostInfoData);
+  }
+  try {
+    const url = readUrlForMode(POST_INFO_URL_FILE, POST_INFO_URL_DEFAULT).trim();
+    if (!url) return res.status(404).json({ error: 'no post-info URL configured' });
+    // Same reasoning as /api/lineuprate-data below — an unreachable upstream
+    // (e.g. the game-client PC off the network) would otherwise hang this
+    // request indefinitely. mplfs.html's middleboard polls this every 3s
+    // whenever visible, uncached, with no dedup across tabs, so a hung
+    // upstream here piles up hung connections fast once a few overlay tabs
+    // are open — fail fast instead.
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return res.status(502).json({ error: `upstream ${r.status}` });
+    const data = await r.json();
+    res.set('Cache-Control', 'no-store').json(data);
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// HRM Server (heartrate ingestion) base URL — GET to read, POST { url } to update
+const HRM_URL_FILE    = path.join(__dirname, '..', 'data', 'hrm_api_url.json');
+const HRM_URL_DEFAULT = 'http://<HRM-SERVER-IP>:5055';
+
+router.get('/api/hrm-url', (req, res) => {
+  res.json({ url: readUrlForMode(HRM_URL_FILE, HRM_URL_DEFAULT) });
+});
+
+router.post('/api/hrm-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim().replace(/\/$/, '');
+  writeUrlForMode(HRM_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Team Head to Head (Team Hexagon) API base URL — GET to read, POST { url } to update
+const HEXAGON_URL_FILE    = path.join(__dirname, '..', 'data', 'hexagon_api_url.json');
+const HEXAGON_URL_DEFAULT = 'https://theapi.dpdns.org/api/teamh2h/';
+
+router.get('/api/hexagon-url', (req, res) => {
+  res.json({ url: readUrlForMode(HEXAGON_URL_FILE, HEXAGON_URL_DEFAULT) });
+});
+
+router.post('/api/hexagon-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(HEXAGON_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Server-side proxy — fetches the Team Head to Head API and returns JSON, avoids browser CORS issues
+router.get('/api/hexagon-data', async (req, res) => {
+  try {
+    const url = readUrlForMode(HEXAGON_URL_FILE, HEXAGON_URL_DEFAULT).trim();
+    // Same reasoning as /api/lineuprate-data below — fail fast instead of
+    // hanging indefinitely on an unreachable upstream.
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return res.status(502).json({ error: `upstream ${r.status}` });
+    const data = await r.json();
+    res.set('Cache-Control', 'no-store').json(data);
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// Player H2H (Gold Laner head-to-head) API base URL — GET to read, POST { url } to update
+const PLAYERH2H_URL_FILE    = path.join(__dirname, '..', 'data', 'playerh2h_api_url.json');
+const PLAYERH2H_URL_DEFAULT = 'https://theapi.dpdns.org/api/playerh2h/';
+
+router.get('/api/playerh2h-url', (req, res) => {
+  res.json({ url: readUrlForMode(PLAYERH2H_URL_FILE, PLAYERH2H_URL_DEFAULT) });
+});
+
+router.post('/api/playerh2h-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(PLAYERH2H_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Server-side proxy — fetches the Player H2H API and returns JSON, avoids browser CORS issues
+router.get('/api/playerh2h-data', async (req, res) => {
+  try {
+    const url = readUrlForMode(PLAYERH2H_URL_FILE, PLAYERH2H_URL_DEFAULT).trim();
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return res.status(502).json({ error: `upstream ${r.status}` });
+    const data = await r.json();
+    res.set('Cache-Control', 'no-store').json(data);
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// Gold vs Gold Sector (Side Gold Distri panel) API base URL — GET to read, POST { url } to update
+const GOLDDISTRI_URL_FILE    = path.join(__dirname, '..', 'data', 'golddistri_api_url.json');
+const GOLDDISTRI_URL_DEFAULT = 'https://theapi.dpdns.org/api/gold_vs_gold_sector';
+
+router.get('/api/golddistri-url', (req, res) => {
+  res.json({ url: readUrlForMode(GOLDDISTRI_URL_FILE, GOLDDISTRI_URL_DEFAULT) });
+});
+
+router.post('/api/golddistri-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(GOLDDISTRI_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Server-side proxy — fetches the Gold vs Gold Sector API and returns JSON, avoids browser CORS issues
+router.get('/api/golddistri-data', async (req, res) => {
+  if (feedDerived.hasRawFeed()) return res.set('Cache-Control', 'no-store').json(feedDerived.goldDistri());   // M8: built from the raw feed
+  try {
+    const url = readUrlForMode(GOLDDISTRI_URL_FILE, GOLDDISTRI_URL_DEFAULT).trim();
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return res.status(502).json({ error: `upstream ${r.status}` });
+    const data = await r.json();
+    res.set('Cache-Control', 'no-store').json(data);
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// Dashboard selectors for the two derived panels above (lib/feedDerived.js). Fire-and-forget GETs so they
+// work as dashboard buttons and as copyable routes; the panels pick the change up on their next poll.
+router.get('/overlay/distri/gold-role/:role', (req, res) => {
+  try { res.set('Cache-Control', 'no-store').json({ ok: true, role: feedDerived.setDistriRole(req.params.role) }); }
+  catch (e) { res.status(400).json({ ok: false, error: e.message }); }
+});
+router.get('/overlay/distri/kda/:camp/:role', (req, res) => {
+  try { res.set('Cache-Control', 'no-store').json(Object.assign({ ok: true }, feedDerived.setKdaSelection(req.params.camp, req.params.role))); }
+  catch (e) { res.status(400).json({ ok: false, error: e.message }); }
+});
+router.get('/api/distri-selection', (req, res) => res.set('Cache-Control', 'no-store').json(feedDerived.getSelection()));
+
+// Get Selection (Side KDA Distri panel) API base URL — GET to read, POST { url } to update
+const KDADISTRI_URL_FILE    = path.join(__dirname, '..', 'data', 'kdadistri_api_url.json');
+const KDADISTRI_URL_DEFAULT = 'https://theapi.dpdns.org/api/get-selection/';
+
+router.get('/api/kdadistri-url', (req, res) => {
+  res.json({ url: readUrlForMode(KDADISTRI_URL_FILE, KDADISTRI_URL_DEFAULT) });
+});
+
+router.post('/api/kdadistri-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(KDADISTRI_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Server-side proxy — fetches the Get Selection API and returns JSON, avoids browser CORS issues
+router.get('/api/kdadistri-data', async (req, res) => {
+  if (feedDerived.hasRawFeed()) return res.set('Cache-Control', 'no-store').json(feedDerived.kdaDistri());   // M8: built from the raw feed
+  try {
+    const url = readUrlForMode(KDADISTRI_URL_FILE, KDADISTRI_URL_DEFAULT).trim();
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return res.status(502).json({ error: `upstream ${r.status}` });
+    const data = await r.json();
+    res.set('Cache-Control', 'no-store').json(data);
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// MVP Highlights (game-mvp/view) API base URL — GET to read, POST { url } to update
+const HIGHLIGHTS_URL_FILE    = path.join(__dirname, '..', 'data', 'highlights_api_url.json');
+const HIGHLIGHTS_URL_DEFAULT = 'https://theapi.dpdns.org/api/game-mvp/view/';
+
+router.get('/api/highlights-url', (req, res) => {
+  res.json({ url: readUrlForMode(HIGHLIGHTS_URL_FILE, HIGHLIGHTS_URL_DEFAULT) });
+});
+
+router.post('/api/highlights-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(HIGHLIGHTS_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Server-side proxy — fetches the MVP Highlights API and returns JSON, avoids browser CORS issues
+router.get('/api/highlights-data', async (req, res) => {
+  try {
+    const url = readUrlForMode(HIGHLIGHTS_URL_FILE, HIGHLIGHTS_URL_DEFAULT).trim();
+    // Same reasoning as /api/lineuprate-data below — fail fast instead of
+    // hanging indefinitely on an unreachable upstream.
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return res.status(502).json({ error: `upstream ${r.status}` });
+    const data = await r.json();
+    res.set('Cache-Control', 'no-store').json(data);
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// Draft Index (Line-Up Rate) API base URL — GET to read, POST { url } to update
+const LINEUPRATE_URL_FILE    = path.join(__dirname, '..', 'data', 'lineuprate_api_url.json');
+const LINEUPRATE_URL_DEFAULT = 'https://theapi.dpdns.org/api/line-up-rate/';
+
+router.get('/api/lineuprate-url', (req, res) => {
+  res.json({ url: readUrlForMode(LINEUPRATE_URL_FILE, LINEUPRATE_URL_DEFAULT) });
+});
+
+router.post('/api/lineuprate-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(LINEUPRATE_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Server-side proxy — fetches the Draft Index (Line-Up Rate) API and returns JSON, avoids browser CORS issues
+router.get('/api/lineuprate-data', async (req, res) => {
+  try {
+    const url = readUrlForMode(LINEUPRATE_URL_FILE, LINEUPRATE_URL_DEFAULT).trim();
+    // Upstream has hung/errored for extended periods before (Cloudflare 530s
+    // seen against theapi.dpdns.org) — a plain fetch() with no timeout would
+    // leave this request (and every client awaiting it, e.g. DraftIndex.html's
+    // Phase 2 reveal) hanging indefinitely instead of failing fast.
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return res.status(502).json({ error: `upstream ${r.status}` });
+    const data = await r.json();
+    res.set('Cache-Control', 'no-store').json(data);
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// Draft (pick/ban) API base URL — GET to read, POST { url } to update.
+// Separate from /api/game-url: Draft.html polls this dedicated endpoint
+// (draft-info-only format) instead of the general game-data feed.
+const DRAFT_URL_FILE    = path.join(__dirname, '..', 'data', 'draft_api_url.json');
+const DRAFT_URL_DEFAULT = 'https://theapi.dpdns.org/sql/draft-info-only/';
+
+router.get('/api/draft-url', (req, res) => {
+  res.json({ url: readUrlForMode(DRAFT_URL_FILE, DRAFT_URL_DEFAULT) });
+});
+
+router.post('/api/draft-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(DRAFT_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Draft Recap API base URL — GET to read, POST { url } to update. Draft.html's
+// Draft Recap panel (previous-draft format) polls this dedicated endpoint,
+// separate from the live draft-info-only feed above.
+const DRAFT_RECAP_URL_FILE    = path.join(__dirname, '..', 'data', 'draft_recap_api_url.json');
+const DRAFT_RECAP_URL_DEFAULT = 'https://theapi.dpdns.org/api/previous-draft/';
+
+router.get('/api/draft-recap-url', (req, res) => {
+  res.json({ url: readUrlForMode(DRAFT_RECAP_URL_FILE, DRAFT_RECAP_URL_DEFAULT) });
+});
+
+router.post('/api/draft-recap-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(DRAFT_RECAP_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+// Draft Predict API URL — GET to read, POST { url } to update. This is the
+// FULL upstream URL (authKey + judgeId included), not a base — routes/proxy.js
+// forwards to it as-is. judgeId is tied to a specific match/judge session, so
+// this needs updating each time that changes.
+const PREDICTIONS_URL_FILE    = path.join(__dirname, '..', 'data', 'predictions_api_url.json');
+const PREDICTIONS_URL_DEFAULT = 'https://r3z8c353h3.ap-southeast-1.awsapprunner.com/api/live/predictions?authKey=18a86b9d-a35f-40d9-94ce-726779b3514a&judgeId=1370583970';
+
+router.get('/api/predictions-url', (req, res) => {
+  res.json({ url: readUrlForMode(PREDICTIONS_URL_FILE, PREDICTIONS_URL_DEFAULT) });
+});
+
+router.post('/api/predictions-url', (req, res) => {
+  const url = ((req.body || {}).url || '').trim();
+  writeUrlForMode(PREDICTIONS_URL_FILE, url);
+  res.json({ ok: true, url });
+});
+
+module.exports = router;

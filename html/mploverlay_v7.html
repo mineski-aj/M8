@@ -1,0 +1,353 @@
+<base href="/">
+<script src="html/js/cache-bust.js"></script>
+<script src="html/js/theme-apply.js"></script>
+<script src="html/js/game-refresh.js"></script>
+<script src="html/js/hero-web.js"></script>
+<script src="html/js/event-log-client.js"></script>
+<script src="html/js/overlay-sse-shim.js"></script>
+<link rel="stylesheet" href="html/mploverlay_v7.css">
+
+<div id="scene">
+
+  <!-- [FEATURE: scoreboard] built dynamically via overlay-scoreboard.js, always behind everything -->
+
+  <!-- [FEATURE: item-pickup-v2] built dynamically via buildItemOverlay(i) -->
+
+  <!-- [FEATURE: conceal-overlay] built dynamically via buildConcealOverlay(side) -->
+
+
+  <!-- [FEATURE: kill-events] -->
+  <div id="kill-event-overlay">
+    <video id="kill-event-video" preload="auto" muted></video>
+    <div id="kill-event-photo-clip">
+      <img id="kill-event-photo" alt="">
+    </div>
+    <div id="kill-event-nametag-clip">
+      <div id="kill-event-nametag-text">
+        <img id="kill-event-role-icon" alt="">
+        <div id="kill-event-name-box">
+          <span id="kill-event-name"></span>
+        </div>
+      </div>
+    </div>
+    <!-- Sponsor logo — only shown for sponsored kill events (Double Kill,
+         Turtle Slain, Savage), pops in/out alongside the photo/nametag. -->
+    <div id="kill-event-sponsor-logo-clip">
+      <img id="kill-event-sponsor-logo" alt="">
+    </div>
+    <!-- Wipe Out team logo (10th Anniversary only) — Wipe Out has no acting
+         player, so instead of the photo/nametag popup it shows the logo of
+         the team that did the wiping. See showKillEventTeamLogo in
+         overlay-killevents.js. -->
+    <div id="kill-event-teamlogo-clip">
+      <img id="kill-event-teamlogo" alt="">
+    </div>
+  </div>
+
+  <!-- [FEATURE: fight-recap] -->
+  <div id="fight-overlay">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="fight-label">Fight Recap</div>
+      <div class="header-sep"></div>
+      <div class="fight-time" id="fight-time">—:—</div>
+      <div class="fight-duration" id="fight-dur"></div>
+    </div>
+
+    <!-- AWARDS BAR -->
+    <div class="awards-bar">
+      <div class="gold-block c1">
+        <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+          <circle cx="8" cy="8" r="7.5" fill="#f59e0b" stroke="#d97706" stroke-width="0.5"/>
+          <circle cx="8" cy="8" r="5.2" fill="none" stroke="#fde68a" stroke-width="1.2"/>
+        </svg>
+        <span class="gold-amount" id="c1-gold">—</span>
+        <span class="gold-label">Gold Earned</span>
+      </div>
+      <div class="gold-sep">+</div>
+      <div class="gold-block c2">
+        <span class="gold-label">Gold Earned</span>
+        <span class="gold-amount" id="c2-gold">—</span>
+        <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+          <circle cx="8" cy="8" r="7.5" fill="#f59e0b" stroke="#d97706" stroke-width="0.5"/>
+          <circle cx="8" cy="8" r="5.2" fill="none" stroke="#fde68a" stroke-width="1.2"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- PLAYERS -->
+    <div class="players-area">
+      <div class="camp-col c1" id="camp1"></div>
+      <div class="camp-divider"></div>
+      <div class="camp-col c2" id="camp2"></div>
+    </div>
+
+  </div>
+
+  <!-- [FEATURE: item-check] built dynamically via icBuildPanel().
+       item-check-clip is fixed in place and clips at its own bounds
+       (which sit fully inside the 1920×1080 scene); item-check-overlay is
+       the part that actually slides, inside that fixed clip window. -->
+  <div id="item-check-clip">
+    <div id="item-check-overlay"></div>
+  </div>
+
+  <!-- [FEATURE: teamfight-check] "Live Team Fight" damage bar, built
+       dynamically via tfcBuildPanel(). Same fixed-clip / sliding-inner
+       pattern and 887px width as item-check. -->
+  <div id="teamfight-check-clip">
+    <div id="teamfight-check-overlay"></div>
+  </div>
+
+  <!-- [FEATURE: emblem-check] built dynamically via eccBuildPanel().
+       Same fixed-clip / sliding-inner pattern as item-check. -->
+  <div id="emblem-check-clip">
+    <div id="emblem-check-overlay"></div>
+  </div>
+
+  <!-- [FEATURE: golddiff-check] built dynamically via gdcBuildPanel().
+       Same fixed-clip / sliding-inner pattern as item-check; the
+       golddiffsmart chip rides inside the same sliding element so it
+       moves in with everything else. -->
+  <div id="golddiff-check-clip">
+    <div id="golddiff-check-overlay"></div>
+  </div>
+
+  <!-- [FEATURE: goldgraph-check] built dynamically via ggcBuildPanel().
+       Same fixed-clip / sliding-inner pattern as item-check. -->
+  <div id="gold-graph-check-clip">
+    <div id="gold-graph-check-overlay"></div>
+  </div>
+
+  <!-- [FEATURE: livewinrate-check] built dynamically via lwrBuildPanel().
+       Gold Graph Check's shell, plotting the Winrate API's win-% series. -->
+  <div id="live-winrate-clip">
+    <div id="live-winrate-overlay"></div>
+  </div>
+
+  <!-- [FEATURE: side-check family] built dynamically via
+       createSideCheck() in overlay-sidecheck-core.js. Same fixed-clip
+       / sliding-inner pattern as item-check, but slides in from the
+       right (translateX) instead of from the bottom (translateY). -->
+  <div id="sideexp-check-clip" class="sidecheck-clip">
+    <div id="sideexp-check-overlay" class="sidecheck-overlay"></div>
+  </div>
+  <div id="sidetaken-check-clip" class="sidecheck-clip">
+    <div id="sidetaken-check-overlay" class="sidecheck-overlay"></div>
+  </div>
+  <div id="sidedamage-check-clip" class="sidecheck-clip">
+    <div id="sidedamage-check-overlay" class="sidecheck-overlay"></div>
+  </div>
+  <div id="sidegold-check-clip" class="sidecheck-clip">
+    <div id="sidegold-check-overlay" class="sidecheck-overlay"></div>
+  </div>
+  <div id="sidegolddistri-check-clip" class="sidecheck-clip">
+    <div id="sidegolddistri-check-overlay" class="sidecheck-overlay"></div>
+  </div>
+  <div id="sidekdadistri-check-clip" class="sidecheck-clip">
+    <div id="sidekdadistri-check-overlay" class="sidecheck-overlay"></div>
+  </div>
+
+  <!-- [FEATURE: player-ui] built dynamically via puiBuildPanel() -->
+  <div id="player-ui-overlay"></div>
+
+  <!-- [FEATURE: objective-spawn] full-canvas video, plays once when the
+       Lord or Turtle timer actually counts down to 0 (spawn moment).
+       Highest layer in the scene — see mploverlay_v7.css. -->
+  <div id="objective-spawn-overlay">
+    <video id="objective-spawn-video" preload="auto" muted></video>
+  </div>
+
+  <!-- [FEATURE: stolen-gold] "Jungle Resource Stolen" banner, driven by
+       overlay-stolengold.js. Manual show/hide from the dashboard Control
+       tab (checkOverlays pattern) PLUS an auto pop-up at 2/5/8/12min
+       game_time, armable/disarmable via the Feature Toggles list — see
+       the #stolengold-* CSS block in mploverlay_v7.css. Declared here as
+       static markup, but overlay-scoreboard.js's buildScoreboard() moves
+       this whole div to be #scoreboard-overlay's first child at page
+       load, so it slides in/out attached to the scoreboard instead of
+       staying a separate top-level layer — don't be surprised to find it
+       nested under #scoreboard-overlay in the live DOM. -->
+  <div id="stolengold-overlay">
+    <div class="sg-stat" id="sg-c1-purple"></div>
+    <div class="sg-stat" id="sg-c1-orange"></div>
+    <div class="sg-stat" id="sg-c1-gold"></div>
+    <div class="sg-stat" id="sg-c2-purple"></div>
+    <div class="sg-stat" id="sg-c2-orange"></div>
+    <div class="sg-stat" id="sg-c2-gold"></div>
+  </div>
+
+  <!-- [FEATURE: bpm-meter] "Heart-Stopping Moment" BPM meter, built
+       dynamically via overlay-bpmmeter.js. See the #bpmmeter-* CSS block
+       in mploverlay_v7.css for what each of the four nested layers here
+       is responsible for. -->
+  <div id="bpmmeter-clip">
+    <div id="bpmmeter-slide">
+      <div id="bpmmeter-sizewrap">
+        <div class="bpmmeter-shell" id="bpmmeter-shell">
+          <div class="bpmmeter-img-slot">
+            <div class="bpmmeter-img-slot-inner"></div>
+          </div>
+          <div class="bpmmeter-area">
+            <div class="bpmmeter-bar-track" id="bpmmeter-track-a"></div>
+            <div class="bpmmeter-scale-row"><div class="bpmmeter-scale-inner" id="bpmmeter-scale-inner"></div></div>
+            <div class="bpmmeter-bar-track" id="bpmmeter-track-b"></div>
+          </div>
+        </div>
+        <div class="bpmmeter-spice-fx" id="bpmmeter-spice-fx">
+          <canvas class="bpmmeter-fire" id="bpmmeter-fire" width="128" height="48"></canvas>
+          <div class="bpmmeter-spicy-pop" id="bpmmeter-spicy-pop"><img class="bpmmeter-spicy" id="bpmmeter-spicy" alt=""></div>
+          <div class="bpmmeter-spicetext-pop" id="bpmmeter-spicetext-pop"><img class="bpmmeter-spicetext" id="bpmmeter-spicetext" alt=""></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="debug-area">
+    <div id="url-row">
+      <span class="debug-label">API URL</span>
+      <span id="api-url-display" style="font-family:monospace;font-size:11px;color:#94a3b8;"></span>
+      <span id="poll-status">● IDLE</span>
+    </div>
+
+    <div id="debug-tabs">
+      <button class="tab-btn active" data-tab="lvl15">LEVEL 15</button>
+      <button class="tab-btn"        data-tab="items">ITEM PICKUP</button>
+      <button class="tab-btn"        data-tab="skypiercer">SKY PIERCER</button>
+      <button class="tab-btn"        data-tab="conceal">CONCEAL</button>
+      <button class="tab-btn"        data-tab="trinity">TRINITY</button>
+      <button class="tab-btn"        data-tab="swap">SWAP</button>
+      <button class="tab-btn"        data-tab="killevents">KILL EVENTS</button>
+      <button class="tab-btn"        data-tab="objectivespawn">OBJECTIVE SPAWN</button>
+      <button class="tab-btn"        data-tab="stolengold">STOLEN GOLD</button>
+      <button class="tab-btn"        data-tab="lordadv">LORD ADVANTAGE</button>
+    </div>
+
+    <!-- Level 15 tab -->
+    <div id="tab-lvl15" class="tab-content visible">
+      <div class="debug-team" id="team-left"></div>
+      <div class="debug-team" id="team-right"></div>
+      <span id="debug-hint-lvl">game time pulled live from API on each trigger</span>
+    </div>
+
+    <!-- Item pickup tab -->
+    <div id="tab-items" class="tab-content">
+      <div class="section-note" style="margin-bottom:6px;">SELECT ITEM &nbsp;(click to select, then press a player button)</div>
+      <div id="t3-browser"></div>
+      <div style="margin:6px 0;"><label class="section-note">PHASE 2 (first-item timing)
+        <select id="item-dbg-p2">
+          <option value="live">live data (from feed)</option>
+          <option value="faster">fake: 33s FASTER</option>
+          <option value="slower">fake: 12s SLOWER</option>
+          <option value="none">fake: no data</option>
+        </select></label></div>
+      <div style="margin-top:8px;display:flex;gap:12px;align-items:center;">
+        <div class="debug-team" id="item-team-left"></div>
+        <div class="debug-team" id="item-team-right"></div>
+      </div>
+    </div>
+
+    <!-- Sky Piercer tab [FEATURE: skypiercer] -->
+    <div id="tab-skypiercer" class="tab-content">
+      <span class="section-note">TRIGGERS AT STACK 3, 5, 7, ... PER PLAYER (extra_param.sky_piercer_stack.stack) — DEBUG SHOWS THE STACK COUNT BELOW</span>
+      <div style="margin:6px 0;"><label class="section-note">STACKS <input id="skp-debug-stacks" type="number" min="1" max="99" value="3" style="width:60px;"></label></div>
+      <div class="debug-team" id="skp-team-left"></div>
+      <div class="debug-team" id="skp-team-right"></div>
+    </div>
+
+    <!-- Trinity tab [FEATURE: trinity] -->
+    <div id="tab-trinity" class="tab-content">
+      <span class="section-note">TRIGGERS WHEN PLAYER REACHES 3 TIER 3 ITEMS — DEBUG USES 3 DEFAULT T3 ITEMS</span>
+      <div style="margin:6px 0;"><label class="section-note">PHASE 2 (core_item timing)
+        <select id="trinity-dbg-p2">
+          <option value="live">live data (from feed)</option>
+          <option value="faster">fake: 8:20 · 33s FASTER</option>
+          <option value="slower">fake: 8:59 · 12s SLOWER</option>
+          <option value="none">fake: no data</option>
+        </select></label></div>
+      <div class="debug-team" id="trinity-team-left"></div>
+      <div class="debug-team" id="trinity-team-right"></div>
+    </div>
+
+    <!-- Swap tab [FEATURE: swap] -->
+    <div id="tab-swap" class="tab-content">
+      <span class="section-note">ITEM QUICK SWAP — ALL PLAYERS &nbsp;|&nbsp; DEBUG: SELLS ANY T3 → BUYS IMMORTALITY</span>
+      <div class="debug-team" id="swap-team-left"></div>
+      <div class="debug-team" id="swap-team-right"></div>
+    </div>
+
+    <!-- Lord advantage tab [FEATURE: lordadv] -->
+    <div id="tab-lordadv" class="tab-content">
+      <span class="section-note">AUTO: FIRES WHEN camp_list[].kill_lord_advantage.end_time IS SET — MANUAL TEST BELOW (shows under the camp's tricode, auto-hides)</span>
+      <div style="margin:6px 0;display:flex;gap:10px;align-items:center;">
+        <label class="section-note">GOLD <input id="lordadv-dbg-gold" type="number" value="433" style="width:70px;"></label>
+        <label class="section-note">KILLS <input id="lordadv-dbg-kills" type="number" value="2" style="width:50px;"></label>
+        <label class="section-note">TURRET <input id="lordadv-dbg-turret" type="number" value="1" style="width:50px;"></label>
+      </div>
+      <div class="debug-team" id="lordadv-debug-btns"></div>
+    </div>
+
+    <!-- Kill events tab [FEATURE: kill-events] -->
+    <div id="tab-killevents" class="tab-content">
+      <span class="section-note">MANUALLY TRIGGER KILL EVENT VIDEOS</span>
+      <div class="debug-team" id="kill-event-btns" style="flex-wrap:wrap;gap:5px;justify-content:center;"></div>
+    </div>
+
+    <!-- Objective spawn tab [FEATURE: objective-spawn] -->
+    <div id="tab-objectivespawn" class="tab-content">
+      <span class="section-note">MANUALLY TRIGGER SPAWN VIDEOS — LIVE TRIGGER IS THE GAME_TIME/TORTOISE_LEFT_TIME/LORD_LEFT_TIME FIELDS COUNTING DOWN TO 0</span>
+      <div class="debug-team" id="objectivespawn-btns" style="flex-wrap:wrap;gap:5px;justify-content:center;"></div>
+    </div>
+
+    <!-- Stolen gold tab [FEATURE: stolen-gold] -->
+    <div id="tab-stolengold" class="tab-content">
+      <span class="section-note">MANUAL SHOW/HIDE — SAME AS THE DASHBOARD CONTROL-TAB TOGGLE. LIVE AUTO POP-UP FIRES SEPARATELY AT GAME_TIME 2:00/5:00/8:00/12:00 WHEN ARMED.</span>
+      <button class="debug-btn" id="stolengold-show-btn">▶ SHOW</button>
+      <button class="debug-btn" id="stolengold-hide-btn">■ HIDE</button>
+    </div>
+
+    <!-- Conceal tab [FEATURE: conceal-overlay] -->
+    <div id="tab-conceal" class="tab-content">
+      <span class="section-note">CAMP 1 — LEFT</span>
+      <button class="debug-btn" id="conceal-trigger-btn">▶ TRIGGER (from API / P4)</button>
+      <div class="debug-team" id="conceal-cat-row"></div>
+      <hr class="section-rule" />
+      <span class="section-note">CAMP 2 — RIGHT</span>
+      <button class="debug-btn" id="conceal-trigger-btn-r">▶ TRIGGER (from API / P9)</button>
+      <div class="debug-team" id="conceal-cat-row-r"></div>
+    </div>
+
+
+  </div>
+</div>
+
+<script src="html/js/overlay-core.js"></script>
+<script src="html/js/overlay-scoreboard.js"></script>
+<script src="html/js/overlay-lvl15.js"></script>
+<script src="html/js/overlay-items.js"></script>
+<script src="html/js/overlay-skypiercer.js"></script>
+<script src="html/js/overlay-trinity.js"></script>
+<script src="html/js/overlay-swap.js"></script>
+<script src="html/js/overlay-conceal.js"></script>
+<script src="html/js/overlay-killevents.js"></script>
+<script src="html/js/overlay-objectivespawn.js"></script>
+<script src="html/js/overlay-stolengold.js"></script>
+<script src="html/js/overlay-lordadv.js"></script>
+<script src="html/js/overlay-fights.js"></script>
+<script src="html/js/overlay-itemcheck.js"></script>
+<script src="html/js/overlay-teamfightcheck.js"></script>
+<script src="html/js/overlay-emblemcheck.js"></script>
+<script src="html/js/overlay-golddiffcheck.js"></script>
+<script src="html/js/overlay-goldgraphcheck.js"></script>
+<script src="html/js/overlay-livewinrate.js"></script>
+<script src="html/js/overlay-sidecheck-core.js"></script>
+<script src="html/js/overlay-sideexpcheck.js"></script>
+<script src="html/js/overlay-sidetakencheck.js"></script>
+<script src="html/js/overlay-sidedamagecheck.js"></script>
+<script src="html/js/overlay-sidegoldcheck.js"></script>
+<script src="html/js/overlay-sidegolddistricheck.js"></script>
+<script src="html/js/overlay-sidekdadistricheck.js"></script>
+<script src="html/js/overlay-playerui.js"></script>
+<script src="html/js/overlay-bpmmeter.js"></script>
+<script src="html/js/overlay-debug.js"></script>

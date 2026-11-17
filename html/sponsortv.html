@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <base href="/">
+  <script src="html/js/cache-bust.js"></script>
+  <script src="html/js/theme-apply.js"></script>
+  <title>Sponsor TV</title>
+  <style>
+    @font-face {
+      font-family: 'Anton';
+      src: url('/assets/fonts/Anton-Regular.ttf') format('truetype');
+      font-weight: 400; font-style: normal;
+    }
+    @font-face {
+      font-family: 'General Sans';
+      src: url('/assets/fonts/GeneralSans-Medium.otf') format('opentype');
+      font-weight: 500; font-style: normal;
+    }
+    @font-face {
+      font-family: 'General Sans';
+      src: url('/assets/fonts/GeneralSans-Semibold.otf') format('opentype');
+      font-weight: 600; font-style: normal;
+    }
+    @font-face {
+      font-family: 'General Sans';
+      src: url('/assets/fonts/GeneralSans-Bold.otf') format('opentype');
+      font-weight: 700; font-style: normal;
+    }
+
+    html, body {
+      margin: 0; padding: 0;
+      width: 1920px; height: 1080px;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    /* Permanently on — no show/hide, so no scene wrapper/transition needed. */
+    #scene {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1920px; height: 1080px;
+      overflow: hidden;
+    }
+
+    #bg-video {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1920px; height: 1080px;
+    }
+
+    /* ── Schedule block — the ONE box the dashboard Edit tab can
+       drag/resize. Everything inside is rendered at its native 858x712
+       size into #stv-inner, which is scaled (via JS, see stvApplyScale)
+       to fill whatever box the Edit tab sets on #stv-content — so
+       dragging/resizing this single box moves and scales the whole
+       schedule as one group, same philosophy as mplfs.html's Credit Reel
+       viewport. ── */
+    #stv-content {
+      position: absolute;
+      left: 531px; top: 184px;
+      width: 858px; height: 712px;
+      overflow: hidden;
+    }
+    /* Flex-centers #stv-matches within the native box on both axes, so 2
+       matches (Day 1/3) sit centered same as 3 matches (Day 2) instead of
+       stacking from the top and leaving a visual gap at the bottom. */
+    #stv-inner {
+      position: absolute;
+      left: 0; top: 0;
+      width: 858px; height: 712px;
+      transform-origin: top left;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #stv-matches {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-family: 'General Sans', sans-serif;
+    }
+
+    /* Match rows — same native 858x232 asset + layout as Today's Schedule
+       (html/ENTVC.html and html/mplfs.html's .tsm-* classes). */
+    .tsm-row { position: relative; width: 858px; height: 232px; }
+    .tsm-row > img.tsm-bg { position: absolute; left: 0; top: 0; width: 858px; height: 232px; }
+    .tsm-label, .tsm-time, .tsm-bo {
+      position: absolute; top: 0; height: 48px;
+      display: flex; align-items: center;
+      font-weight: 700; font-size: 26px; color: #0a0a0a;
+      text-transform: uppercase; white-space: nowrap;
+    }
+    .tsm-label { left: 22px; }
+    .tsm-time  { left: 0; width: 100%; justify-content: center; }
+    .tsm-bo    { right: 22px; }
+    .tsm-slot {
+      position: absolute; top: 48px; height: 184px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .tsm-tri {
+      font-family: 'Anton', sans-serif;
+      font-weight: 400; font-size: 46px;
+      color: #fff; text-transform: uppercase; white-space: nowrap;
+    }
+    .tsm-tri-l  { left: 0;     width: 141px; }
+    .tsm-tri-r  { right: 0;    width: 141px; }
+    .tsm-logo-l { left: 141px; width: 196px; }
+    .tsm-logo-r { left: 521px; width: 196px; }
+    .tsm-logo-l img, .tsm-logo-r img { width: 116px; height: 102px; object-fit: contain; }
+    .tsm-center { left: 337px; width: 184px; }
+    .tsm-center img.tsm-vs { width: 107px; height: 59px; }
+    .tsm-score { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+    .tsm-score .tsm-score-l   { font-weight: 700; font-size: 48px; color: #1656d5; }
+    .tsm-score .tsm-score-div { width: 50px; height: 4px; background: #0a0a0a; margin: 4px 0; }
+    .tsm-score .tsm-score-r   { font-weight: 700; font-size: 48px; color: #d92027; }
+
+    /* ── Playoffs — the Waiting TVC's match containers (571x173 boxes,
+       playoffs art/fonts/positions copied from mplfs.html's .wsm-* rules),
+       always 2 matches. They render at their native 571 width inside the
+       existing 858x712 block and are scaled 1.5x (to 857px wide) so the
+       Edit tab's single #stv-content box still moves/scales the group. ── */
+    #stv-matches.stv-po { width: 571px; gap: 8px; transform: scale(1.5); transform-origin: center center; }
+    .wsm-box { position: relative; width: 571px; height: 173px; }
+    .wsm-box > img.wsm-box-bg { position: absolute; left: 0; top: 0; width: 571px; height: 173px; }
+    .wsm-box .wsm-band-label,
+    .wsm-box .wsm-band-time,
+    .wsm-box .wsm-band-bo {
+      position: absolute; top: 0; height: 39px;
+      display: flex; align-items: center;
+      font-weight: 800; font-size: 19px; color: #0a0a0a;
+      text-transform: uppercase; white-space: nowrap;
+    }
+    .wsm-box .wsm-band-label { left: 14px; }
+    .wsm-box .wsm-band-time  { left: 0; width: 100%; justify-content: center; }
+    .wsm-box .wsm-band-bo    { right: 14px; }
+    .wsm-box .wsm-band-cot     { position: absolute; left: 169px; top: 0; width: 233px; height: 39px; animation: wsm-cot-mask 9s ease-in-out infinite; }
+    .wsm-box .wsm-band-cot-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .wsm-box .wsm-band-time.star { animation: wsm-cot-pulse-inv 9s ease-in-out infinite; }
+    @keyframes wsm-cot-mask {
+      0%     { clip-path: inset(0 100% 0 0); }
+      10%    { clip-path: inset(0 0% 0 0); animation-timing-function: linear; }
+      48%    { clip-path: inset(0 0% 0 0); animation-timing-function: cubic-bezier(0.7, 0, 0.84, 0); }
+      58%    { clip-path: inset(0 0 0 100%); }
+      58.5%  { clip-path: inset(0 100% 0 0); }
+      100%   { clip-path: inset(0 100% 0 0); }
+    }
+    .wsm-box .wsm-band-cot::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.9) 50%, transparent 65%);
+      background-size: 300% 100%; background-position: 150% 0;
+      mix-blend-mode: screen; pointer-events: none;
+      -webkit-mask-image: var(--cot-mask); -webkit-mask-size: 100% 100%; -webkit-mask-repeat: no-repeat;
+      mask-image: var(--cot-mask); mask-size: 100% 100%; mask-repeat: no-repeat;
+      animation: wsm-cot-shine 9s linear infinite;
+    }
+    @keyframes wsm-cot-shine {
+      0%, 10% { background-position: 150% 0; }
+      18%     { background-position: -50% 0; }
+      18%     { background-position: 150% 0; }
+      40%     { background-position: 150% 0; }
+      48%     { background-position: -50% 0; }
+      100%    { background-position: -50% 0; }
+    }
+    @keyframes wsm-cot-pulse-inv {
+      0%, 55%  { opacity: 0; }
+      62%, 96% { opacity: 1; }
+      100%     { opacity: 0; }
+    }
+    .wsm-box .wsm-slot {
+      position: absolute; top: 39px; height: 134px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .wsm-tri { font-family: 'Anton', sans-serif; font-weight: 400; font-size: 41px; color: #fff; text-transform: uppercase; white-space: nowrap; }
+    .wsm-tri.wsm-tri-gold { color: #0a0a0a; }
+    .wsm-tri-l { left: 0;  width: 94px; }
+    .wsm-tri-r { right: 0; width: 94px; }
+    .wsm-logo-l { left: 107px; width: 131px; }
+    .wsm-logo-r { left: 341px; width: 131px; }
+    .wsm-logo-l img, .wsm-logo-r img { width: 122px; height: 108px; object-fit: contain; }
+    .wsm-center { left: 225px; width: 121px; }
+    .wsm-center img.wsm-vs { width: 71px; height: 39px; }
+    .wsm-center img.wsm-score-img { width: 35px; height: 94px; object-fit: contain; }
+    .wsm-score { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+    .wsm-score .wsm-score-l { font-weight: 800; font-size: 32px; color: #1656d5; }
+    .wsm-score .wsm-score-div { width: 34px; height: 3px; background: #0a0a0a; margin: 3px 0; }
+    .wsm-score .wsm-score-r { font-weight: 800; font-size: 32px; color: #d92027; }
+  </style>
+</head>
+<body>
+  <div id="scene">
+    <video id="bg-video" src="/assets/webm/bgloopwaves.webm" autoplay loop muted playsinline></video>
+    <script>
+      /* Playoffs background — swapped before the default loop gets a chance
+         to load (theme-apply.js's synchronous read already ran). */
+      if (document.documentElement.getAttribute('data-theme') === 'playoffs') {
+        document.getElementById('bg-video').src = '/assets/webm/playoffs/playoffsbg_theme.webm';
+      }
+    </script>
+    <div id="stv-content">
+      <div id="stv-inner">
+        <div id="stv-matches"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function buildUrl(path) { return window.location.origin + path; }
+
+    const WS_ASSET     = '/assets/Waiting Screen/';
+    const WS_TVC_ASSET = '/assets/overlay/Waiting Screen TVC/';
+    const TS_ASSET      = "/assets/overlay/Today's Schedule/";
+    const IS_PLAYOFFS   = document.documentElement.getAttribute('data-theme') === 'playoffs';
+    /* Waiting TVC match-container art per match type (same table as mplfs.html).
+       Playoffs only overrides the Regular box; the star-match boxes fall back to
+       the Waiting TVC's own art, exactly like mplfs.html does. */
+    const WS_MATCH_TYPE_ASSETS = {
+      regular:       { box: 'MatchBox_REGULAR MATCH',    blinker: null },
+      epic:          { box: 'MatchBox_EPIC RIVALRY',      blinker: 'EPIC RIVALRY BLINKER' },
+      international: { box: 'MatchBox_INTERNATIONAL',     blinker: 'INTERNATIONAL RIVALRY BLINKER' },
+      golden:        { box: 'MatchBox_GOLDEN RIVALRY',    blinker: 'GOLDEN RIVALRY BLINKER' },
+      clash:         { box: 'MatchBox_CLASH OF TITANS',   blinker: 'CLASH OF TITANS BLINKER' },
+      enduring:      { box: 'MatchBox_ENDURING LEGACY',   blinker: 'ENDURING LEGACY BLINKER' },
+    };
+    const WS_TVC_PLAYOFFS_OVERRIDE = { 'MatchBox_REGULAR MATCH.png': 'playoffs/MatchBox_REGULAR MATCH.png' };
+    function wsTvcAsset(filename) { return WS_TVC_ASSET + (WS_TVC_PLAYOFFS_OVERRIDE[filename] || filename); }
+
+    /* Placeholder fallback — only used until the Match Board has real
+       todayMatches data (same shape/values as Today's Schedule's). */
+    const TS_MATCHES = [
+      { label: 'MATCH 1', time: '14:30 GMT +8', bo: 'B03', star: false,
+        left: { tri: 'ONIC' }, right: { tri: 'ONIC' } },
+      { label: 'MATCH 2', time: '16:30 GMT +8', bo: 'B03', star: false,
+        left: { tri: 'ONIC' }, right: { tri: 'ONIC' } },
+      { label: 'MATCH 3', time: '18:30 GMT +8', bo: 'B03', star: false,
+        left: { tri: 'ONIC' }, right: { tri: 'ONIC' } },
+    ];
+
+    /* Match Board state → match rows — ported verbatim from Today's
+       Schedule (html/ENTVC.html / html/mplfs.html's msToMatchRows). */
+    function msToMatchRows(state) {
+      if (!state || !Array.isArray(state.todayMatches) || !state.todayMatches.length) return null;
+      const bo  = (state.series || 'BO3').toUpperCase();
+      const hId = state.home ? state.home.teamId : null;
+      const aId = state.away ? state.away.teamId : null;
+      const isDay2 = (state.day || 1) === 2;
+      /* Playoffs always shows exactly 2 matches (same rule as the Waiting TVC). */
+      return state.todayMatches.slice(0, IS_PLAYOFFS ? 2 : (isDay2 ? 3 : 2)).map((m, i) => {
+        let s1 = m.score1 || 0, s2 = m.score2 || 0;
+        const liveStarted = !!(state.home && state.away && ((state.home.score || 0) || (state.away.score || 0)));
+        if (liveStarted && hId && aId && m.team1Id && m.team2Id) {
+          if      (m.team1Id === hId && m.team2Id === aId) { s1 = state.home.score || 0; s2 = state.away.score || 0; }
+          else if (m.team1Id === aId && m.team2Id === hId) { s1 = state.away.score || 0; s2 = state.home.score || 0; }
+        }
+        return {
+          label: 'MATCH ' + (i + 1),
+          time:  m.time || '',
+          bo,
+          star:  !!m.star,
+          matchType: m.matchType || (m.star ? 'clash' : 'regular'),
+          left:  { tri: m.team1Short || '', logo: m.team1Short ? '/assets/team/logos/' + encodeURIComponent(m.team1Short) + '.png' : null },
+          right: { tri: m.team2Short || '', logo: m.team2Short ? '/assets/team/logos/' + encodeURIComponent(m.team2Short) + '.png' : null },
+          score: (s1 === 0 && s2 === 0) ? null : { l: s1, r: s2 },
+        };
+      });
+    }
+
+    /* Guards against rebuilding on every 3s poll tick when nothing actually
+       changed — innerHTML rebuild destroys and recreates every <img>, which
+       (combined with cache-bust.js's ?v= busting + /assets/team/logos/'s no-store
+       Cache-Control) forces a real network re-fetch of every team logo each
+       time. Invisible over localhost's near-zero latency, but a visible
+       flicker once vMix on another PC is pulling those images over the LAN
+       every cycle. Same "unchanged — don't disturb" pattern as mplfs.html's
+       populateWsHosts/populateWsCasters. */
+    let stvLastKey = null;
+    function buildStvMatches(state) {
+      const root = document.getElementById('stv-matches');
+      const rows = msToMatchRows(state) || TS_MATCHES;
+      const key = JSON.stringify(rows);
+      if (key === stvLastKey) return;
+      stvLastKey = key;
+      const logo = (m, side) =>
+        `<div class="tsm-slot tsm-logo-${side}"><img src="${(m[side === 'l' ? 'left' : 'right'].logo) || (WS_ASSET + 'Null_Icon.png')}" ` +
+        `onerror="this.onerror=null;this.src='${WS_ASSET}Null_Icon.png'" alt=""></div>`;
+      if (IS_PLAYOFFS) {
+        root.classList.add('stv-po');
+        root.innerHTML = rows.slice(0, 2).map(m => {
+          const typeAssets = WS_MATCH_TYPE_ASSETS[m.matchType] || WS_MATCH_TYPE_ASSETS.regular;
+          const gold = m.matchType === 'enduring' ? ' wsm-tri-gold' : '';
+          const center = m.score
+            ? `<img class="wsm-score-img" src="${WS_TVC_ASSET}SCORES/${m.score.l}-${m.score.r}.png" ` +
+              `onerror="this.onerror=null;this.outerHTML='<div class=&quot;wsm-score&quot;><span class=&quot;wsm-score-l&quot;>${m.score.l}</span><span class=&quot;wsm-score-div&quot;></span><span class=&quot;wsm-score-r&quot;>${m.score.r}</span></div>'" alt="">`
+            : `<img class="wsm-vs" src="${WS_TVC_ASSET}SCORES/vs.png" alt="VS">`;
+          return `<div class="wsm-box"><img class="wsm-box-bg" src="${wsTvcAsset(typeAssets.box + '.png')}" alt="">` +
+            `<span class="wsm-band-label">${m.label}</span>` +
+            (typeAssets.blinker
+              ? `<span class="wsm-band-time star">${m.time}</span>` +
+                `<div class="wsm-band-cot" style="--cot-mask:url('${WS_TVC_ASSET}${typeAssets.blinker}.png')"><img class="wsm-band-cot-img" src="${WS_TVC_ASSET}${typeAssets.blinker}.png" alt=""></div>`
+              : `<span class="wsm-band-time">${m.time}</span>`) +
+            `<span class="wsm-band-bo">${m.bo}</span>` +
+            `<div class="wsm-slot wsm-tri wsm-tri-l${gold}">${m.left.tri}</div>` +
+            `<div class="wsm-slot wsm-logo-l"><img src="${m.left.logo || (WS_ASSET + 'Null_Icon.png')}" onerror="this.onerror=null;this.src='${WS_ASSET}Null_Icon.png'" alt=""></div>` +
+            `<div class="wsm-slot wsm-center">${center}</div>` +
+            `<div class="wsm-slot wsm-logo-r"><img src="${m.right.logo || (WS_ASSET + 'Null_Icon.png')}" onerror="this.onerror=null;this.src='${WS_ASSET}Null_Icon.png'" alt=""></div>` +
+            `<div class="wsm-slot wsm-tri wsm-tri-r${gold}">${m.right.tri}</div></div>`;
+        }).join('');
+        return;
+      }
+      root.innerHTML = rows.map(m => {
+        const center = m.score
+          ? `<div class="tsm-score"><span class="tsm-score-l">${m.score.l}</span><span class="tsm-score-div"></span><span class="tsm-score-r">${m.score.r}</span></div>`
+          : `<img class="tsm-vs" src="${WS_TVC_ASSET}SCORES/vs.png" alt="VS">`;
+        return `<div class="tsm-row"><img class="tsm-bg" src="${TS_ASSET}${m.star ? 'StarMatch_Match_Box' : 'Regular_Match_Box'}.png" alt="">` +
+          `<span class="tsm-label">${m.label}</span>` +
+          `<span class="tsm-time">${m.time}</span>` +
+          `<span class="tsm-bo">${m.bo}</span>` +
+          `<div class="tsm-slot tsm-tri tsm-tri-l">${m.left.tri}</div>` +
+          logo(m, 'l') +
+          `<div class="tsm-slot tsm-center">${center}</div>` +
+          logo(m, 'r') +
+          `<div class="tsm-slot tsm-tri tsm-tri-r">${m.right.tri}</div></div>`;
+      }).join('');
+    }
+    buildStvMatches();
+
+    /* ── Proportional scale — lets the dashboard Edit tab's single
+       #stv-content box control both position AND size of the whole
+       schedule as one group. Content renders at its native 858x712 size
+       into #stv-inner; whenever #stv-content's box changes (via the Edit
+       tab's drag/resize, which sets literal left/top/width/height),
+       #stv-inner is scaled to exactly fill it. ── */
+    const STV_NATIVE_W = 858, STV_NATIVE_H = 712;
+    const stvContent = document.getElementById('stv-content');
+    const stvInner   = document.getElementById('stv-inner');
+    function stvApplyScale() {
+      const w = stvContent.clientWidth, h = stvContent.clientHeight;
+      stvInner.style.transform = `scale(${w / STV_NATIVE_W}, ${h / STV_NATIVE_H})`;
+    }
+    new ResizeObserver(stvApplyScale).observe(stvContent);
+    stvApplyScale();
+
+    /* Permanently on, no SSE — Match Board state is picked up by plain
+       polling instead (same 3s-interval pattern as Draft.html's
+       pollMatchState), so the schedule stays current without a live
+       connection. */
+    function refreshFromMatchState() {
+      fetch(buildUrl('/match/state'), { cache: 'no-store' })
+        .then(r => r.ok ? r.json() : null)
+        .then(ms => { if (ms) buildStvMatches(ms); })
+        .catch(() => {});
+    }
+    refreshFromMatchState();
+    setInterval(refreshFromMatchState, 3000);
+
+    /* ── Load saved position/size overrides from the dashboard Edit tab ── */
+    (function loadStvOverrides() {
+      fetch('/api/overlay-styles?file=sponsortv')
+        .then(r => r.json())
+        .then(styles => {
+          if (!styles || !Object.keys(styles).length) return;
+          const css = Object.keys(styles).map(sel => {
+            const props = styles[sel];
+            const decls = Object.keys(props).map(prop => {
+              const cssProp = prop === 'fontSize' ? 'font-size' : prop;
+              return cssProp + ':' + props[prop] + ' !important';
+            }).join(';');
+            return sel + '{' + decls + '}';
+          }).join('\n');
+          const style = document.createElement('style');
+          style.id = 'sponsortv-overrides';
+          style.textContent = css;
+          document.head.appendChild(style);
+        })
+        .catch(() => {});
+    })();
+  </script>
+</body>
+</html>
