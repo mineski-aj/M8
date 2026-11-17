@@ -464,7 +464,7 @@ killVideoEl.addEventListener('error', function() {
    one of those reads as broken. icShouldShow/eccShouldShow/gdcShouldShow
    are declared in overlay-itemcheck.js/overlay-emblemcheck.js/
    overlay-golddiffcheck.js — safe to reference here even though this
-   script loads first in mploverlay_v7.html, since every call site below
+   script loads first in ingame.html, since every call site below
    only runs from an event handler fired well after all scripts have
    finished their top-level execution. */
 function killEventsBlocked() {

@@ -55,7 +55,7 @@ function sbSetImgWithFallback(imgEl, primarySrc, fallbackSrc) {
      child (behind scoreboard-bg and every other scoreboard element, and
      ahead of nothing) so it slides in/out together with the scoreboard's
      own sb-on transform instead of living as a separate top-level layer.
-     The div itself is static markup elsewhere in mploverlay_v7.html (see
+     The div itself is static markup elsewhere in ingame.html (see
      overlay-stolengold.js) — moved here, not recreated, so its ids and
      the listeners already wired to them keep working unchanged. */
   var sgOverlay = document.getElementById('stolengold-overlay');

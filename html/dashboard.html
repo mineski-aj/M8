@@ -918,7 +918,7 @@
     style="width:100%;flex:1;border:none;min-height:0;"></iframe>
 </div>
 
-<!-- Page: Arrangement — mploverlay_v7.html's Player UI/Item Pickup/Trinity/
+<!-- Page: Arrangement — ingame.html's Player UI/Item Pickup/Trinity/
      Quick Swap/Level 15 seat display order, see html/arrangement-dashboard.html
      and lib/seatArrangement.js. Deliberately scoped to only those features —
      everything else keeps reading seats straight from the Game API. -->
@@ -1880,7 +1880,7 @@
   });
 
   /* Hard-reloads every open overlay page at once (postgame.html, ENTVC.html,
-     DraftIndex.html, Draft.html, mpltag.html, mploverlay_v7.html) via the
+     DraftIndex.html, Draft.html, mpltag.html, ingame.html) via the
      same 'reload' SSE event a dashboard Edit-tab save already triggers —
      see GET /overlay/force-reload in routes/overlay.js. Saves going to
      each production browser source by hand after an edit. */
@@ -2474,7 +2474,7 @@
     {
       id: 'mploverlay7',
       name: 'Ingame',
-      file: 'mploverlay_v7.html',
+      file: 'ingame.html',
       previewDebugTester: true,
       killEventTrigger: true,
       stolenGoldControls: true,
@@ -4033,7 +4033,7 @@
     { group: 'Caster Box',  id: '#sb-mi-casters',        name: 'Caster Box'       },
   ];
 
-  /* ── Kill Event Sponsor Logo (mploverlay_v7.html) ──────────────────
+  /* ── Kill Event Sponsor Logo (ingame.html) ──────────────────
      One shared element reused for whichever sponsored kill event is
      currently playing (Double Kill, Turtle Slain, Savage — see
      KILL_EVENT_SPONSOR_LOGO in overlay-killevents.js), so editing this
@@ -4056,7 +4056,7 @@
     { group: 'Wipe Out Team Logo', id: '#kill-event-teamlogo-clip', name: 'Wipe Out Team Logo' },
   ];
 
-  /* ── Stolen Gold banner (mploverlay_v7.html) ───────────────────────
+  /* ── Stolen Gold banner (ingame.html) ───────────────────────
      Six independent .sg-stat number boxes overlaid on the banner art
      (ingame_stolenpng.png) — see the #stolengold-overlay CSS block in
      mploverlay_v7.css. Own EDIT_CONFIG (not folded into the main
@@ -4081,7 +4081,7 @@
     { group: 'Team 2', id: '#sg-c2-gold',   name: 'Jungle Gold Stolen (Team 2)' },
   ];
 
-  /* ── Gold Graph Check (mploverlay_v7.html) ─────────────────────────
+  /* ── Gold Graph Check (ingame.html) ─────────────────────────
      The 4 row markers are position-only references (top, no left/width/
      height) — ggcRowY() in overlay-goldgraphcheck.js reads each one's
      live computed `top` to decide where Lord/Turtle/Tower/Kill icons
@@ -4127,7 +4127,7 @@
     { group: 'Chart Settings', id: '#ggc-chart', name: 'Spike Smoothing' },
   ];
 
-  /* ── Live Win Rate (mploverlay_v7.html, overlay-livewinrate.js) ─────
+  /* ── Live Win Rate (ingame.html, overlay-livewinrate.js) ─────
      Gold Graph Check's sibling: header title + the two header win-% boxes,
      and the on-chart % labels / point markers (class selectors shared by
      every mark, like .ggc-diff-label). */
@@ -4146,7 +4146,7 @@
     { group: 'Chart Numbers', id: '.lwr-diff-dot',   name: 'Win % Point Marker' },
   ];
 
-  /* ── Side-check family (mploverlay_v7.html) ───────────────────────
+  /* ── Side-check family (ingame.html) ───────────────────────
      Exp/Taken/Damage/Gold checks share one factory (createSideCheck in
      overlay-sidecheck-core.js) and one set of .sidecheck-* CSS classes
      — editing these selectors once reflects to all four panels.
@@ -5143,16 +5143,16 @@
   /* ── Registry of editable overlays ───────────────────────────── */
   var EDIT_CONFIGS = {
     mploverlay_v7: {
-      label:       'Scoreboard · mploverlay_v7',
-      file:        'mploverlay_v7.html',
+      label:       'Scoreboard · Ingame',
+      file:        'ingame.html',
       styleFile:   'mploverlay_v7',
       defaultsKey: 'sb_edit_defaults_mploverlay_v7',
       elements:    SB_ELEMENTS,
       defaults:    SB_DEFAULTS,
     },
     mploverlay_v7_sidecheck: {
-      label:       'Side Events · mploverlay_v7',
-      file:        'mploverlay_v7.html',
+      label:       'Side Events · Ingame',
+      file:        'ingame.html',
       styleFile:   'mploverlay_v7',
       defaultsKey: 'sb_edit_defaults_mploverlay_v7_sidecheck',
       elements:    SIDECHECK_ELEMENTS,
@@ -5160,8 +5160,8 @@
       showFn:      'secAnimateIn',
     },
     mploverlay_v7_killevent: {
-      label:       'Kill Event Sponsor · mploverlay_v7',
-      file:        'mploverlay_v7.html',
+      label:       'Kill Event Sponsor · Ingame',
+      file:        'ingame.html',
       styleFile:   'mploverlay_v7',
       defaultsKey: 'sb_edit_defaults_mploverlay_v7_killevent',
       elements:    KILLEVENT_ELEMENTS,
@@ -5169,8 +5169,8 @@
       showFn:      'previewKillEventSponsor',
     },
     mploverlay_v7_stolengold: {
-      label:       'Stolen Gold · mploverlay_v7',
-      file:        'mploverlay_v7.html',
+      label:       'Stolen Gold · Ingame',
+      file:        'ingame.html',
       styleFile:   'mploverlay_v7',
       defaultsKey: 'sb_edit_defaults_mploverlay_v7_stolengold',
       elements:    SG_ELEMENTS,
@@ -5178,8 +5178,8 @@
       showFn:      'sgAnimateIn',
     },
     mploverlay_v7_goldgraphcheck: {
-      label:       'Gold Graph Check · mploverlay_v7',
-      file:        'mploverlay_v7.html',
+      label:       'Gold Graph Check · Ingame',
+      file:        'ingame.html',
       styleFile:   'mploverlay_v7',
       defaultsKey: 'sb_edit_defaults_mploverlay_v7_goldgraphcheck',
       elements:    GGC_ELEMENTS,
@@ -5187,8 +5187,8 @@
       showFn:      'ggcAnimateIn',
     },
     mploverlay_v7_livewinrate: {
-      label:       'Live Win Rate · mploverlay_v7',
-      file:        'mploverlay_v7.html',
+      label:       'Live Win Rate · Ingame',
+      file:        'ingame.html',
       styleFile:   'mploverlay_v7',
       defaultsKey: 'sb_edit_defaults_mploverlay_v7_livewinrate',
       elements:    LWR_ELEMENTS,
@@ -5196,8 +5196,8 @@
       showFn:      'lwrAnimateIn',
     },
     mploverlay_v7_itemcheck: {
-      label:       'Item Check Layout · mploverlay_v7',
-      file:        'mploverlay_v7.html',
+      label:       'Item Check Layout · Ingame',
+      file:        'ingame.html',
       styleFile:   'mploverlay_v7',
       defaultsKey: 'sb_edit_defaults_mploverlay_v7_itemcheck',
       elements:    [],
@@ -5205,8 +5205,8 @@
       showFn:      'icAnimateIn',
     },
     mploverlay_v7_bpmmeter: {
-      label:       'BPM Meter · mploverlay_v7',
-      file:        'mploverlay_v7.html',
+      label:       'BPM Meter · Ingame',
+      file:        'ingame.html',
       styleFile:   'mploverlay_v7',
       defaultsKey: 'sb_edit_defaults_mploverlay_v7_bpmmeter',
       elements:    BPMMETER_ELEMENTS,

@@ -118,7 +118,7 @@ app.post('/match/team-lineups', function (req, res) {
 // Short per-country links for browser sources: /ingame/ID -> the Ingame page for the ID sponsor set (same for /postgame/<SET>).
 // Plain /ingame and /postgame mean the MAIN set. The page itself reads ?set= (html/js/sponsor-set.js).
 ['ingame', 'postgame'].forEach(function (page) {
-  const file = page === 'ingame' ? 'mploverlay_v7.html' : 'postgame.html';
+  const file = page === 'ingame' ? 'ingame.html' : 'postgame.html';
   app.get(['/' + page, '/' + page + '/:set'], function (req, res) {
     const set = String(req.params.set || 'MAIN').toUpperCase().replace(/[^A-Z]/g, '');
     res.redirect('/html/' + file + '?set=' + (['MAIN', 'ID', 'MY', 'PH'].includes(set) ? set : 'MAIN'));

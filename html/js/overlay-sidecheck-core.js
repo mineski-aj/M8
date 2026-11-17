@@ -39,7 +39,7 @@ function sidecheckFormatK(v) {
    shared by every panel that sets a sidecheck-bg src, whether through
    createSideCheck's opts.bgSrc below or one of the bespoke panels
    (overlay-sidekdadistricheck.js, overlay-sidegolddistricheck.js) that
-   set it directly. This file loads first (see mploverlay_v7.html), so
+   set it directly. This file loads first (see ingame.html), so
    it's a plain global the others can call. */
 function sidecheckThemedBg(src) {
   const theme = document.documentElement.getAttribute('data-theme');

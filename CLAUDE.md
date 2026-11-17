@@ -1,6 +1,6 @@
 # M8 overlay server — instruction manual
 
-MLBB (Mobile Legends: Bang Bang) esports broadcast overlay system, trimmed to **two overlay pages** — **Ingame** (`html/mploverlay_v7.html`) and **Postgame** (`html/postgame.html`) — plus the dashboard that controls them. Each overlay is a browser-source HTML page (OBS/vMix reads it), driven by the live Battledata feed (and the HRM heart-rate server) and controlled from `html/dashboard.html`. Everything else from the old multi-page project (Draft, Waiting TVC/Lobby, Line-Ups, Standings, Bracket, Team Hexagon, Final Team, Today's Schedule, L3 tags, LED wall, ENTVC, Sponsor TV, heatmap.html …) was deleted when this repo was started; it lives in the original `overlay_server` repo's history. Read this before touching anything.
+MLBB (Mobile Legends: Bang Bang) esports broadcast overlay system, trimmed to **two overlay pages** — **Ingame** (`html/ingame.html`) and **Postgame** (`html/postgame.html`) — plus the dashboard that controls them. Each overlay is a browser-source HTML page (OBS/vMix reads it), driven by the live Battledata feed (and the HRM heart-rate server) and controlled from `html/dashboard.html`. Everything else from the old multi-page project (Draft, Waiting TVC/Lobby, Line-Ups, Standings, Bracket, Team Hexagon, Final Team, Today's Schedule, L3 tags, LED wall, ENTVC, Sponsor TV, heatmap.html …) was deleted when this repo was started; it lives in the original `overlay_server` repo's history. Read this before touching anything.
 
 ## Running it
 
@@ -15,7 +15,7 @@ Don't commit unless asked.
 ## Map
 
 - `server.js` — Express entrypoint (static files + mounts `routes/`). `routes/*.js` = API endpoints (`overlay.js` show/hide + feature toggles, `devapi.js` settings/URLs/proxies, `match.js`, `feed.js`, `fights.js`, `positions.js`, `postgame.js`, `overlayStyles.js`, `eventLog.js`, `dashboard.js`). `lib/` = shared server code (`state.js`, `pollers.js`, `game.js`, `rawAdapter.js`, `feedDerived.js`, `gameRefresh.js`, `hrmPoller.js`, `apiMode.js`, `theme.js`, `matchState.js`, …).
-- `html/mploverlay_v7.html` (+ `mploverlay_v7.css`) — **Ingame**: thin shell, one `js/overlay-*.js` per feature + `overlay-core.js` (state/polling) and `overlay-debug.js` (debug bar, SSE, most detection logic).
+- `html/ingame.html` (+ `mploverlay_v7.css`) — **Ingame**: thin shell, one `js/overlay-*.js` per feature + `overlay-core.js` (state/polling) and `overlay-debug.js` (debug bar, SSE, most detection logic).
 - `html/postgame.html` — **Postgame**: all post-game "scenes" in one file (Post Hearts/Timeline/Emblem/Items/Stats/Heatmap/H2H/Carry/4 Key/Gold Distribution/Kill Events, Rich Guy, Consolidated Post 1+2, MVP Scene, MVP Highlights, Credit Reel, Tomorrow's Schedule, Matchboard/Middleboard/Playerboard). Its Edit-tab style bucket is still named `mplfs` (`overlay_styles.json`, `/overlay/mplfs-scene`, `state.mplfsScene`) — kept so saved layouts survive; don't rename.
 - `html/dashboard.html` — control panel. Control sidebar lists **Postgame** (OVERLAYS id `mplfs`) and **Ingame** (id `mploverlay7`); tabs: Match Board, Arrangement, Control, Roster, Sponsors, Edit, Settings, Logs. Iframes: `match-dashboard.html`, `arrangement-dashboard.html` (Ingame seat order), `roster-dashboard.html`, `sponsors-dashboard.html`.
 - `html/js/overlay-shared-worker.js` + `overlay-sse-shim.js` — the ONE real `/overlay/events` connection per browser. `theme-apply.js` — global theme. `event-log-client.js` — Logs tab reporting. `hero-web.js` — WebP hero art w/ PNG fallback. `sponsor-cursor.js` — shared sponsor-loop resume point. `game-refresh.js` — Game API refresh rate. `po-gold-text.js`, `relay-client.js`, `cache-bust.js`.
@@ -122,7 +122,7 @@ Optional local debug card: add a `feature-card` in postgame.html's `` ` `` debug
 - `activePreviewOff`, `previewToggleRegistry`, `draftPreviewActive`, `mplfsLiveBadge`, `mapSelectTagBadge` and any new cross-render state referencing `#control-panel-body` DOM must be reset at the top of `buildControlBody()`.
 - Testing: `postgame.html?preview=1` + `previewTrigger(event,'show')` renders a scene against the current feed safely.. `DraftIndex*.html` has no preview mode.
 
-## mploverlay_v7.html — two feature shapes
+## ingame.html — two feature shapes
 
 **Shape 1 — persistent panel:** checkOverlays pattern. Functions share a short prefix (`icBuildPanel/icAnimateIn/icAnimateOut` = item check, `ecc…`, `gdc…`). Side-checks share `SIDE_CHECK_HANDLERS` in `overlay-debug.js`.
 
@@ -131,7 +131,7 @@ Optional local debug card: add a `feature-card` in postgame.html's `` ` `` debug
 2. Detection in `registerPollHandler` in `overlay-debug.js`: diff against a `prevXxx` object, gated on `featureEnabled.x`.
 3. `triggerYourFeature(i,…)` shaped like `triggerLvl15`: re-entrancy guard on `isPlayingX[i]`; once-only `cleanup()` that resets visuals, clears the flag, and **calls `playNextQueued(i)`**; plus a safety `setTimeout(cleanup, a bit longer than the animation)`.
 4. Mutual exclusion: `isPlayingX = {}`, `xQueue = {}` in `overlay-core.js`; add to `isAnyPlaying(i)` and an `else if` in `playNextQueued(i)`.
-5. Debug bar: `▶ Pn` buttons + `tab-x`/`data-tab` markup in mploverlay_v7.html.
+5. Debug bar: `▶ Pn` buttons + `tab-x`/`data-tab` markup in ingame.html.
 6. Preview Tester: branch in `window.iframeTest(playerIdx, feature)` (`previewDebugTester: true`).
 7. Verify from a real poll tick — the debug button bypasses detection and proves nothing about step 2.
 
@@ -215,7 +215,7 @@ Hero icons, MVP art, hero post/highlight art and all player photos exist **only 
 
 ## Sponsor sets — MAIN / ID / MY / PH (one per country feed)
 
-The Sponsors tab (`html/sponsors-dashboard.html`) has four tabs, one per set; each edits that set's categories / logo order / durations and the logos come from `assets/sponsor/<SET>/` (+ `white/`). `data/sponsors_config.json` = `{ sets: { MAIN, ID, MY, PH } }` (a legacy flat file is read as MAIN); saving one set never touches the others. Server: `/api/sponsors?set=` (play list, honours `ingame=1`), `/api/sponsors-config?set=` (GET) and POST `{ token, set, data }` — `sponsorSet()` in `routes/devapi.js` validates the name and falls back to MAIN. **Pages choose their set from their own URL: `html/js/sponsor-set.js` → `SponsorSet.name` (`?set=ID`, default MAIN); every sponsor fetch must append `SponsorSet.qs()`** (done in postgame.html's `makeSponsorLoop` + Credit Reel and in `overlay-scoreboard.js`). So a country gets its own browser sources: `postgame.html?set=MY`, `mploverlay_v7.html?set=MY`. The dashboard's Control-tab previews open without `?set`, i.e. they preview MAIN. A new overlay with a sponsor loop must include `sponsor-set.js` and use `SponsorSet.qs()`.
+The Sponsors tab (`html/sponsors-dashboard.html`) has four tabs, one per set; each edits that set's categories / logo order / durations and the logos come from `assets/sponsor/<SET>/` (+ `white/`). `data/sponsors_config.json` = `{ sets: { MAIN, ID, MY, PH } }` (a legacy flat file is read as MAIN); saving one set never touches the others. Server: `/api/sponsors?set=` (play list, honours `ingame=1`), `/api/sponsors-config?set=` (GET) and POST `{ token, set, data }` — `sponsorSet()` in `routes/devapi.js` validates the name and falls back to MAIN. **Pages choose their set from their own URL: `html/js/sponsor-set.js` → `SponsorSet.name` (`?set=ID`, default MAIN); every sponsor fetch must append `SponsorSet.qs()`** (done in postgame.html's `makeSponsorLoop` + Credit Reel and in `overlay-scoreboard.js`). So a country gets its own browser sources: `postgame.html?set=MY`, `ingame.html?set=MY`. The dashboard's Control-tab previews open without `?set`, i.e. they preview MAIN. A new overlay with a sponsor loop must include `sponsor-set.js` and use `SponsorSet.qs()`.
 
 ## Event sponsors per country (Ingame) — `overlay-eventsponsors.js`
 

@@ -29,7 +29,7 @@ router.get('/api/player-photos', (req, res) => {
 
 
 // GET /overlay/force-reload — hard-reload every open overlay page (postgame.html,
-// ENTVC.html, DraftIndex.html, Draft.html, mpltag.html, mploverlay_v7.html) at
+// ENTVC.html, DraftIndex.html, Draft.html, mpltag.html, ingame.html) at
 // once, so production browser sources don't need to be refreshed by hand
 // after a dashboard Edit-tab save or any other change. Reuses the exact
 // 'reload' SSE event routes/overlayStyles.js already broadcasts after a

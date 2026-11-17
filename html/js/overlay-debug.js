@@ -349,7 +349,7 @@ if (window.GameRefresh) GameRefresh.loop(masterPoll); else { setInterval(masterP
   // Backed by the shared SharedWorker (html/js/overlay-shared-worker.js) —
   // this page opens zero real connections of its own now, so having
   // several overlay browser sources/tabs open at once no longer eats into
-  // the browser's shared connection pool per page. mploverlay_v7.html must
+  // the browser's shared connection pool per page. ingame.html must
   // load html/js/overlay-sse-shim.js before this file for createOverlaySSE
   // to exist.
   var sse = createOverlaySSE();

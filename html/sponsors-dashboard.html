@@ -565,7 +565,7 @@
   }
   function renderUrls() {
     var root = document.getElementById('set-urls'); root.innerHTML = '';
-    [['Ingame', '/html/mploverlay_v7.html?set=' + currentSet], ['Postgame', '/html/postgame.html?set=' + currentSet]].forEach(function (u) {
+    [['Ingame', '/html/ingame.html?set=' + currentSet], ['Postgame', '/html/postgame.html?set=' + currentSet]].forEach(function (u) {
       var full = location.origin + u[1];
       var chip = document.createElement('span'); chip.className = 'url-chip'; chip.textContent = u[1];
       var b = document.createElement('button'); b.className = 'btn-copy-url'; b.textContent = 'Copy ' + u[0] + ' URL';

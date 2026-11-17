@@ -387,7 +387,7 @@ router.post('/api/itemcheck-layout', (req, res) => {
 // Seat arrangement — { camp1: [1..5 perm], camp2: [1..5 perm] }. Deliberately
 // NOT applied to /api/gamedata-proxy or anything server-side (see
 // lib/seatArrangement.js's own header comment for why) — this route only
-// persists the permutation and pushes it live to mploverlay_v7.html pages,
+// persists the permutation and pushes it live to ingame.html pages,
 // which apply it themselves via getPlayerArranged() in overlay-core.js.
 const seatArrangement = require('../lib/seatArrangement');
 
@@ -398,7 +398,7 @@ router.get('/api/seat-arrangement', (req, res) => {
 router.post('/api/seat-arrangement', (req, res) => {
   const saved = seatArrangement.writeArrangement(req.body || {});
   // Broadcast over the shared /overlay/events stream — every open
-  // mploverlay_v7.html tab/OBS browser source picks this up instantly via
+  // ingame.html tab/OBS browser source picks this up instantly via
   // its 'seat_arrangement' SSE listener (overlay-debug.js), no reload
   // needed. Same fan-out shape as the 'featuretoggle' event.
   const payload = JSON.stringify(saved);
