@@ -1707,10 +1707,8 @@
 
   fetch('/api/game-url').then(function(r){ return r.json(); }).then(function(d){
     gameApiInput.value = d.url || '';
-    if (d.selfHosted) {   // DEBUG API mode: the built-in DiredudeAPI — nothing to edit
-      gameApiInput.disabled = true; gameApiApply.disabled = true;
-      gameApiInput.title = 'DEBUG mode reads the built-in self-hosted API (DiredudeAPI). Switch to LIVE or WEB to edit this URL.';
-      gameApiStatus.textContent = 'built-in DiredudeAPI (DEBUG mode)';
+    if (d.selfHosted) {   // DEBUG API mode: the built-in DiredudeAPI — nothing to edit, so the Base URL row is hidden
+      gameApiInput.closest('.settings-row').style.display = 'none';
     }
   }).catch(function(){});
 
