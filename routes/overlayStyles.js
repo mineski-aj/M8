@@ -53,7 +53,7 @@ router.post('/api/overlay-styles', function (req, res) {
   var all = load();
   all[themedKey(file, getTheme())] = styles;
   fs.writeFileSync(STYLES_FILE, JSON.stringify(all, null, 2));
-  /* Force every open overlay scene (mplfs.html, mploverlay_v7.html,
+  /* Force every open overlay scene (postgame.html, mploverlay_v7.html,
      Draft.html, DraftIndex.html, ENTVC.html — anywhere the html is
      loaded) to hard-reload so this save's position/size overrides take
      effect immediately, instead of waiting for a manual refresh. Safe
@@ -66,7 +66,7 @@ router.post('/api/overlay-styles', function (req, res) {
 // the dashboard Control tab's quick nudge buttons (MVP Scene/Highlights
 // photo+hero repositioning). Persists the same way the Edit tab's Save
 // does, but broadcasts a lightweight 'stylepatch' event instead of
-// 'reload' — mplfs.html applies it live via CSS injection with no page
+// 'reload' — postgame.html applies it live via CSS injection with no page
 // reload, since the primary feedback loop here is the dashboard's own
 // live preview iframe and a reload-triggered flash on every click would
 // defeat the point of a quick nudge button.

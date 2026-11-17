@@ -2,7 +2,7 @@
    The dark "MPL PHILIPPINES" / "TODAY'S MATCHES" header titles become gold
    under data-theme="playoffs": the looping GOLD BG webm is masked by the
    text's shape, with a subtle dark-gold outline behind it for depth.
-   Included by mplfs.html and ENTVC.html (Waiting TVC mirror). Every layer is
+   Included by postgame.html and ENTVC.html (Waiting TVC mirror). Every layer is
    display:none under any other theme, so Regular / 10th Anniversary are
    untouched.
 

@@ -2033,7 +2033,7 @@
      .ggc-rect is the white plotting canvas (the pasted .Rectangle_1
      spec: 857×253 at 15,15 — 14px bottom margin, 15px on the other three
      sides) the gold-diff chart draws into — same real intentional white
-     backing as mplfs.html's #cpg-board, not placeholder design-tool
+     backing as postgame.html's #cpg-board, not placeholder design-tool
      noise.
      60px header reserved above it (assets/overlay/ingame/graph_header.png, same
      887px width) — same shape as Gold Diff Check's own #golddiff-check-

@@ -31,7 +31,7 @@ function applyTheme(theme) {
 // every other script on the page, but an async fetch() only resolves
 // AFTER the browser has already moved on to executing those — and
 // several of them build scene content immediately at top-level script
-// load (e.g. mplfs.html's `buildWsSponsor();`, called unconditionally
+// load (e.g. postgame.html's `buildWsSponsor();`, called unconditionally
 // right after its own definition, not gated behind any later event).
 // Those read document.documentElement's data-theme attribute assuming
 // it's already correct — with an async fetch, it usually isn't yet, so

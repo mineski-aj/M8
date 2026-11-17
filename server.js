@@ -72,77 +72,12 @@ app.post('/match/timer', function (req, res) {
   res.json({ ok: true, state: matchState.get() });
 });
 
-// Standings state — same dashboard password as match state
-const standingsState = require('./lib/standingsState');
-
-app.get('/standings/state', function (req, res) {
-  res.json(standingsState.get());
-});
-
-app.get('/standings/events', function (req, res) {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
-  standingsState.addClient(res);
-  req.on('close', function () { standingsState.removeClient(res); });
-});
-
-app.post('/standings/auth', function (req, res) {
-  var token = (req.body || {}).token;
-  if (!token || token !== getMatchPassword()) return res.status(401).json({ ok: false });
-  res.json({ ok: true });
-});
-
-app.post('/standings/state', function (req, res) {
-  var body  = req.body || {};
-  var token = body.token;
-  if (!token || token !== getMatchPassword()) return res.status(401).json({ error: 'Unauthorized' });
-  delete body.token;
-  standingsState.set(body);
-  res.json({ ok: true, state: standingsState.get() });
-});
-
-// Map Selection state — coin toss / side / map / winner per game, own
-// dashboard tab. Same dashboard password as match/standings state.
+// Map Selection state — read-only now (its dashboard tab was removed with the Map Selection tag); the Post scenes still
+// read /mapselection/state and fall back to the Match Board map when it is empty.
 const mapSelectionState = require('./lib/mapSelectionState');
 
 app.get('/mapselection/state', function (req, res) {
   res.json(mapSelectionState.get());
-});
-
-app.get('/mapselection/events', function (req, res) {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
-  mapSelectionState.addClient(res);
-  req.on('close', function () { mapSelectionState.removeClient(res); });
-});
-
-app.post('/mapselection/auth', function (req, res) {
-  var token = (req.body || {}).token;
-  if (!token || token !== getMatchPassword()) return res.status(401).json({ ok: false });
-  res.json({ ok: true });
-});
-
-app.post('/mapselection/action', function (req, res) {
-  var body   = req.body || {};
-  var token  = body.token;
-  if (!token || token !== getMatchPassword()) return res.status(401).json({ error: 'Unauthorized' });
-  var action = body.action;
-  var game   = body.game;
-  switch (action) {
-    case 'toss':   mapSelectionState.setToss(game, body.winner); break;
-    case 'side':   mapSelectionState.setSide(game, body.side); break;
-    case 'map':    mapSelectionState.setMap(game, body.map); break;
-    case 'winner': mapSelectionState.setWinner(game, body.winner); break;
-    case 'reopen': mapSelectionState.reopenGame(game); break;
-    case 'resetGame': mapSelectionState.resetGame(game); break;
-    case 'resetAll':  mapSelectionState.resetAll(); break;
-    default: return res.status(400).json({ error: 'Unknown action' });
-  }
-  res.json({ ok: true, state: mapSelectionState.get() });
 });
 
 // Team roster — mainroster.json. Reads go through the existing static
@@ -186,7 +121,7 @@ app.use(express.static(path.join(__dirname), {
   index: false,
   setHeaders: function(res, filePath) {
     const p = filePath.split(path.sep).join('/'); // normalize Windows backslashes for the checks below
-    if (p.endsWith('.html') || p.endsWith('.css') || p.includes('/html/js/') || p.endsWith('mainroster.json') || p.includes('/assets/team/logos/') || p.includes('/assets/photo/TALENTS/') || p.includes('/assets/overlay/ingame/') || p.includes('/anniversary/') || p.includes('/assets/overlay/matchcard/')) {
+    if (p.endsWith('.html') || p.endsWith('.css') || p.includes('/html/js/') || p.endsWith('mainroster.json') || p.includes('/assets/team/logos/') || p.includes('/assets/overlay/ingame/') || p.includes('/anniversary/')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     }
   }
@@ -197,12 +132,9 @@ app.use(require('./routes/feed'));
 // Before ./routes/overlay — its middleware timestamps /overlay/<key>/show|hide.
 app.use(require('./routes/eventLog'));
 app.use(require('./routes/overlay'));
-app.use(require('./routes/bracket'));
-app.use(require('./routes/led'));
 app.use(require('./routes/fights'));
 app.use(require('./routes/positions'));
 app.use(require('./routes/postgame'));
-app.use(require('./routes/proxy'));
 app.use(require('./routes/dashboard'));
 app.use(require('./routes/overlayStyles'));
 app.use(require('./routes/devapi'));
@@ -234,25 +166,12 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`             →      ?last=N  for last N fights`);
   console.log(`             →      ?camp=1&seat=2&from=0&to=600`);
   console.log(`             →      camp 1|2  seat 1-5  from/to in seconds`);
-  console.log(`  LED Side   → GET  http://localhost:${PORT}/led/home  (HOME)`);
-  console.log(`             → GET  http://localhost:${PORT}/led/swap  (SWAP/AWAY)`);
-  console.log(`  LED Health → GET  http://localhost:${PORT}/led/healthshow`);
-  console.log(`             → GET  http://localhost:${PORT}/led/healthhide`);
-  console.log(`  LED WinPct → GET  http://localhost:${PORT}/led/winshow`);
-  console.log(`             → GET  http://localhost:${PORT}/led/winhide`);
-  console.log(`  LED Fight  → GET  http://localhost:${PORT}/led/fightshow`);
-  console.log(`             → GET  http://localhost:${PORT}/led/fighthide`);
-  console.log(`  LED Draft  → GET  http://localhost:${PORT}/led/draftpredshow`);
-  console.log(`             → GET  http://localhost:${PORT}/led/draftpredhide`);
   console.log(`  Match      → GET  http://localhost:${PORT}/match/state`);
   console.log(`             → POST http://localhost:${PORT}/match/state  (auth)`);
   console.log(`             → GET  http://localhost:${PORT}/match/events  (SSE)`);
   console.log(`  Timer      → POST http://localhost:${PORT}/match/timer  { action: start|pause|set, seconds }`);
   console.log(`  Lineups    → GET  http://localhost:${PORT}/match/team-lineups`);
   console.log(`             → POST http://localhost:${PORT}/match/team-lineups  (auth)`);
-  console.log(`  MapSelect  → GET  http://localhost:${PORT}/mapselection/state`);
-  console.log(`             → POST http://localhost:${PORT}/mapselection/action  (auth)`);
-  console.log(`             → GET  http://localhost:${PORT}/mapselection/events  (SSE)`);
   console.log(`  Sponsors   → GET  http://localhost:${PORT}/api/sponsors`);
   console.log(`             → GET  http://localhost:${PORT}/api/sponsors-config`);
   console.log(`             → POST http://localhost:${PORT}/api/sponsors-config  (auth)`);

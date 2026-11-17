@@ -357,7 +357,7 @@ if (window.GameRefresh) GameRefresh.loop(masterPoll); else { setInterval(masterP
 
   /* Fired by routes/overlayStyles.js after any Edit-tab Save — force a
      hard reload so new position/size overrides apply immediately (see
-     mplfs.html's connectSSE() for the identical pattern). */
+     postgame.html's connectSSE() for the identical pattern). */
   sse.addEventListener('reload', function() { window.location.reload(); });
 
   sse.addEventListener('fights', function(e) {

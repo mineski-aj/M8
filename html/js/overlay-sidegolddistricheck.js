@@ -74,7 +74,7 @@ function sgdcRoleIconSrc(role, camp1, camp2) {
 }
 
 /* /assets/photo/LEFT/<ign>_LEFT_resized.png (home) / /assets/photo/RIGHT/<ign>_RIGHT_resized.png
-   (away) — same convention as mplfs.html's wlPhotoUrl (Waiting Lobby
+   (away) — same convention as postgame.html's wlPhotoUrl (Waiting Lobby
    spotlight), just the lower-res /photos folder instead of /hires. */
 function sgdcPhotoSrc(name, side) {
   if (!name) return '';

@@ -3,7 +3,7 @@
    broadcast art. Never modifies or deletes the source files: each job reads
    a source folder and writes into its own separate "_web" folder, which the
    overlay pages try first and fall back from (to the original PNG) if a
-   copy is missing — see mplfs.html's mvSetImgWithFallback.
+   copy is missing — see postgame.html's mvSetImgWithFallback.
 
    Why: heromvp/ alone was ~414MB (avg 3.1MB/file, up to 42MB at 8000x4501)
    for art displayed in an 867x470 box — every MVP Scene show downloaded and

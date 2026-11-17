@@ -1,6 +1,6 @@
-# overlay_server — instruction manual
+# M8 overlay server — instruction manual
 
-MLBB (Mobile Legends: Bang Bang) esports broadcast overlay system. Each overlay is a browser-source HTML page (OBS/vMix reads it), driven by live game data and controlled from a central dashboard. Read this before touching anything.
+MLBB (Mobile Legends: Bang Bang) esports broadcast overlay system, trimmed to **two overlay pages** — **Ingame** (`html/mploverlay_v7.html`) and **Postgame** (`html/postgame.html`) — plus the dashboard that controls them. Each overlay is a browser-source HTML page (OBS/vMix reads it), driven by the live Battledata feed (and the HRM heart-rate server) and controlled from `html/dashboard.html`. Everything else from the old multi-page project (Draft, Waiting TVC/Lobby, Line-Ups, Standings, Bracket, Team Hexagon, Final Team, Today's Schedule, L3 tags, LED wall, ENTVC, Sponsor TV, heatmap.html …) was deleted when this repo was started; it lives in the original `overlay_server` repo's history. Read this before touching anything.
 
 ## Running it
 
@@ -14,35 +14,31 @@ Don't commit unless asked.
 
 ## Map
 
-- `server.js` — Express entrypoint, mounts `routes/`. `routes/*.js` = API endpoints. `lib/` = shared server code (`state.js`, `apiMode.js`, `theme.js`, `pollers.js`, `hrmPoller.js`, `eventLog.js`).
-- `html/mplfs.html` — main scoreboard/scene overlay (full-screen "scenes": MVP, Final Team, Line-Up, Standings, Posts, …). `html/ENTVC.html` — EN broadcast mirror of Waiting TVC (see below).
-- `html/mpltag.html` — small lower-third "tag" overlays (Map Selection, L3 Lobby…); several can be on screen at once (no shared `activeFeature`).
-- `html/mploverlay_v7.html` — in-game overlay shell; one `js/overlay-*.js` per feature + `overlay-core.js` (state/polling) and `overlay-debug.js` (debug bar, SSE, most detection logic).
-- `html/Draft.html`, `DraftIndex.html`, `DraftIndexV2.html` (same `draftindex` event/state; Edit styles from `DraftIndex` bucket), `html/heatmap.html` (standalone copy of mplfs's Post Heatmap — hand-port fixes), `html/led_overlay.html` + `Led_draft.html` + `js/led-events.js` (LED wall).
-- `html/dashboard.html` — control panel (Control tab SHOW/HIDE/PREVIEW, Edit tab drag/resize editor persisted to `overlay_styles.json`). `match-dashboard.html`, `map-selection-dashboard.html`, `standings-dashboard.html` are always-mounted iframes in it.
-- `html/js/overlay-shared-worker.js` + `overlay-sse-shim.js` — the ONE real `/overlay/events` connection per browser. `theme-apply.js` — global theme. `event-log-client.js` — Logs tab reporting. `hero-web.js` — WebP hero art w/ PNG fallback. `sponsor-cursor.js` — shared sponsor-loop resume point.
+- `server.js` — Express entrypoint (static files + mounts `routes/`). `routes/*.js` = API endpoints (`overlay.js` show/hide + feature toggles, `devapi.js` settings/URLs/proxies, `match.js`, `feed.js`, `fights.js`, `positions.js`, `postgame.js`, `overlayStyles.js`, `eventLog.js`, `dashboard.js`). `lib/` = shared server code (`state.js`, `pollers.js`, `game.js`, `rawAdapter.js`, `feedDerived.js`, `gameRefresh.js`, `hrmPoller.js`, `apiMode.js`, `theme.js`, `matchState.js`, …).
+- `html/mploverlay_v7.html` (+ `mploverlay_v7.css`) — **Ingame**: thin shell, one `js/overlay-*.js` per feature + `overlay-core.js` (state/polling) and `overlay-debug.js` (debug bar, SSE, most detection logic).
+- `html/postgame.html` — **Postgame**: all post-game "scenes" in one file (Post Hearts/Timeline/Emblem/Items/Stats/Heatmap/H2H/Carry/4 Key/Gold Distribution/Kill Events, Rich Guy, Consolidated Post 1+2, MVP Scene, MVP Highlights, Credit Reel, Tomorrow's Schedule, Matchboard/Middleboard/Playerboard). Its Edit-tab style bucket is still named `mplfs` (`overlay_styles.json`, `/overlay/mplfs-scene`, `state.mplfsScene`) — kept so saved layouts survive; don't rename.
+- `html/dashboard.html` — control panel. Control sidebar lists **Postgame** (OVERLAYS id `mplfs`) and **Ingame** (id `mploverlay7`); tabs: Match Board, Arrangement, Control, Roster, Sponsors, Edit, Settings, Logs. Iframes: `match-dashboard.html`, `arrangement-dashboard.html` (Ingame seat order), `roster-dashboard.html`, `sponsors-dashboard.html`.
+- `html/js/overlay-shared-worker.js` + `overlay-sse-shim.js` — the ONE real `/overlay/events` connection per browser. `theme-apply.js` — global theme. `event-log-client.js` — Logs tab reporting. `hero-web.js` — WebP hero art w/ PNG fallback. `sponsor-cursor.js` — shared sponsor-loop resume point. `game-refresh.js` — Game API refresh rate. `po-gold-text.js`, `relay-client.js`, `cache-bust.js`.
 - **All assets live under `assets/`** (layout below). Nothing asset-like at repo root.
-- **`data/`** holds every runtime JSON/txt file (`match_state`, `overlay_styles`, `theme`, `api_mode`, `config` (dashboard password), the `*_api_url.json` set, `mainroster`, `heronames`, `credits_reel.txt`, …) plus `data/postgames/`. Live state — don't hand-edit. Server code reads them as `path.join(__dirname, '..', 'data', '<file>')`; pages that fetch one directly use `/data/<file>` (`mainroster.json`, `heronames.json`). Repo root keeps only `server.js`, `package*.json`, `CLAUDE.md`.
-- Cross-project memory: `/Users/ajsarmiento/.claude/projects/-Users-ajsarmiento/memory/` (`reference_mlbb_api.md` for the main-info API shape; `feedback_*` for UI rules).
+- **`data/`** holds every runtime JSON/txt file (`match_state`, `overlay_styles`, `theme`, `api_mode`, `config` (dashboard password), `game_api_url`, `hrm_api_url`, `post_info_api_url`, `highlights_api_url`, `winrate_api_url`, `goldinfo_api_url`, `mainroster`, `heronames`, `credits_reel.txt`, `battledata_sample_m8.txt`, …) plus `data/postgames/`. Live state — don't hand-edit. Server code reads them as `path.join(__dirname, '..', 'data', '<file>')`; pages that fetch one directly use `/data/<file>`.
+- Repo root keeps only `server.js`, `package*.json`, `CLAUDE.md`, and the folders `assets data html lib routes Tools HRMServer HRMServer_Sim`.
 
 ## Asset layout (`assets/`) — put new files in the matching folder
 
 ```
 assets/
-  hero/      full/ (1000px PNG + thumb/ 200px)  web/ (512px WebP)  mvp/ mvp_web/  highlights/  post/  webm/ (HERO_PICK_DRAFT_<id>.webm)
-  photo/     player photos by pose: FRONT DEFEAT LEFT RIGHT SIGNATURE VICTORY (+ placeholder.png, TALENTS, Group, groupbg*, Dynamic, "Playoffs Sched", broll)
-             hires/<POSE>[_web]/  hires_l3/LEFT|RIGHT/  waiting_lobby/
+  hero/      full/ (1000px PNG)  web/ (512px WebP)  mvp/ mvp_web/  highlights/  post/
+  photo/     player photos by pose: FRONT DEFEAT LEFT RIGHT SIGNATURE VICTORY (+ placeholder.png, Dynamic/3_CROPPED BNW, "Playoffs Sched", broll)
+             hires/<POSE>[_web]/
   game/      items/ role/ spell/ emblem/ maps/      (game-data icons)
   team/      logos/<TRI>.png
   sponsor/   MAIN/ MY/ PH/ ID/ = 4 logo sets (each + white/); routes take ?set=, default MAIN — served by /api/sponsors (the scene art is overlay/sponsors)
   fonts/     Anton, General Sans
-  webm/      shared background loops (bgloop*, annivloop*, phase2_*), motion/ (kill-event webms), playoffs/ (playoffsbg_*.webm)
+  webm/      shared background loops (bgloop*, phase2_anniv*), motion/ (kill-event webms), playoffs/ (playoffsbg_*.webm)
   common/    shared images (mpl2026logo.png)
-  overlay/   per-overlay art, one folder per scene: ingame (mploverlay_v7), draft, led, mvp, lineup, ... plus richguy/, post_heart/.
-             Each has optional playoffs/ and anniversary/ theme subfolders (same filenames as Regular).
-  _archive/  unreferenced old stuff (z_old, z_conversion scripts) — safe to delete
+  overlay/   per-scene art for the remaining scenes (ingame, postgame, PostH2H, consolidated_post, mvp, highlights, credits, postkill, richguy, post_heart, visacarry, noisemeter, shared Waiting/Today header+box art used by Tomorrow's Schedule, …); optional playoffs/ and anniversary/ theme subfolders use the same filenames
 ```
-Server-side dirs that read from disk: `routes/devapi.js` (`SPONSORS_DIR`, `PHOTOS_DIR`, `LOGOS_DIR`), `routes/overlay.js` (`PHOTOS_DIR`, `HIRES_FRONT_DIR`). `Tools/optimize-images.js` JOBS use these paths too. Escaped-slash regexes (`hero-web.js`, `hiresWebUrl` in mplfs.html) hold paths as well — update them when moving things.
+Server-side dirs that read from disk: `routes/devapi.js` (`SPONSORS_ROOT`, `PHOTOS_DIR`, `LOGOS_DIR`), `routes/overlay.js` (`PHOTOS_DIR`, `HIRES_FRONT_DIR`). `Tools/optimize-images.js` JOBS use these paths too. Escaped-slash regexes (`hero-web.js`, `hiresWebUrl` in postgame.html) hold paths as well — update them when moving things.
 
 ## Game feed adapter — M8 V2 raw battle feed (`lib/rawAdapter.js`)
 
@@ -79,46 +75,44 @@ Every image/video/text gets its own id/class and absolute position — never nes
 
 `group` is functional: arrow-key nudging moves every element in the same group together — give an element its own group unless it should be tied to siblings. Register in `EDIT_CONFIGS`:
 ```js
-mplfs_foo: { label:'Foo Scene · mplfs', file:'mplfs.html', styleFile:'mplfs',
+mplfs_foo: { label:'Foo Scene · mplfs', file:'postgame.html', styleFile:'mplfs',
   defaultsKey:'sb_edit_defaults_mplfs_foo', elements:FOO_ELEMENTS, defaults:FOO_DEFAULTS, showFn:'showFooScene' },
 ```
 Pasted design-tool CSS: take **only `left/top/width/height`**; ignore colours, z-index, radius etc. (the real art is a named asset). Children are positioned relative to their named parent container, not the canvas.
 
-## Scene architecture (mplfs.html)
+## Scene architecture (postgame.html)
 
 Each scene is a 1920x1080 transparent container (`#foo-page`: `display:none; opacity:0; transition: opacity 400ms`; classes `foo-on` then `foo-visible`). Show: fetch data → `await transitionTo('foo')` → guard `activeFeature === 'foo'` → apply → `preloadMedia` → `showSceneVideo('foo')` → add `foo-on`, force reflow, add `foo-visible`. Hide: `activeFeature = null`, remove `foo-visible`, `setTimeout(~420ms)` to remove `foo-on` + `hideSceneVideo()`. **Never hide on `animationend`** — use setTimeout + the `activeFeature` guard.
 
 Copy the closest existing scene (MVP Scene is the most complete) rather than starting blank.
 
-## Checklist A — new mplfs.html scene (shares the `activeFeature` slot)
+## Checklist A — new postgame.html scene (shares the `activeFeature` slot)
 
 All steps use the **same feature key**; every miss is silent.
 1. CSS container + per-element rules; HTML; JS (fetch → apply → show/hide as above). Text that must fit uses a shrink-to-fit helper (min size ≈ half of max).
 2. **Background:** if it wants the shared ambient loop, add to `SCENE_VIDEO_SRC` (match sibling family, e.g. Posts use `bgloopwaves2.webm`). If it has its own full-bleed art, add nothing (the `if (SCENE_VIDEO_SRC[newFeature])` guard handles it — don't hardcode exception lists).
 3. **Post-family:** add to `POST_FEATURES` in `transitionToImpl` and decide middle/player board handling (some special-case it).
 4. Edit tab: `FOO_DEFAULTS`, `FOO_ELEMENTS`, `EDIT_CONFIGS`.
-5. **Live control (6 layers):** (a) `routes/overlay.js` `/overlay/foo/show|hide` — set `state.mplfsScene.activeFeature`, write `event: foo` to every `state.overlayClients`; (b) `connectSSE()` listener in mplfs.html; (c) line in `hideActiveFeature()`; (d) line in `restoreScene()`; (e) `OVERLAYS` → `id:'mplfs'` → `features` entry in dashboard.html (generates SHOW/HIDE/Preview/copy buttons); (f) `MPLFS_ACTIVE_FEATURE_MAP` (key = `feat.show.split('/')[2]`) — forgetting only breaks the "● Showing" indicator.
+5. **Live control (6 layers):** (a) `routes/overlay.js` `/overlay/foo/show|hide` — set `state.mplfsScene.activeFeature`, write `event: foo` to every `state.overlayClients`; (b) `connectSSE()` listener in postgame.html; (c) line in `hideActiveFeature()`; (d) line in `restoreScene()`; (e) `OVERLAYS` → `id:'mplfs'` → `features` entry in dashboard.html (generates SHOW/HIDE/Preview/copy buttons); (f) `MPLFS_ACTIVE_FEATURE_MAP` (key = `feat.show.split('/')[2]`) — forgetting only breaks the "● Showing" indicator.
 6. **Preview:** add a branch to `window.previewTrigger`. The route/SSE event name often differs from the internal `activeFeature` name (`post_stats` vs `stats`, `final_team` vs `finalteam`, `team_lineup_blue` vs `lineupblue`) — read the real SSE listener, don't guess. Most commonly forgotten step.
-7. **Event log verdict:** add to `olScenes` at the bottom of mplfs.html's main script.
+7. **Event log verdict:** add to `olScenes` at the bottom of postgame.html's main script.
 8. New SSE event name → `KNOWN_EVENTS` + `OVERLAY_WORKER_VERSION` bump.
 9. Grep every selector/key across files for mismatches. Syntax-check every touched file:
 ```
-node -e "const fs=require('fs');for(const f of ['html/mplfs.html','html/dashboard.html']){const s=fs.readFileSync(f,'utf8');[...s.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].forEach((m,i)=>{try{new Function(m[1])}catch(e){console.log(f,i,e.message)}})}"
+node -e "const fs=require('fs');for(const f of ['html/postgame.html','html/dashboard.html']){const s=fs.readFileSync(f,'utf8');[...s.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].forEach((m,i)=>{try{new Function(m[1])}catch(e){console.log(f,i,e.message)}})}"
 ```
 (`node --check` for `lib/`/`routes/` files — never `require` pollers, it hangs on timers.)
 10. Verify live: real Control toggle → separate tab reacts; Preview shows only in the iframe and `curl /overlay/mplfs-scene` is unchanged; board state correct after switching scenes; copy buttons copy the right URL.
 
-Optional local debug card: add a `feature-card` in mplfs.html's `` ` `` debug bar calling `showFooScene()`/`hideFooScene()`/`toggleLocalPreview('foo', this)` (also add `'foo'` to `toggleLocalPreview` and `previewTrigger` chains). Local only.
+Optional local debug card: add a `feature-card` in postgame.html's `` ` `` debug bar calling `showFooScene()`/`hideFooScene()`/`toggleLocalPreview('foo', this)` (also add `'foo'` to `toggleLocalPreview` and `previewTrigger` chains). Local only.
 
-## Checklist B — checkOverlays pattern (independent on/off panels: tags, v7 panels, Draft)
+## Checklist B — checkOverlays pattern (independent on/off panels, e.g. the Ingame v7 panels)
 
 1. Boolean in `state.checkOverlays` (`lib/state.js`). 2. `/overlay/<key>/show|hide` in `routes/overlay.js` broadcasting a named SSE event (families of near-identical panels share one event with a `check` field, e.g. `sidecheck`). 3. Restore via `GET /overlay/check-overlays`. 4. Client SSE listener toggling a CSS class. 5. Dashboard: `{name,key}` in `checkToggles` (auto toggle + copy buttons), or plain `show`/`hide` fields on the `OVERLAYS` entry for a single scene (`toggleShowHide: true` for a single pill). 6. `dashboardSSE` listener (see above). 7. New event → `KNOWN_EVENTS` + version bump.
 
 - **Default state:** if normally *on*, default CSS to the shown position and add a "hidden" class when told — otherwise every load flashes blank during the restore fetch.
 - **A hide animation must clear the whole layer** (`#scoreboard-overlay` hides with `translateY(-1080px)`); re-check when adding a lower child.
 - **"Hide all in a group" buttons:** one server route flipping every key and re-broadcasting each panel's OWN existing event — no new event, no client change. Wire via `extraActions`.
-- **mpltag.html:** has its own `previewTrigger` (only `mapselecttag` + Player H2H per-role) and NO preview isolation flag (except `PH2H_PREVIEW_ONLY`) — a tag doing anything beyond local DOM changes needs its own guard. Set `previewButton: true` if wanted.
-- **Draft-style heavy pages:** `deferredPreview: true` (iframe stays `about:blank` until Preview pressed; page needs `previewTrigger` + `PREVIEW_ONLY` guard that skips real SSE and the restore fetch). Add a `GET /overlay/<key>-state` if using a bespoke boolean.
 
 ## Control-tab Preview — keep it isolated from real broadcast state
 
@@ -126,7 +120,7 @@ Optional local debug card: add a `feature-card` in mplfs.html's `` ` `` debug ba
 - **Any `?preview=1` page must decouple from real state:** (1) don't auto-show/hide from real SSE or restore — mplfs uses `isPreviewFrame`, Draft uses `PREVIEW_ONLY`; (2) don't let side effects hit the server (e.g. `syncBoard()` must skip its `fetch` — this once flipped real vMix boards on a preview click). To tell the dashboard, use `window.parent.postMessage(..., location.origin)` (receiver: `previewToggleRegistry`).
 - Only one Preview is active at a time: always build via `buildPreviewToggleBtn(eventName)` (uses `activePreviewOff`); `previewToggleRegistry` is for *passive* reflection and bypasses exclusivity.
 - `activePreviewOff`, `previewToggleRegistry`, `draftPreviewActive`, `mplfsLiveBadge`, `mapSelectTagBadge` and any new cross-render state referencing `#control-panel-body` DOM must be reset at the top of `buildControlBody()`.
-- Testing: `mplfs.html?preview=1` + `previewTrigger(event,'show')` renders a scene against the current feed safely. `Draft.html?preview=1` same. `DraftIndex*.html` has no preview mode.
+- Testing: `postgame.html?preview=1` + `previewTrigger(event,'show')` renders a scene against the current feed safely.. `DraftIndex*.html` has no preview mode.
 
 ## mploverlay_v7.html — two feature shapes
 
@@ -149,10 +143,6 @@ Feature notes (mostly unverified against a live feed):
 - **Objective spawn:** `objSpawnPlayNext` picks lord/turtle webm per theme.
 - **Gold Graph Check / Live Win Rate:** fixed checkpoints at 2, 5, 8, 12, 15 min then +3 (`ggcMarkMinute`/`lwrMarkMinute`); last group is the live "now" dot. Live Win Rate reads the Winrate API (`/api/winrate-proxy`, `{camp1,camp2,time}`); shares Gold Graph's art; neither restored on page load. Playoffs title art `assets/overlay/ingame/playoffs/graph_header.png` (recoloured Regular art — redo if Regular changes).
 
-## ENTVC.html — mirror of Waiting TVC
-
-`ENTVC.html` duplicates mplfs.html's Waiting TVC, Waiting Lobby, Today's/Tomorrow's Schedule, Standings. **Any Waiting TVC change in mplfs.html (features, CSS, art, tunables) must be hand-ported to ENTVC.html.** Waiting Lobby is NOT covered — mplfs-only unless the user asks. EN Casters uses its own `ws-encasters-*` selectors and `entvc_encasters` Edit config — independent on purpose. Position/size edits are automatic (both read the same `mplfs` bucket for shared selectors); a shared tunable value uses a small JSON file + route like `credits_speed.json` (`/api/credits-speed`).
-
 ## Theme system — Regular / 10th Anniversary / Playoffs
 
 - One global value in `theme.json`, `GET/POST /api/theme` (`routes/devapi.js`, whitelist `THEME_VALID`), broadcast as SSE `theme`; Settings page `<select id="theme-select">` with confirm dialog.
@@ -167,45 +157,19 @@ Feature notes (mostly unverified against a live feed):
 `overlay_styles.json` (`routes/overlayStyles.js`) stores `{[file]:{[selector]:{left,top,width,height,fontSize}}}`. Regular uses the plain `file` bucket; other themes use `file::theme` (`mplfs::playoffs`). GET merges per selector (themed wins, else Regular). Nudges seed a new themed entry from Regular first. Overrides are injected as `!important`, so **a Regular override beats a plain `[data-theme]` rule: when theme CSS "isn't taking" — or a playoffs `left/top/width/height` loses — check `overlay_styles.json` and seed the `<file>::playoffs` bucket.**
 
 ### Playoffs conventions
-- **Universal sponsor box (mplfs.html):** every playoffs sponsor box shares one CSS block ("PLAYOFFS UNIVERSAL SPONSOR BOX") on the shared classes (`.sponsor-cat-label`, `.wl-/.ws-sponsor-loop`, `.wl-sponsor-bg`/`.wsm-sponsor-bg`) — never per-scene ids. Gold header strip with the sponsor category over a white logo area, 296x120 (37px strip). A new/reworked scene with a sponsor box uses the standard markup (as in `buildTsSponsor`), adds its selector to the "Default box size" rule, seeds position in `mplfs::playoffs`, and gets the Edit row from `addPlayoffsSponsorEdit()` (add its pair to the list above `var EDIT_CONFIGS`). That row edits all playoffs sponsor logos at once (except Consolidated Post 2's).
+- **Universal sponsor box (postgame.html):** every playoffs sponsor box shares one CSS block ("PLAYOFFS UNIVERSAL SPONSOR BOX") on the shared classes (`.sponsor-cat-label`, `.wl-/.ws-sponsor-loop`, `.wl-sponsor-bg`/`.wsm-sponsor-bg`) — never per-scene ids. Gold header strip with the sponsor category over a white logo area, 296x120 (37px strip). A new/reworked scene with a sponsor box uses the standard markup (as in `buildTsSponsor`), adds its selector to the "Default box size" rule, seeds position in `mplfs::playoffs`, and gets the Edit row from `addPlayoffsSponsorEdit()` (add its pair to the list above `var EDIT_CONFIGS`). That row edits all playoffs sponsor logos at once (except Consolidated Post 2's).
 - **Sponsor loops** use `SponsorCursor.start(len)` / `SponsorCursor.aired(idx)` (`sponsor-cursor.js`) so scenes resume after the last sponsor aired; any new loop must too.
-- **BNW photo crops:** `assets/photo/Dynamic/3_CROPPED BNW/<TRI>_<ign>.webp` (`thBnwUrl`) are used by Team Hexagon, Post 4 Key, and Post H2H under playoffs (greyscale + team-colour tint; missing crop → signature portrait). A new player needs this crop, plus `assets/photo/hires_l3/LEFT|RIGHT/<ign>_*.webp` for L3 Lobby, or it silently falls back.
-- **Header bar text** (`MPL PH S18 PLAYOFFS` / `DAY n`): 30px, centred in the baked bar sections; Edit bucket once pinned 34px `!important`, so check the bucket.
-- **Match counts (playoffs):** Days 1–3 = 2 matches, Days 4–5 = 1; Day spinner to 5, no Week counter. `poMatchCount(day)` (Match Board), `buildTsMatches`/`msToTomorrowMatchRows` (mplfs), `poWsCount` (Waiting TVC, both pages), Today's highlight cycle in `routes/overlay.js`. 1-match layouts are seeded in `mplfs::playoffs` with no Edit config.
-- **Scenes already reworked for playoffs:** MVP Scene/Highlights, Team Hexagon, Today's/Tomorrow's Schedule, Waiting TVC (+ENTVC) and Lobby, Line-Up Blue/Red, Bracket, Final Team, Consolidated Post 2, Post Match Board plaques, v7 scoreboard/checks/player UI, Draft, DraftIndex, assets/sponsor/sponsortv/ingame_*, mpltag Map Selection.
-- **Art not provided yet (don't invent):** star-match scoreboard art (`ingamepng2_<SUFFIX>.png`), Side Selection card (`blueselect/redselect.png`), `mapdetail_v2.png` for Draft, Draft player plate backs / hero name banners / picking webms, Post H2H sponsor rework, ban-selection red glow and `bluepickbg1/redpickbg1.webm`, `assets/photo/Playoffs Sched/` teams APBR and TWIS.
-- **Player boxes stand on the bottom edge** in playoffs Line-Up (`top + height = 1080` for `.lu-player-N`); keep that if resizing.
+- **BNW photo crops:** `assets/photo/Dynamic/3_CROPPED BNW/<TRI>_<ign>.webp` (`thBnwUrl`) are used by Post 4 Key and Post H2H under playoffs (greyscale + team-colour tint; missing crop → signature portrait). A new player needs this crop, plus `assets/photo/hires_l3/LEFT|RIGHT/<ign>_*.webp` for L3 Lobby, or it silently falls back.
 - **Post 4 Key playoffs:** photo container +120px (cards 416x629); `p4kExtendedArt` stretches `bigfour*.png` on a canvas at show time. Bottom of card y=1002.
-- **Final Team** playoffs uses the plain MPL logo (`#ft-mpl-logo` content override).
-- **Playoffs Waiting TVC:** QR (`#ws-qr`, `#ws-qr-text`) mirrored in both pages; logos in `MatchBox_*` slanted areas (96x96, slot centres x 165.5/404.5). Team Line-Up stinger `LU_STINGER_SRC_BY_THEME.playoffs`.
-- **Bracket:** playoffs background is always `playoffsbg_theme.webm`; `#br-header-bg` webm does the fading. Leaving base pose: bg/fades first, tilt `BR_BG_LEAD_MS` (550ms) later; return is mirrored. Decided series: loser `.br-defeated`, winner path glows (`.br-glow-on`, `BR_PATHS`, opacity-only pulse — never animate the filter on the 3D plane). Pre-warming bracket background videos was tried and **reverted** (worse).
-- **Draft Stats gradient map** uses `backdrop-filter: url(#po-gradmap)`; if vMix fails to render it, fall back to a `grayscale() sepia()` chain.
 
 ## Other scene notes
 
-- **Team Line-Up V2** (`lineupv2_blue/red`), **Credit Reel V2** (`credits_v2`), **MVP Scene V2** (`mvp_v2`), **MVP Highlights V2** (`hl_v2`): V1/V2 buttons via the `versionToggle` field on `features`; V2 = polaroid intro / 480px side panel at x=1440 / transparent-over-camera scene / no signature photo. Each has its own Edit config where needed (`mplfs_credits_v2`, `mplfs_mvp_v2` — V2 rows save under `html #mvp-page.mv-v2 <id>` to win over V1) and a forced-version `showXxxV1/V2` for the Edit preview.
-- **Team Hexagon playoffs "V3"**: CSS/SVG re-layout (no Edit config); radar centre (960,504).
 - **Post Gold Distribution** (`post_golddistri`): lanes matched to the game feed by player NAME — spelling mismatches between feeds put lanes wrong. **Post Kill Events** (`post_killevents`): objectives from Post-Info `camp_list`, kill map from `/events` × `/positions`. **Post H2H** page 2 = gold distribution; `GET /overlay/p2hpage/1|2`; each fresh show resets to page 1.
-- **Post Heatmap / heatmap.html**: show/hide key `heatmappage` (hidden by default = no loop/fetch; `?preview=1` always shown); live style via `GET/POST /api/heatmap-style` + SSE `heatmap_style` (mplfs scene not affected).
-- **Hero art:** `assets/hero/web/HERO_<id>_KOTAK.webp` via `hero-web.js` for mplfs/v7; **Draft.html deliberately keeps `assets/hero/full/thumb/`** (200px PNG) — regenerate it when a new hero is added.
-- **DraftIndexV2:** hero cards are compositor-only (canvas pre-paint, `scaleX` window) — don't reintroduce animated `clip-path`/`filter`/CSS `blur()`/`mask-image` on them. `DV2_SHOW_CHROME` false.
-- **L3 Lobby (`mpltag.html`, `l3lobby`):** Superfan ticker (`/api/dynamic-content`); player swap uses `img.decode()` and swaps both sides together (vMix stutter fix); `.l3l-sf-inner` scales uniformly via `fitSuperfan`.
-
-## LED wall pages
-
-Two 2532x1024 sources (`led_overlay.html`: 10 player plates; `Led_draft.html`: draft cards; plus 242px mid panels). Control-tab entries use `previewSize: [2532,1024]`; `routes/led.js` holds `/led/*`. Not wired: Edit-tab positioning, Preview buttons. Shared engine `js/led-events.js` (IIFE).
-
-- **Side:** Match Board HOME = left square regardless of camp, via `LedAutoSide.resolve(camp_list)` (needs team spellings to match `/match/state`, else falls back to manual HOME/SWAP; `applySwap()` prefers `autoSwap` when non-null).
-- **Events:** plate events (First Item, Trinity, Quick Swap, Lvl 15, Conceal, Sky Piercer) use their own `led_*` keys, armed independently of v7's; state tracked per SEAT so HOME/SWAP can't fire false events. Right plates' item bar is 16px further right (`.camp2 .led-evt-clip { left: 257px }`). Mid panels (Team Health / Win Probability / Team Fight / Draft Predict) via SSE `led_health|led_win|led_fight|led_draftpred`; start `display:none` set **inline** (guards test `style.display`); a reel animation covers only the lower region (y 357+). Lord Advantage not ported.
-- **Rule:** features ride existing events with new `action` values; listeners must **ignore unknown actions** (an old else→hide once hid Draft Predict on every photo-mode toggle).
-- **Draft Predict** = Draft.html's v3 engine; stays up until Hide; shown state persisted in `checkOverlays.led_draftpred`. Dashboard test buttons relay to the real LED instance via `/led/draftpredtest-reveal|slot`.
-- **LED Draft:** colour follows CAMP, layout follows SIDE (right side = mirrored left). Player photo source is LED-only (`ledDraftPhotoMode`, `/led/draft-photo-mode`). Picking glow/video are Draft.html's per-theme defaults — don't re-tint/re-bake. No role icon / `/api/draft-roles` (user removed; don't re-add). Edit the file directly (generator was throwaway). Opt-in `?heroloops=N` limits hero-clip looping.
-- **Perf rules:** raster (not JS) was the cost — per-frame animation needs its own compositor layer (`will-change: transform` on BOTH `.ekg-zone-led` and `.heart-bpm`); EKG lines are 62x28 `<canvas>`, not animated SVG `d`; write DOM only on change (death timer, `setText`, `dataset.src` — never compare `img.src`); no rAF/canvas/`<video>` for hidden panels, create media lazily.
-- **Testing without a live feed:** throwaway Node mock of the server (static files + mutable `/api/gamedata-proxy`, `/proxy/predictions`, `/api/draft-url`, `/match/state`, `/api/player-photos`, `/led/*`, `/__push?event=&data=` for SSE) + headless Edge over CDP. Fixtures `predictions_test.json`, `sub-info_sample.json` (contains U+00A0/U+2028 — strip before `JSON.parse`). Gotchas: `pkill -f` must match how the mock was launched; never `curl` big JSON without `| head`.
+- **Hero art:** `assets/hero/web/HERO_<id>_KOTAK.webp` via `hero-web.js` for postgame/v7 (PNG fallback in `assets/hero/full/`).
 
 ## API Mode — LIVE / WEB / DEBUG (`lib/apiMode.js`)
 
-Settings' 9 API URL fields (Game, Standings, Draft, Draft Recap, HRM, Team Hexagon, MVP Highlights, Draft Index, Post-Info) each store `{live, web, debug}` in their `*_api_url.json`; `api_mode.json` picks the active one; switching is server-wide and confirm-gated. **All reads/writes must use `readUrlForMode(file, default)` / `writeUrlForMode(file, url)`** — never read the file's `.url` directly. `lib/pollers.js` and `lib/hrmPoller.js` read these too. (Changing the on-disk shape while old route code is loaded once served the raw shape until restart.)
+Settings → API Mode switches every URL setting between three stored values (`{live, web, debug}` in each `data/*_api_url.json`; `api_mode.json` is the active mode; switching is server-wide and confirm-gated). **Visible in Settings: only the Battledata (Game) API and the HRM Server URL** (+ the refresh rate). The Post-Info, MVP Highlights, Winrate and Gold Info sections still exist but are hidden (`api-hidden-m8` class in `dashboard.html`) — Post Gold Distribution / Post Kill Events / MVP Highlights / Live Win Rate / Gold Graph V2 need those upstream APIs and show nothing without them; remove the class to bring a field back. **Every read/write of those files must go through `readUrlForMode(file, default)` / `writeUrlForMode(file, url)`** — never read the file's `.url` directly (`lib/pollers.js` and `lib/hrmPoller.js` read them too).
 
 ## Event log — Logs tab + Control-tab load status
 
@@ -216,7 +180,7 @@ Settings' 9 API URL fields (Game, Standings, Draft, Draft Recap, HRM, Team Hexag
 - Headless Edge can't reproduce vMix; measure with `Emulation.setCPUThrottlingRate` ~20x + Tracing + rAF gap logger. **Always A/B** — plausible optimisations have made things worse; revert what doesn't measure better.
 - **Cheap:** transform/opacity animation, `will-change` layers, canvas pre-paint, WebP copies with PNG fallback, `img.decode()` before fades, staggered swaps, pausing hidden videos. **Expensive:** full-screen 1080p60 VP9 loops (dominant idle cost), big PNG decode at swap time, animated SVG `d`/mask/clip-path/filter, repainting big tilting containers.
 - **Videos:** never `autoplay` an idle full-res loop. `hideSceneVideo()` `.pause()`s ~400ms after fade-out (guard by the captured element's class); `showSceneVideo` skips re-assigning an unchanged `src` and is called in `transitionToImpl` **after** `hideActiveFeature()` is awaited (before, the outgoing scene's delayed hide killed the new layer). `#bg-video` is paused on first frame by design. The playoffs corner-shapes overlay was removed entirely.
-- **Baked alpha:** Draft.html's hero reveal uses WebM with real alpha (pre-baked offline) + `destination-in` compositing instead of per-pixel JS. ffmpeg's default VP9 decoder ignores alpha — pass `-c:v libvpx-vp9` to verify. No ffmpeg on this machine (installing needs user OK), so videos can't be re-encoded here.
+- **Baked alpha:** (from the old Draft page) a hero reveal used WebM with real alpha (pre-baked offline) + `destination-in` compositing instead of per-pixel JS. ffmpeg's default VP9 decoder ignores alpha — pass `-c:v libvpx-vp9` to verify. No ffmpeg on this machine (installing needs user OK), so videos can't be re-encoded here.
 - **Never size/fit content by measuring a possibly-hidden element** (`scrollWidth/clientWidth/getBoundingClientRect` are meaningless under `display:none`). Use canvas `measureText()` (detached canvas, e.g. `annivTextWidth`) or compute from known values. Same bug class as the theme-apply race.
 
 ## Data, assets, fonts
@@ -243,4 +207,4 @@ Headless Edge over raw CDP (Node has native `fetch`/`WebSocket`):
 ```
 Get the target's `webSocketDebuggerUrl` from `http://localhost:9222/json`, then `Page.navigate` / `Runtime.evaluate`. Use `--virtual-time-budget` only for short synchronous checks; for video or timer-paced work use a real background process and real sleeps. Never `await` a `Runtime.evaluate` that sets `location.href` (wrap in `setTimeout(...,10);1`). Kill orphaned harness Edge processes (by `--user-data-dir`) before trusting perf numbers.
 
-**Tests must not leave real shared state changed** (`state.mplfsScene`, `checkOverlays`, `draftActive`, `api_mode.json`, the 9 `*_api_url.json`): capture first, restore after (`curl .../fs/hide` fully resets mplfs). Prefer an isolated harness: extract the real `<script>` from the file into a scratch page and expose internals via `window.__test`. Stub fetches via `Page.addScriptToEvaluateOnNewDocument`; jump to a scene's end state by adding its final CSS class. For mpltag.html, a regex `<script>` extraction fails on a comment containing `<script` (ignore) — slice the IIFE by `indexOf` and append `window.__t = {...}`.
+**Tests must not leave real shared state changed** (`state.mplfsScene`, `checkOverlays`, `api_mode.json`, the `*_api_url.json` files): capture first, restore after (`curl .../fs/hide` fully resets mplfs). Prefer an isolated harness: extract the real `<script>` from the file into a scratch page and expose internals via `window.__test`. Stub fetches via `Page.addScriptToEvaluateOnNewDocument`; jump to a scene's end state by adding its final CSS class. For mpltag.html, a regex `<script>` extraction fails on a comment containing `<script` (ignore) — slice the IIFE by `indexOf` and append `window.__t = {...}`.

@@ -4,7 +4,6 @@ const fs      = require('fs');
 const path    = require('path');
 const router  = express.Router();
 const state   = require('../lib/state');
-const matchState = require('../lib/matchState');
 
 // GET /api/player-photos — basenames with both FRONT and VICTORY photos available
 const PHOTOS_DIR = path.join(__dirname, '..', 'assets', 'photo');
@@ -50,7 +49,7 @@ router.get('/api/hires-front-names', (req, res) => {
   res.set({ 'Cache-Control': 'no-store' }).json({ names: _hiresFrontMap });
 });
 
-// GET /overlay/force-reload — hard-reload every open overlay page (mplfs.html,
+// GET /overlay/force-reload — hard-reload every open overlay page (postgame.html,
 // ENTVC.html, DraftIndex.html, Draft.html, mpltag.html, mploverlay_v7.html) at
 // once, so production browser sources don't need to be refreshed by hand
 // after a dashboard Edit-tab save or any other change. Reuses the exact
@@ -63,22 +62,7 @@ router.get('/overlay/force-reload', (req, res) => {
   res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, clients: state.overlayClients.length });
 });
 
-// GET /overlay/draft-photo-mode — current player-photo source ('live' | 'random')
-router.get('/overlay/draft-photo-mode', (req, res) => {
-  res.set({ 'Cache-Control': 'no-store' }).json({ mode: state.draftPhotoMode });
-});
 
-// GET /overlay/draft-photo-mode/:mode — set mode, broadcast to connected overlays
-router.get('/overlay/draft-photo-mode/:mode', (req, res) => {
-  const mode = req.params.mode;
-  if (mode !== 'live' && mode !== 'random') {
-    return res.status(400).json({ ok: false, error: 'unknown mode' });
-  }
-  state.draftPhotoMode = mode;
-  const payload = JSON.stringify({ mode });
-  state.overlayClients.forEach(c => { try { c.write(`event: draftphotomode\ndata: ${payload}\n\n`); } catch {} });
-  res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, mode });
-});
 
 // SSE heartbeat
 setInterval(() => {
@@ -128,66 +112,14 @@ router.get('/overlay/bpmmeter/hide', (req, res) => {
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 
-// GET /overlay/bpmmeter_tag/show|hide — mpltag.html's independent copy of
-// the BPM meter (see html/mpltag.html's third IIFE). Separate show/hide
-// state from mploverlay_v7's /overlay/bpmmeter above; the level itself is
-// still shared between both via the /meter/plus|minus|clear routes.
-router.get('/overlay/bpmmeter_tag/show', (req, res) => {
-  state.checkOverlays.bpmmeter_tag = true;
-  state.overlayClients.forEach(c => { try { c.write('event: bpmmeter_tag\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-router.get('/overlay/bpmmeter_tag/hide', (req, res) => {
-  state.checkOverlays.bpmmeter_tag = false;
-  state.overlayClients.forEach(c => { try { c.write('event: bpmmeter_tag\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
-// GET /api/draft-roles — returns server-locked player→role assignments for current battleid
-router.get('/api/draft-roles', (req, res) => {
-  res.set({ 'Cache-Control': 'no-store' }).json(state.draftRoles);
-});
 
-// GET /overlay/draftindex-state — current shown/hidden state, so a
-// freshly (re)loaded DraftIndex.html can restore instead of guessing.
-router.get('/overlay/draftindex-state', (req, res) => {
-  res.set({ 'Cache-Control': 'no-store' }).json({ active: state.draftIndexActive });
-});
 
-// GET /overlay/draftindex/show
-router.get('/overlay/draftindex/show', (req, res) => {
-  state.draftIndexActive = true;
-  state.overlayClients.forEach(c => { try { c.write('event: draftindex\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/draftindex/hide
-router.get('/overlay/draftindex/hide', (req, res) => {
-  state.draftIndexActive = false;
-  state.overlayClients.forEach(c => { try { c.write('event: draftindex\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
-// GET /overlay/draft-state — current shown/hidden state, so a
-// freshly (re)loaded Draft.html can restore instead of guessing.
-router.get('/overlay/draft-state', (req, res) => {
-  res.set({ 'Cache-Control': 'no-store' }).json({ active: state.draftActive });
-});
 
-// GET /overlay/draft/show
-router.get('/overlay/draft/show', (req, res) => {
-  state.draftActive = true;
-  state.overlayClients.forEach(c => { try { c.write('event: draft\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/draft/hide
-router.get('/overlay/draft/hide', (req, res) => {
-  state.draftActive = false;
-  state.overlayClients.forEach(c => { try { c.write('event: draft\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
 // GET /overlay/fights/show
 router.get('/overlay/fights/show', (req, res) => {
@@ -266,18 +198,6 @@ router.get('/overlay/golddiffcheck/hide', (req, res) => {
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 
-// GET /overlay/heatmappage/show|hide — heatmap.html's own on/off (checkOverlays pattern). Hidden = the page
-// stops its RAF loop and all fetches and removes its layer, so an unused heatmap source costs no GPU.
-router.get('/overlay/heatmappage/show', (req, res) => {
-  state.checkOverlays.heatmappage = true;
-  state.overlayClients.forEach(c => { try { c.write('event: heatmappage\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
-router.get('/overlay/heatmappage/hide', (req, res) => {
-  state.checkOverlays.heatmappage = false;
-  state.overlayClients.forEach(c => { try { c.write('event: heatmappage\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
 // GET /overlay/livewinrate/show
 router.get('/overlay/livewinrate/show', (req, res) => {
@@ -307,112 +227,14 @@ router.get('/overlay/goldgraphcheck/hide', (req, res) => {
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 
-// Match Card (mpltag.html) — two independent team-logo video loops for
-// the live match's blue/red teams, plain checkOverlays pattern. The
-// client resolves which team goes on which side itself, from
-// /match/state's home/away + swapped (see html/mpltag.html), so no
-// team data needs to travel in this event's payload.
-// GET /overlay/matchcard/show
-router.get('/overlay/matchcard/show', (req, res) => {
-  state.checkOverlays.matchcard = true;
-  state.overlayClients.forEach(c => { try { c.write('event: matchcard\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/matchcard/hide
-router.get('/overlay/matchcard/hide', (req, res) => {
-  state.checkOverlays.matchcard = false;
-  state.overlayClients.forEach(c => { try { c.write('event: matchcard\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
-// L3 Lobby (mpltag.html) — special Waiting Lobby strip, plain checkOverlays
-// pattern. The client pulls /match/state itself, so no data in the payload.
-// GET /overlay/l3lobby/show|hide
-router.get('/overlay/l3lobby/show', (req, res) => {
-  state.checkOverlays.l3lobby = true;
-  state.overlayClients.forEach(c => { try { c.write('event: l3lobby\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
-router.get('/overlay/l3lobby/hide', (req, res) => {
-  state.checkOverlays.l3lobby = false;
-  state.overlayClients.forEach(c => { try { c.write('event: l3lobby\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
-// Headline Ticker Stats (mpldynamicpc.html, "MPL L3 Dynamic PC") — plain checkOverlays
-// pattern. The page pulls the headline (/api/dynamic-content) and the ticker rows
-// (/api/dynamic-stats) itself, so no data in the payload.
-// GET /overlay/headlineticker/show|hide
-router.get('/overlay/headlineticker/show', (req, res) => {
-  state.checkOverlays.headlineticker = true;
-  state.overlayClients.forEach(c => { try { c.write('event: headlineticker\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
-router.get('/overlay/headlineticker/hide', (req, res) => {
-  state.checkOverlays.headlineticker = false;
-  state.overlayClients.forEach(c => { try { c.write('event: headlineticker\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
-// Player H2H — one of 5 roles at a time, mutually exclusive (unlike the
-// plain checkOverlays pattern above). The client itself is responsible
-// for animating the previously-shown role out before animating a newly
-// requested one in — this route just records which role is "wanted" and
-// broadcasts it; see html/mpltag.html's ph2hShow() for the actual
-// out-then-in sequencing.
-const PLAYERH2H_ROLES = ['gold', 'jungler', 'exp', 'mid', 'roamer'];
 
-// GET /overlay/playerh2h/:role/show
-router.get('/overlay/playerh2h/:role/show', (req, res) => {
-  const role = req.params.role;
-  if (!PLAYERH2H_ROLES.includes(role)) {
-    return res.status(400).json({ ok: false, error: 'unknown role' });
-  }
-  state.playerh2h.role = role;
-  const payload = JSON.stringify({ action: 'show', role });
-  state.overlayClients.forEach(c => { try { c.write(`event: playerh2h\ndata: ${payload}\n\n`); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show", role });
-});
 
-// GET /overlay/playerh2h/hide
-router.get('/overlay/playerh2h/hide', (req, res) => {
-  state.playerh2h.role = null;
-  state.overlayClients.forEach(c => { try { c.write('event: playerh2h\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
-// GET /overlay/playerh2h-state — current role (or null), for restore-on-load
-router.get('/overlay/playerh2h-state', (req, res) => {
-  res.set({ 'Cache-Control': 'no-store' }).json(state.playerh2h);
-});
 
-// GET /overlay/mpltagoverlays/hide — universal hide for every independent
-// panel on html/mpltag.html ("MPL L3") at once. Same reasoning as
-// bottomoverlays/sideoverlays below: reset each panel's own state and
-// re-broadcast its OWN existing event/payload shape — do NOT invent a new
-// event for this. Zero client-side changes needed, since each panel
-// already has a listener for its own event.
-//
-// When a NEW mpltag.html feature is added, add its own reset + broadcast
-// line here too (this is the one place a "hide everything on this page"
-// button has to know about every panel — nothing else auto-discovers it).
-router.get('/overlay/mpltagoverlays/hide', (req, res) => {
-  state.mapSelectTag.revealedGames = 0;
-  state.mapSelectTag.revealedWins = 0;
-  state.playerh2h.role = null;
-  state.checkOverlays.matchcard = false;
-  state.checkOverlays.l3lobby = false;
-  state.overlayClients.forEach(c => {
-    try {
-      c.write('event: mapselecttag\ndata: {"action":"hide"}\n\n');
-      c.write('event: playerh2h\ndata: {"action":"hide"}\n\n');
-      c.write('event: matchcard\ndata: {"action":"hide"}\n\n');
-      c.write('event: l3lobby\ndata: {"action":"hide"}\n\n');
-    } catch {}
-  });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true });
-});
 
 // GET /overlay/scoreboard/show
 router.get('/overlay/scoreboard/show', (req, res) => {
@@ -442,73 +264,11 @@ router.get('/overlay/playerui/hide', (req, res) => {
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 
-// GET /overlay/draftrecap/show
-router.get('/overlay/draftrecap/show', (req, res) => {
-  state.checkOverlays.draftrecap = true;
-  state.overlayClients.forEach(c => { try { c.write('event: draftrecap\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/draftrecap/hide
-router.get('/overlay/draftrecap/hide', (req, res) => {
-  state.checkOverlays.draftrecap = false;
-  state.overlayClients.forEach(c => { try { c.write('event: draftrecap\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
-// GET /overlay/draftstats/test — Control-tab manual test trigger for the
-// Draft Stats pick reveal (Draft.html). Fixed placeholder values, Player 1
-// of BOTH sides at once (campid 1 and 2, seat_1) — fires two separate
-// events so each side's card animates independently but simultaneously.
-router.get('/overlay/draftstats/test', (req, res) => {
-  [1, 2].forEach((campid) => {
-    const payload = JSON.stringify({ campid, seatIdx: 0, pick: 27, contention: 64, winrate: 58 });
-    state.overlayClients.forEach(c => { try { c.write(`event: draftstats\ndata: ${payload}\n\n`); } catch {} });
-  });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true });
-});
 
-// GET /overlay/draftstats/test-debut — same as above, but a pick count of 0
-// so Draft.html plays the "DEBUT PICK!" reveal instead of the normal
-// PICK/CONTENTION RATE/WIN RATE one (see startDraftStats()'s isDebut check).
-router.get('/overlay/draftstats/test-debut', (req, res) => {
-  [1, 2].forEach((campid) => {
-    const payload = JSON.stringify({ campid, seatIdx: 0, pick: 0, contention: 0, winrate: 0 });
-    state.overlayClients.forEach(c => { try { c.write(`event: draftstats\ndata: ${payload}\n\n`); } catch {} });
-  });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true });
-});
 
-// GET /overlay/draftstats/test-buff/:status — same as /test above, but also
-// carries a buffStatus (NERF/BUFF/ADJUST) so Draft.html's corner badge pops
-// in once the reveal finishes sliding out (see showBuffBadge()).
-router.get('/overlay/draftstats/test-buff/:status', (req, res) => {
-  const status = String(req.params.status || '').toUpperCase();
-  if (!['NERF', 'BUFF', 'ADJUST'].includes(status)) {
-    return res.status(400).json({ ok: false, error: 'status must be nerf, buff, or adjust' });
-  }
-  [1, 2].forEach((campid) => {
-    const payload = JSON.stringify({ campid, seatIdx: 0, pick: 27, contention: 64, winrate: 58, buffStatus: status });
-    state.overlayClients.forEach(c => { try { c.write(`event: draftstats\ndata: ${payload}\n\n`); } catch {} });
-  });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, status });
-});
 
-// GET /overlay/draftstats/test-swap/:status — simulates a Final Changes
-// seat swap: Draft.html's showBadgeOnly() pops the corner badge directly,
-// skipping the PICK/CONTENTION RATE/WIN RATE (or DEBUT PICK) reveal
-// entirely (see the draftStatsAllowed gate in poll() / onBannerIn()).
-router.get('/overlay/draftstats/test-swap/:status', (req, res) => {
-  const status = String(req.params.status || '').toUpperCase();
-  if (!['NERF', 'BUFF', 'ADJUST'].includes(status)) {
-    return res.status(400).json({ ok: false, error: 'status must be nerf, buff, or adjust' });
-  }
-  [1, 2].forEach((campid) => {
-    const payload = JSON.stringify({ campid, seatIdx: 0, swapOnly: true, buffStatus: status });
-    state.overlayClients.forEach(c => { try { c.write(`event: draftstats\ndata: ${payload}\n\n`); } catch {} });
-  });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, status });
-});
 
 // GET /overlay/hrm-state — current per-player heart-rate meter on/off
 // state (ingame_red.html / ingame_blue.html), so any page (dashboard,
@@ -645,47 +405,11 @@ router.get('/overlay/post_richguy/hide', (req, res) => {
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 
-// GET /overlay/waiting_tvc/show
-router.get('/overlay/waiting_tvc/show', (req, res) => {
-  state.mplfsScene.activeFeature = 'waiting';
-  state.overlayClients.forEach(c => { try { c.write('event: waiting_tvc\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/waiting_tvc/hide
-router.get('/overlay/waiting_tvc/hide', (req, res) => {
-  state.mplfsScene.activeFeature = null;
-  state.overlayClients.forEach(c => { try { c.write('event: waiting_tvc\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
-// GET /overlay/waiting_lobby/show
-router.get('/overlay/waiting_lobby/show', (req, res) => {
-  state.mplfsScene.activeFeature = 'lobby';
-  state.overlayClients.forEach(c => { try { c.write('event: waiting_lobby\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/waiting_lobby/hide
-router.get('/overlay/waiting_lobby/hide', (req, res) => {
-  state.mplfsScene.activeFeature = null;
-  state.overlayClients.forEach(c => { try { c.write('event: waiting_lobby\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
-// GET /overlay/team_hexagon/show
-router.get('/overlay/team_hexagon/show', (req, res) => {
-  state.mplfsScene.activeFeature = 'hexagon';
-  state.overlayClients.forEach(c => { try { c.write('event: team_hexagon\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/team_hexagon/hide
-router.get('/overlay/team_hexagon/hide', (req, res) => {
-  state.mplfsScene.activeFeature = null;
-  state.overlayClients.forEach(c => { try { c.write('event: team_hexagon\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
 // GET /overlay/highlights/show
 router.get('/overlay/highlights/show', (req, res) => {
@@ -729,79 +453,13 @@ router.get('/overlay/credits/hide', (req, res) => {
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 
-// GET /overlay/final_team/show
-router.get('/overlay/final_team/show', (req, res) => {
-  state.mplfsScene.activeFeature = 'finalteam';
-  state.overlayClients.forEach(c => { try { c.write('event: final_team\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/final_team/hide
-router.get('/overlay/final_team/hide', (req, res) => {
-  state.mplfsScene.activeFeature = null;
-  state.overlayClients.forEach(c => { try { c.write('event: final_team\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
-// GET /overlay/team_lineup_blue/show
-router.get('/overlay/team_lineup_blue/show', (req, res) => {
-  state.mplfsScene.activeFeature = 'lineupblue';
-  state.overlayClients.forEach(c => { try { c.write('event: team_lineup_blue\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/team_lineup_blue/hide
-router.get('/overlay/team_lineup_blue/hide', (req, res) => {
-  state.mplfsScene.activeFeature = null;
-  state.overlayClients.forEach(c => { try { c.write('event: team_lineup_blue\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
-// GET /overlay/team_lineup_red/show
-router.get('/overlay/team_lineup_red/show', (req, res) => {
-  state.mplfsScene.activeFeature = 'lineupred';
-  state.overlayClients.forEach(c => { try { c.write('event: team_lineup_red\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/team_lineup_red/hide
-router.get('/overlay/team_lineup_red/hide', (req, res) => {
-  state.mplfsScene.activeFeature = null;
-  state.overlayClients.forEach(c => { try { c.write('event: team_lineup_red\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
-// GET /overlay/today_schedule/show
-// Pressing Show again while the scene is ALREADY live doesn't re-trigger
-// the whole scene — it cycles a "currently being talked about" highlight
-// through each match row instead (grows 1.15x), one row per press, then
-// back to nothing. Match count (2 vs 3) follows the same isDay2 rule as
-// mplfs.html's msToMatchRows, so the cycle length matches whatever's
-// actually on screen.
-router.get('/overlay/today_schedule/show', (req, res) => {
-  if (state.mplfsScene.activeFeature === 'schedule') {
-    const ms = matchState.get();
-    // Playoffs theme: 2 matches on Days 1-3, 1 on Days 4-5 (see mplfs.html's buildTsMatches); other themes: 3 on Day 2, else 2.
-    const maxMatches = getTheme() === 'playoffs' ? ((ms.day || 1) >= 4 ? 1 : 2) : ((ms.day || 1) === 2 ? 3 : 2);
-    const cur  = state.mplfsScene.scheduleHighlight || 0;
-    const next = cur >= maxMatches ? 0 : cur + 1;
-    state.mplfsScene.scheduleHighlight = next;
-    state.overlayClients.forEach(c => { try { c.write('event: today_schedule\ndata: ' + JSON.stringify({ action: 'highlight', match: next }) + '\n\n'); } catch {} });
-    return res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "highlight", match: next });
-  }
-  state.mplfsScene.activeFeature = 'schedule';
-  state.mplfsScene.scheduleHighlight = 0;
-  state.overlayClients.forEach(c => { try { c.write('event: today_schedule\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/today_schedule/hide
-router.get('/overlay/today_schedule/hide', (req, res) => {
-  state.mplfsScene.activeFeature = null;
-  state.mplfsScene.scheduleHighlight = 0;
-  state.overlayClients.forEach(c => { try { c.write('event: today_schedule\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
 // GET /overlay/tomorrow_schedule/show
 router.get('/overlay/tomorrow_schedule/show', (req, res) => {
@@ -817,19 +475,7 @@ router.get('/overlay/tomorrow_schedule/hide', (req, res) => {
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 
-// GET /overlay/standings/show
-router.get('/overlay/standings/show', (req, res) => {
-  state.mplfsScene.activeFeature = 'standings';
-  state.overlayClients.forEach(c => { try { c.write('event: standings\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/standings/hide
-router.get('/overlay/standings/hide', (req, res) => {
-  state.mplfsScene.activeFeature = null;
-  state.overlayClients.forEach(c => { try { c.write('event: standings\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
 // GET /overlay/fs/debugoff
 router.get('/overlay/fs/debugoff', (req, res) => {
@@ -881,7 +527,7 @@ router.get('/overlay/middleboard/hide', (req, res) => {
 
 // GET /overlay/fs/hide
 router.get('/overlay/fs/hide', (req, res) => {
-  state.mplfsScene = { matchboard: false, middleboard: false, playerboard: false, activeFeature: null, scheduleHighlight: 0 };
+  state.mplfsScene = { matchboard: false, middleboard: false, playerboard: false, activeFeature: null };
   state.overlayClients.forEach(c => {
     try {
       c.write('event: matchboard\ndata: {"action":"hide"}\n\n');
@@ -1007,7 +653,7 @@ router.get('/overlay/post_heatmap/show', (req, res) => {
   state.mplfsScene.activeFeature = 'heatmap';
   // Post Heatmap is now an MVP-Highlights-style full-screen scene (its own
   // plaque/photo layout, not a Post-family board scene) — no matchboard,
-  // same as highlights/show above. mplfs.html's own transitionTo() no
+  // same as highlights/show above. postgame.html's own transitionTo() no
   // longer has 'heatmap' in POST_FEATURES, so its transitionToImpl 'else'
   // branch actively hides matchboard/middleboard/playerboard on the
   // client side; this route must not fight that by forcing matchboard
@@ -1029,7 +675,7 @@ router.get('/overlay/post_heatmap/hide', (req, res) => {
 router.get('/overlay/post_h2h/show', (req, res) => {
   state.mplfsScene.activeFeature = 'post_h2h';
   // Post H2H is its own full-bleed two-card scene (own header/sponsor
-  // loop, no shared middleboard/playerboard) — mplfs.html's transitionTo()
+  // loop, no shared middleboard/playerboard) — postgame.html's transitionTo()
   // special-cases 'post_h2h' the same way it does 'post4key', actively
   // hiding matchboard/middleboard/playerboard client-side, so this route
   // must not force any of them back on server-side.
@@ -1051,7 +697,7 @@ router.get('/overlay/post_carry/show', (req, res) => {
   state.mplfsScene.activeFeature = 'post_carry';
   // Post Carry is its own full-bleed Visa-branded card+donut scene (own
   // player card, own header banner) — same deal as post_heatmap/highlights
-  // above, NOT a Post-family board scene. mplfs.html's transitionTo() does
+  // above, NOT a Post-family board scene. postgame.html's transitionTo() does
   // not have 'post_carry' in POST_FEATURES, so its transitionToImpl 'else'
   // branch actively hides matchboard/middleboard/playerboard client-side;
   // this route must not fight that by forcing any of them back on here.
@@ -1073,7 +719,7 @@ router.get('/overlay/consolidated_post/show', (req, res) => {
   state.mplfsScene.matchboard = true;
   state.mplfsScene.activeFeature = 'consolidated_post';
   // Deliberately do NOT also broadcast a standalone 'matchboard' event here.
-  // mplfs.html has its own independent 'matchboard' SSE listener (for the
+  // postgame.html has its own independent 'matchboard' SSE listener (for the
   // Control tab's standalone Matchboard toggle) that calls showMatchBoard()
   // directly with no idea cp-compact is about to be applied — broadcasting
   // it here raced against showConsolidatedPost()'s own properly-sequenced
@@ -1151,7 +797,7 @@ router.get('/overlay/post4key/show', (req, res) => {
   state.mplfsScene.matchboard = true;
   state.mplfsScene.activeFeature = 'post4key';
   // Same reasoning as consolidated_post/show above: no standalone
-  // 'matchboard' broadcast — mplfs.html's own transitionTo() already
+  // 'matchboard' broadcast — postgame.html's own transitionTo() already
   // calls showMatchBoard() internally, and the dashboard's Matchboard
   // toggle stays in sync via the /overlay/mplfs-scene refetch triggered
   // off the 'post4key' event alone.
@@ -1168,7 +814,7 @@ router.get('/overlay/post4key/hide', (req, res) => {
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 
-// GET /overlay/post_golddistri/show — Post Gold Distribution (mplfs.html).
+// GET /overlay/post_golddistri/show — Post Gold Distribution (postgame.html).
 // Same board handling as post4key: matchboard shows, middle/player boards are
 // hidden client-side by transitionTo().
 router.get('/overlay/post_golddistri/show', (req, res) => {
@@ -1187,7 +833,7 @@ router.get('/overlay/post_golddistri/hide', (req, res) => {
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 
-// GET /overlay/post_killevents/show — Post Kill Events (mplfs.html). Same board
+// GET /overlay/post_killevents/show — Post Kill Events (postgame.html). Same board
 // handling as post4key / post_golddistri.
 router.get('/overlay/post_killevents/show', (req, res) => {
   state.mplfsScene.matchboard = true;
@@ -1205,23 +851,7 @@ router.get('/overlay/post_killevents/hide', (req, res) => {
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 
-// GET /overlay/draftpredict3/show
-// Draft Predict v3 — same checkOverlays shape as draftrecap
-// above, kept as its own independent key. Architecturally identical to v2
-// (see Draft.html's 'dp3'-prefixed block) — the only difference is this is
-// a fully separate instance so it can be shown/hidden/positioned on its own.
-router.get('/overlay/draftpredict3/show', (req, res) => {
-  state.checkOverlays.draftpredict3 = true;
-  state.overlayClients.forEach(c => { try { c.write('event: draftpredict3\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
 
-// GET /overlay/draftpredict3/hide
-router.get('/overlay/draftpredict3/hide', (req, res) => {
-  state.checkOverlays.draftpredict3 = false;
-  state.overlayClients.forEach(c => { try { c.write('event: draftpredict3\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
 
 // Draft.html — Map Detail. No `type` param — the TEXT shown is driven by
 // whatever map Draft.html's own /match/state poll has as the currently
@@ -1229,21 +859,6 @@ router.get('/overlay/draftpredict3/hide', (req, res) => {
 // Wisp); for any other map, 'show' is a no-op client-side. Server side is
 // just a plain show/hide.
 
-// Map Detail v2 — the map bug itself expands to reveal the description
-// (Draft.html's #mapdetail2-plate).
-router.get('/overlay/mapdetailv2/show', (req, res) => {
-  state.mapDetailV2 = { visible: true };
-  state.overlayClients.forEach(c => { try { c.write('event: mapdetailv2\ndata: {"action":"show"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
-});
-router.get('/overlay/mapdetailv2/hide', (req, res) => {
-  state.mapDetailV2 = { visible: false };
-  state.overlayClients.forEach(c => { try { c.write('event: mapdetailv2\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
-});
-router.get('/overlay/mapdetailv2-state', (req, res) => {
-  res.set({ "Cache-Control": "no-store" }).json(state.mapDetailV2);
-});
 
 // GET /overlay/debugoff — hide debug bars on all overlays
 router.get('/overlay/debugoff', (req, res) => {
@@ -1251,7 +866,7 @@ router.get('/overlay/debugoff', (req, res) => {
   res.set({ 'Cache-Control': 'no-store' }).json({ ok: true });
 });
 
-// Persisted Debug Mode flag — gates whether mplfs.html's on-page debug bar
+// Persisted Debug Mode flag — gates whether postgame.html's on-page debug bar
 // (the ` -toggled panel with SHOW/HIDE/PREVIEW buttons per feature, plus
 // any placeholder-data test tools like Final Team's) is reachable at all.
 // Defaults OFF so it's never silently live on a real broadcast machine.
@@ -1288,7 +903,7 @@ router.get('/overlay/features', (req, res) => {
 });
 
 // GET /overlay/feature/:feature/enable|disable
-const VALID_FEATURES = ['killevents','items','skypiercer','lordadv','trinity','swap','lvl15','conceal','fights','objectivespawn','stolengold','debugphotos','draftstats','lineupsecrole_blue','lineupsecrole_red','lineupv2_blue','lineupv2_red','credits_v2','mvp_v2','hl_v2','wl_v2','ggc_v2','draftpredict3_rationale','led_items','led_trinity','led_swap','led_lvl15','led_conceal','led_skypiercer'];
+const VALID_FEATURES = ['killevents','items','skypiercer','lordadv','trinity','swap','lvl15','conceal','fights','objectivespawn','stolengold','debugphotos','credits_v2','mvp_v2','hl_v2','ggc_v2'];
 router.get('/overlay/feature/:feature/:action', (req, res) => {
   const { feature, action } = req.params;
   if (!VALID_FEATURES.includes(feature) || !['enable','disable'].includes(action)) {
@@ -1343,100 +958,9 @@ router.get('/overlay/killevent', (req, res) => {
   res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, video, playerName, role, camp, teamTricode });
 });
 
-// Map Selection tag (html/mpltag.html) — sequential per-game reveal.
-// Each "show" call does ONE of, in priority order:
-//   1. If an already-revealed game is still waiting on its winner, and
-//      the winner has since been picked — reveal just that game's win
-//      banner (phase 3) and stop there.
-//   2. Otherwise, reveal the next game's side+map recap (phases 1-2),
-//      gated on toss winner + side + map being picked (the winner is
-//      NOT required — it can be left open). If that game's winner
-//      already happens to be known at reveal time, its win banner is
-//      included in the same reveal instead of requiring an extra press.
-//      EXCEPT: if the game currently in progress (ms.currentGame) is
-//      itself ready and its map is the literal 'NONE' sentinel (an
-//      explicit "no map yet" pick — see html/mpltag.html's
-//      .ms-sideonly), jump straight to revealing THAT game instead of
-//      the strictly-next sequential index, skipping any earlier
-//      never-revealed games entirely — per explicit request, there's
-//      no reason to make the caster click through every earlier
-//      game's recap just to reach a "picking sides for the game in
-//      progress" status card. ONLY for Regular/Playoffs though — this
-//      skip-ahead assumes .ms-sideonly's OLD single-replace-in-place
-//      behavior, where an un-revealed earlier NONE game is harmless to
-//      skip since it'd just get overwritten anyway. 10th Anniversary
-//      forces every game's map to 'NONE' (see server.js's
-//      /mapselection/action) and instead accumulates one persistent
-//      card per game index (html/mpltag.html's ensureSideOnlyBlock) —
-//      skipping ahead there permanently loses every skipped game's own
-//      card (it never gets its own reveal call), which is exactly the
-//      "Game 1 never shows once Game 2 is in progress" bug this guard
-//      fixes. Anniversary must always reveal strictly sequentially.
-// "hide" clears everything at once and resets both counters so the
-// next show cycle starts back at game 1.
-const mapSelectionState = require('../lib/mapSelectionState');
-const { getTheme } = require('../lib/theme');
 
-router.get('/overlay/mapselecttag-state', (req, res) => {
-  res.set({ 'Cache-Control': 'no-store' }).json(state.mapSelectTag);
-});
 
-router.get('/overlay/mapselecttag/show', (req, res) => {
-  const ms  = mapSelectionState.get();
-  const tag = state.mapSelectTag;
 
-  // Priority 1 — catch up a pending win for an already-revealed game.
-  if (tag.revealedWins < tag.revealedGames) {
-    const idx = tag.revealedWins;
-    const pending = ms.games[idx];
-    if (pending && pending.winner) {
-      tag.revealedWins = idx + 1;
-      const payload = JSON.stringify({ action: 'showWinner', gameIndex: idx, game: pending, match: ms.match, home: ms.home, away: ms.away });
-      state.overlayClients.forEach(c => { try { c.write(`event: mapselecttag\ndata: ${payload}\n\n`); } catch {} });
-      return res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, action: 'showWinner', gameIndex: idx });
-    }
-  }
-
-  // Priority 2 — reveal the next new game's side + map.
-  let nextIdx = tag.revealedGames;
-  // Skip-ahead — see this route's own header comment. Only when the
-  // in-progress game is genuinely ahead of what's been revealed AND
-  // itself ready AND explicitly marked NONE; otherwise falls through
-  // to the normal strictly-sequential nextIdx untouched.
-  const currentIdx = (ms.currentGame || 1) - 1;
-  if (getTheme() !== '10th_anniversary' && currentIdx > nextIdx && currentIdx < ms.maxGames) {
-    const currentGame = ms.games[currentIdx];
-    const currentReady = currentGame && currentGame.tossWinner && currentGame.tossSide && currentGame.map;
-    if (currentReady && currentGame.map === 'NONE') {
-      nextIdx = currentIdx;
-      // The games we're jumping past were never actually revealed, so
-      // there's nothing for a later Priority-1 pass to "catch up" on
-      // their behalf — advance revealedWins in lockstep so it never
-      // tries.
-      tag.revealedWins = nextIdx;
-    }
-  }
-  const game = ms.games[nextIdx];
-  const ready = game && game.tossWinner && game.tossSide && game.map;
-  if (nextIdx >= ms.maxGames || !ready) {
-    return res.set({ 'Cache-Control': 'no-store' }).json({
-      ok: false, blocked: true,
-      reason: (nextIdx >= ms.maxGames) ? 'All games in this series are already revealed.' : `Game ${nextIdx + 1}'s team and map selection isn't complete yet.`,
-    });
-  }
-  tag.revealedGames = nextIdx + 1;
-  if (game.winner) tag.revealedWins = tag.revealedGames; // winner already known — include it in this same reveal
-  const payload = JSON.stringify({ action: 'show', gameIndex: nextIdx, game: game, match: ms.match, home: ms.home, away: ms.away });
-  state.overlayClients.forEach(c => { try { c.write(`event: mapselecttag\ndata: ${payload}\n\n`); } catch {} });
-  res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, action: 'show', gameIndex: nextIdx });
-});
-
-router.get('/overlay/mapselecttag/hide', (req, res) => {
-  state.mapSelectTag.revealedGames = 0;
-  state.mapSelectTag.revealedWins  = 0;
-  state.overlayClients.forEach(c => { try { c.write('event: mapselecttag\ndata: {"action":"hide"}\n\n'); } catch {} });
-  res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, action: 'hide' });
-});
 
 // GET/POST /overlay/:slot — generic show/hide slot handler (must be LAST)
 router.all('/overlay/:slot', (req, res) => {

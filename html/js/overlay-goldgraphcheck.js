@@ -4,7 +4,7 @@
    mploverlay_v7.css for the exact layout). Inside it,
    .ggc-rect (the pasted .Rectangle_1 spec: 15,15, 857×253) is the white
    plotting canvas an SVG gold-difference chart draws into — same
-   area/line-chart technique as mplfs.html's Consolidated Post graph
+   area/line-chart technique as postgame.html's Consolidated Post graph
    (renderCpgChart / #cpg-chart), reused here with differences the user
    asked for:
      1. No separate Lord/Turtle/Tower/Kill rows below the chart — every
@@ -67,7 +67,7 @@ const GGC_EVENTS_REVEAL_WINDOW_MS = GGC_REVEAL_DELAY + GGC_EVENTS_STAGGER_MS + G
    seconds, trading a little of that spikiness for a still-organic (not
    flattened, unlike the old 30s-grid decimation) line.
    Mutable (not a const) + dashboard-Edit-tunable ("Spike Smoothing" on
-   #ggc-chart) — same cross-frame direct-call pattern as mplfs.html's
+   #ggc-chart) — same cross-frame direct-call pattern as postgame.html's
    #mv-hero-img Feather/Intensity, since a smoothing radius isn't a real
    CSS property so it can't go through the normal style-inject path. */
 let ggcSmoothRadius = 3;
@@ -441,7 +441,7 @@ function ggcRenderChart(fullSeries, fullEvents) {
   document.getElementById('ggc-area').setAttribute('d', areaD);
 
   // Gradient color-switches exactly at zero-crossings — same technique as
-  // mplfs.html's renderCpgChart (Desktop/gold_difference_zero_line.html).
+  // postgame.html's renderCpgChart (Desktop/gold_difference_zero_line.html).
   // Computed against plotSeries (not the raw series) so the crossing
   // points line up exactly with what's actually drawn.
   const stops = [];

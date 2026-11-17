@@ -183,7 +183,7 @@ function icUpdate(data) {
 registerPollHandler(icUpdate);
 
 /* Waits for every <img> under `overlay` to finish loading (or errors, or
-   maxWaitMs elapses) — same shape as mplfs.html's preloadMedia(). On a
+   maxWaitMs elapses) — same shape as postgame.html's preloadMedia(). On a
    freshly-reloaded page none of the ~60 item/portrait icons are cached
    yet, so setting all their src at once and immediately starting the
    slide-in transition let the burst of first-time image decodes stall
