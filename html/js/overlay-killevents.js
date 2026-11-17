@@ -268,9 +268,9 @@ function killEventPhotoSrc(playerName) {
      no "_resized" suffix. */
   var th = document.documentElement.getAttribute('data-theme');
   if (th === '10th_anniversary' || th === 'playoffs') {
-    return 'assets/photo/hires/SIGNATURE/' + encodeURIComponent(playerName) + '_SIGNATURE.png';
+    return 'assets/photo/hires/SIGNATURE_web/' + encodeURIComponent(playerName) + '_SIGNATURE.webp';
   }
-  return 'assets/photo/SIGNATURE/' + encodeURIComponent(playerName) + '_SIGNATURE_resized.png';
+  return 'assets/photo/SIGNATURE/' + encodeURIComponent(playerName) + '_SIGNATURE_resized.webp';
 }
 
 function killNametagBgSrc(camp) {

@@ -1,16 +1,4 @@
-/* Hero KOTAK portraits: prefer assets/hero/web/ (512px WebP, ~25KB each) over the
-   1000x1000 PNGs in assets/hero/full/ (~900KB each). Include right after theme-apply.js.
-   Missing WebP (new hero not yet converted) transparently falls back to the
-   original PNG via the capture-phase error listener below — covers every
-   <img> on the page, however its src was assigned. */
+/* Hero KOTAK portraits: assets/hero/web/HERO_<id>_KOTAK.webp (512px WebP, ~25KB each — the 1000px PNG originals were removed). Include right after theme-apply.js. */
 function heroWebUrl(id, prefix) {
   return (prefix === undefined ? '' : prefix) + 'assets/hero/web/HERO_' + id + '_KOTAK.webp';
 }
-document.addEventListener('error', function (e) {
-  var img = e.target;
-  if (!img || img.tagName !== 'IMG' || img.dataset.heroPngFallback) return;
-  var m = /(^|\/)assets\/hero\/web\/HERO_(\d+)_KOTAK\.webp(\?.*)?$/.exec(img.getAttribute('src') || '');
-  if (!m) return;
-  img.dataset.heroPngFallback = '1';
-  img.src = m[1] + 'assets/hero/full/HERO_' + m[2] + '_KOTAK.png';
-}, true);

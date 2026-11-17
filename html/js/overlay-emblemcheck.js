@@ -118,7 +118,7 @@ function eccUpdate(data) {
     const ref     = eccRefs[i];
     if (!seat || !ref) continue;
 
-    if (seat.heroid) ref.portrait.src = `assets/hero/post/${seat.heroid}_POST_HERO.png`;
+    if (seat.heroid) ref.portrait.src = `assets/hero/post/${seat.heroid}_POST_HERO.webp`;
     else              ref.portrait.removeAttribute('src');
 
     ref.nameInner.textContent = (seat.name || '').toUpperCase();

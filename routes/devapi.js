@@ -394,8 +394,8 @@ const PHOTOS_DIR = path.join(__dirname, '..', 'assets', 'photo');
 router.get('/api/signature-photos', (req, res) => {
   try {
     const names = fs.readdirSync(path.join(PHOTOS_DIR, 'SIGNATURE'))
-      .filter(f => f.endsWith('_SIGNATURE_resized.png'))
-      .map(f => f.slice(0, -'_SIGNATURE_resized.png'.length));
+      .filter(f => f.endsWith('_SIGNATURE_resized.webp'))
+      .map(f => f.slice(0, -'_SIGNATURE_resized.webp'.length));
     res.set('Cache-Control', 'no-store').json({ names });
   } catch (e) {
     res.status(500).json({ names: [] });
@@ -423,7 +423,7 @@ router.get('/api/photo-manifest', (req, res) => {
     for (const pose of poses) {
       const dir = path.join(PHOTOS_DIR, pose);
       try {
-        manifest[pose] = fs.readdirSync(dir).filter(f => /\.png$/i.test(f));
+        manifest[pose] = fs.readdirSync(dir).filter(f => /\.webp$/i.test(f));
       } catch { manifest[pose] = []; }
     }
     res.set('Cache-Control', 'no-store').json(manifest);

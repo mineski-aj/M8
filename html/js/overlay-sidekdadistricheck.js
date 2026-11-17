@@ -26,7 +26,7 @@ function skdcCampClass(camp) {
    overlay-killevents.js's killEventPhotoSrc, for the featured player. */
 function skdcSignaturePhotoSrc(name) {
   if (!name) return '';
-  return `/assets/photo/SIGNATURE/${encodeURIComponent(name)}_SIGNATURE_resized.png`;
+  return `/assets/photo/SIGNATURE/${encodeURIComponent(name)}_SIGNATURE_resized.webp`;
 }
 /* /assets/photo/FRONT/<name>_FRONT_resized.png for the 5 stat-bar photos —
    always FRONT regardless of that row's own camp (unlike
@@ -35,7 +35,7 @@ function skdcSignaturePhotoSrc(name) {
    team side). */
 function skdcSidePhotoSrc(name) {
   if (!name) return '';
-  return `/assets/photo/FRONT/${encodeURIComponent(name + '_FRONT_resized.png')}`;
+  return `/assets/photo/FRONT/${encodeURIComponent(name + '_FRONT_resized.webp')}`;
 }
 function skdcHeroSrc(heroid) {
   return heroid ? heroWebUrl(heroid) : '';

@@ -79,13 +79,13 @@ function sgdcRoleIconSrc(role, camp1, camp2) {
 function sgdcPhotoSrc(name, side) {
   if (!name) return '';
   const folder = side === 'home' ? 'LEFT' : 'RIGHT';
-  return `/assets/photo/${folder}/${encodeURIComponent(name + '_' + folder + '_resized.png')}`;
+  return `/assets/photo/${folder}/${encodeURIComponent(name + '_' + folder + '_resized.webp')}`;
 }
 
 /* assets/hero/post/<heroid>_POST_HERO.png — same asset convention as
    ingame_red.html/ingame_blue.html's hero portraits. */
 function sgdcHeroSrc(heroid) {
-  return heroid ? `assets/hero/post/${heroid}_POST_HERO.png` : '';
+  return heroid ? `assets/hero/post/${heroid}_POST_HERO.webp` : '';
 }
 
 function sgdcFormatGold(v) {

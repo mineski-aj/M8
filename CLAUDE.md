@@ -27,9 +27,9 @@ Don't commit unless asked.
 
 ```
 assets/
-  hero/      full/ (1000px PNG)  web/ (512px WebP)  mvp/ mvp_web/  highlights/  post/
-  photo/     player photos by pose: FRONT DEFEAT LEFT RIGHT SIGNATURE VICTORY (+ placeholder.png, Dynamic/3_CROPPED BNW, "Playoffs Sched", broll)
-             hires/<POSE>[_web]/
+  hero/      web/ (512px WebP icons, HERO_<id>_KOTAK.webp)  mvp_web/ (MVP_<id>.webp)  highlights/ (<id>heromvp.webp)  post/ (<id>_POST_HERO.webp)
+  photo/     player photos by pose: FRONT DEFEAT LEFT RIGHT SIGNATURE VICTORY (small <ign>_<POSE>_resized.webp) (+ placeholder.png, Dynamic/3_CROPPED BNW, "Playoffs Sched", broll)
+             hires/<POSE>_web/<ign>_<POSE>.webp (full-size WebP; the PNG originals were deleted)
   game/      items/ role/ spell/ emblem/ maps/      (game-data icons)
   team/      logos/<TRI>.png
   sponsor/   MAIN/ MY/ PH/ ID/ = 4 logo sets (each + white/); routes take ?set=, default MAIN — served by /api/sponsors (the scene art is overlay/sponsors)
@@ -38,7 +38,7 @@ assets/
   common/    shared images (mpl2026logo.png)
   overlay/   per-scene art for the remaining scenes (ingame, postgame, PostH2H, consolidated_post, mvp, highlights, credits, postkill, richguy, post_heart, visacarry, noisemeter, shared Waiting/Today header+box art used by Tomorrow's Schedule, …); optional playoffs/ and anniversary/ theme subfolders use the same filenames
 ```
-Server-side dirs that read from disk: `routes/devapi.js` (`SPONSORS_ROOT`, `PHOTOS_DIR`, `LOGOS_DIR`), `routes/overlay.js` (`PHOTOS_DIR`, `HIRES_FRONT_DIR`). `Tools/optimize-images.js` JOBS use these paths too. Escaped-slash regexes (`hero-web.js`, `hiresWebUrl` in postgame.html) hold paths as well — update them when moving things.
+Server-side dirs that read from disk: `routes/devapi.js` (`SPONSORS_ROOT`, `PHOTOS_DIR`, `LOGOS_DIR`), `routes/overlay.js` (`PHOTOS_DIR`, `HIRES_FRONT_DIR`). Escaped-slash regexes (`hero-web.js`, `hiresWebUrl` in postgame.html) hold paths as well — update them when moving things.
 
 ## Game feed adapter — M8 V2 raw battle feed (`lib/rawAdapter.js`)
 
@@ -208,3 +208,7 @@ Headless Edge over raw CDP (Node has native `fetch`/`WebSocket`):
 Get the target's `webSocketDebuggerUrl` from `http://localhost:9222/json`, then `Page.navigate` / `Runtime.evaluate`. Use `--virtual-time-budget` only for short synchronous checks; for video or timer-paced work use a real background process and real sleeps. Never `await` a `Runtime.evaluate` that sets `location.href` (wrap in `setTimeout(...,10);1`). Kill orphaned harness Edge processes (by `--user-data-dir`) before trusting perf numbers.
 
 **Tests must not leave real shared state changed** (`state.mplfsScene`, `checkOverlays`, `api_mode.json`, the `*_api_url.json` files): capture first, restore after (`curl .../fs/hide` fully resets mplfs). Prefer an isolated harness: extract the real `<script>` from the file into a scratch page and expose internals via `window.__test`. Stub fetches via `Page.addScriptToEvaluateOnNewDocument`; jump to a scene's end state by adding its final CSS class. For mpltag.html, a regex `<script>` extraction fails on a comment containing `<script` (ignore) — slice the IIFE by `indexOf` and append `window.__t = {...}`.
+
+## Images are WebP-only for hero / MVP / player photos
+
+Hero icons, MVP art, hero post/highlight art and all player photos exist **only as WebP** (the PNG originals and the old `_web` fallback logic were removed — `hero-web.js` no longer has a PNG fallback, `mvSetImg()` in postgame.html just hides the `<img>` if the file is missing). Add new art with `python3 Tools/png2webp.py lossy <dir>` (quality 90, alpha kept) and keep the filename convention above; `/api/player-photos`, `/api/signature-photos` and `/api/photo-manifest` list `*.webp`. UI art under `assets/overlay/**` is still PNG (theme variants and built-up paths such as `wsTvcAsset(name + '.png')` make a blind rename unsafe).

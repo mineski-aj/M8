@@ -12,12 +12,12 @@ router.get('/api/player-photos', (req, res) => {
   if (!_playerPhotoNames) {
     try {
       const front = fs.readdirSync(path.join(PHOTOS_DIR, 'FRONT'))
-        .filter(f => f.endsWith('_FRONT_resized.png'))
-        .map(f => f.slice(0, -'_FRONT_resized.png'.length));
+        .filter(f => f.endsWith('_FRONT_resized.webp'))
+        .map(f => f.slice(0, -'_FRONT_resized.webp'.length));
       const victorySet = new Set(
         fs.readdirSync(path.join(PHOTOS_DIR, 'VICTORY'))
-          .filter(f => f.endsWith('_VICTORY_resized.png'))
-          .map(f => f.slice(0, -'_VICTORY_resized.png'.length))
+          .filter(f => f.endsWith('_VICTORY_resized.webp'))
+          .map(f => f.slice(0, -'_VICTORY_resized.webp'.length))
       );
       _playerPhotoNames = front.filter(n => victorySet.has(n));
     } catch (e) {
@@ -27,27 +27,6 @@ router.get('/api/player-photos', (req, res) => {
   res.set({ 'Cache-Control': 'no-store' }).json({ names: _playerPhotoNames });
 });
 
-// GET /api/hires-front-names — {UPPERNAME: exactFilename} map for
-// assets/photo/hires/FRONT/*_FRONT.png, used by Player H2H (Gold) to case-insensitively
-// resolve the API's all-caps PLAYER field to the mixed-case filenames
-// actually on disk (e.g. "SHIZOU" -> "Shizou_FRONT.png"). Separate from
-// /api/player-photos above (assets/photo/FRONT, resized thumbnails for kill
-// events) — this is the full-res hires/FRONT set.
-const HIRES_FRONT_DIR = path.join(__dirname, '..', 'assets', 'photo', 'hires', 'FRONT');
-let _hiresFrontMap = null;
-router.get('/api/hires-front-names', (req, res) => {
-  if (!_hiresFrontMap) {
-    try {
-      _hiresFrontMap = {};
-      fs.readdirSync(HIRES_FRONT_DIR)
-        .filter(f => f.endsWith('_FRONT.png'))
-        .forEach(f => { _hiresFrontMap[f.slice(0, -'_FRONT.png'.length).toUpperCase()] = f; });
-    } catch (e) {
-      _hiresFrontMap = {};
-    }
-  }
-  res.set({ 'Cache-Control': 'no-store' }).json({ names: _hiresFrontMap });
-});
 
 // GET /overlay/force-reload — hard-reload every open overlay page (postgame.html,
 // ENTVC.html, DraftIndex.html, Draft.html, mpltag.html, mploverlay_v7.html) at
