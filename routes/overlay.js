@@ -43,6 +43,68 @@ router.get('/overlay/force-reload', (req, res) => {
 
 
 
+// ═══ Draft overlay (html/Draft.html): show/hide/state, player-photo mode, Map Detail v2 ═══
+// GET /overlay/draft-photo-mode — current player-photo source ('live' | 'random')
+router.get('/overlay/draft-photo-mode', (req, res) => {
+  res.set({ 'Cache-Control': 'no-store' }).json({ mode: state.draftPhotoMode });
+});
+
+// GET /overlay/draft-photo-mode/:mode — set mode, broadcast to connected overlays
+router.get('/overlay/draft-photo-mode/:mode', (req, res) => {
+  const mode = req.params.mode;
+  if (mode !== 'live' && mode !== 'random') {
+    return res.status(400).json({ ok: false, error: 'unknown mode' });
+  }
+  state.draftPhotoMode = mode;
+  const payload = JSON.stringify({ mode });
+  state.overlayClients.forEach(c => { try { c.write(`event: draftphotomode\ndata: ${payload}\n\n`); } catch {} });
+  res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, mode });
+});
+
+// GET /overlay/draft-state — current shown/hidden state, so a
+// freshly (re)loaded Draft.html can restore instead of guessing.
+router.get('/overlay/draft-state', (req, res) => {
+  res.set({ 'Cache-Control': 'no-store' }).json({ active: state.draftActive });
+});
+
+// GET /overlay/draft/show
+router.get('/overlay/draft/show', (req, res) => {
+  state.draftActive = true;
+  state.overlayClients.forEach(c => { try { c.write('event: draft\ndata: {"action":"show"}\n\n'); } catch {} });
+  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
+});
+
+// GET /overlay/draft/hide
+router.get('/overlay/draft/hide', (req, res) => {
+  state.draftActive = false;
+  state.overlayClients.forEach(c => { try { c.write('event: draft\ndata: {"action":"hide"}\n\n'); } catch {} });
+  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
+});
+
+// Draft.html — Map Detail. No `type` param — the TEXT shown is driven by
+// whatever map Draft.html's own /match/state poll has as the currently
+// selected map (Flying Cloud / Golden Turret / Healing Turtle / Revealing
+// Wisp); for any other map, 'show' is a no-op client-side. Server side is
+// just a plain show/hide.
+
+// Map Detail v2 — the map bug itself expands to reveal the description
+// (Draft.html's #mapdetail2-plate).
+router.get('/overlay/mapdetailv2/show', (req, res) => {
+  state.mapDetailV2 = { visible: true };
+  state.overlayClients.forEach(c => { try { c.write('event: mapdetailv2\ndata: {"action":"show"}\n\n'); } catch {} });
+  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
+});
+router.get('/overlay/mapdetailv2/hide', (req, res) => {
+  state.mapDetailV2 = { visible: false };
+  state.overlayClients.forEach(c => { try { c.write('event: mapdetailv2\ndata: {"action":"hide"}\n\n'); } catch {} });
+  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
+});
+router.get('/overlay/mapdetailv2-state', (req, res) => {
+  res.set({ "Cache-Control": "no-store" }).json(state.mapDetailV2);
+});
+
+
+
 // SSE heartbeat
 setInterval(() => {
   state.overlayClients.forEach(c => { try { c.write(': heartbeat\n\n'); } catch {} });

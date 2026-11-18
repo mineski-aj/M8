@@ -1,0 +1,3460 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <base href="/">
+  <script src="html/js/cache-bust.js"></script>
+  <script src="html/js/theme-apply.js"></script>
+  <script src="html/js/game-refresh.js"></script>
+  <script src="html/js/sponsor-set.js"></script>
+  <script src="html/js/event-log-client.js"></script>
+  <script src="html/js/overlay-sse-shim.js"></script>
+  <title>Draft Overlay</title>
+  <style>
+    @font-face {
+      font-family: 'General Sans';
+      font-weight: 600;
+      font-display: block;
+      src: local('GeneralSans-Semibold'), local('GeneralSans-SemiBold'), local('General Sans Semibold');
+    }
+    @font-face {
+      font-family: 'General Sans';
+      font-weight: 500;
+      font-display: block;
+      src: local('GeneralSans-Medium'), local('General Sans Medium'), url('/assets/fonts/GeneralSans-Medium.otf') format('opentype');
+    }
+    @font-face {
+      font-family: 'General Sans';
+      font-weight: 700;
+      font-display: block;
+      src: local('GeneralSans-Bold'), local('General Sans Bold'), url('/assets/fonts/GeneralSans-Bold.otf') format('opentype');
+    }
+    @font-face {
+      font-family: 'Anton';
+      font-weight: 400;
+      font-display: block;
+      src: local('Anton'), local('Anton Regular'), url('assets/fonts/Anton-Regular.ttf') format('truetype');
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    /* ── Scene ─────────────────────────────────────────────────── */
+    #scene {
+      position: absolute;
+      top: 0; left: 0;
+      width: 1920px; height: 1080px;
+      background: url('assets/overlay/draft/draftbg.png') no-repeat 0 0 / 1920px 1080px;
+      transform: translateY(0);
+      transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    /* JS (see the #scene background-image line further down) always
+       overrides this per match state (draftbg.png vs. the Enduring
+       Legacy variant) — this is just the pre-JS default so there's no
+       flash of the wrong art on first paint. Anniversary has no Enduring
+       Legacy variant of its own, so JS always picks this file for that
+       theme regardless of matchType. */
+    [data-theme="10th_anniversary"] #scene {
+      background-image: url('assets/overlay/draft/anniversary/draftbg.png');
+    }
+    [data-theme="playoffs"] #scene {
+      background-image: url('assets/overlay/draft/playoffs/draftbg.png');
+    }
+    /* Hidden state slides fully below the frame; base rule above carries
+       the "in" transition (slides upward to show), this carries the
+       "out" transition (slides downward to hide). Default (no class) is
+       visible, so a page load never flashes blank while the real state
+       is still being fetched — see the restore-on-load fetch below. */
+    #scene.draft-hidden {
+      transform: translateY(1080px);
+      transition: transform 0.45s cubic-bezier(0.4, 0, 1, 1);
+    }
+
+    /* ── Status area (BANNING / PICKING / FINAL CHANGES) ────────
+       left: -125.889px, top: 660.077px from design CSS.
+       Width 2172px makes the visual center land at 960px (screen center).
+    ─────────────────────────────────────────────────────────────── */
+    #status-area {
+      position: absolute;
+      left: -125.889px;
+      top: 923.077px;
+      width: 2172px;
+      text-align: center;
+    }
+    #status-text {
+      font-family: 'General Sans', 'Arial Black', sans-serif;
+      font-weight: 600;
+      font-size: 18px; /* 4.3pt @ 300dpi */
+      color: rgb(40,40,40);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      line-height: 1;
+    }
+
+    /* ── Countdown row ─────────────────────────────────────────── */
+    #countdown-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 10px;
+    }
+    #countdown-text {
+      font-family: 'Anton', sans-serif;
+      font-weight: 400;
+      font-size: 63px; /* 15.12pt @ 300dpi */
+      color: rgb(40,40,40);
+      line-height: 1;
+    }
+
+    /* ── Camp indicator triangles ──────────────────────────────── */
+    .tri {
+      width: 14px; height: 14px;
+      flex-shrink: 0;
+      visibility: hidden; /* reserves space; keeps countdown centered */
+      background: #00E878;
+      animation: tri-hover 2.2s ease-in-out infinite;
+    }
+    .tri.active { visibility: visible; }
+
+    /* Camp1 → left-pointing (on left of countdown, points toward camp1 side) */
+    #tri-camp1 { clip-path: polygon(14px 0, 0 7px, 14px 14px); }
+    /* Camp2 → right-pointing (on right of countdown, points toward camp2 side) */
+    #tri-camp2 { clip-path: polygon(0 0, 14px 7px, 0 14px); }
+
+    @keyframes tri-hover {
+      0%   { transform: translateX(-4px); }
+      50%  { transform: translateX(4px); }
+      100% { transform: translateX(-4px); }
+    }
+
+    /* ── Card idle triangles — shown only before a seat's picking turn
+       starts. Anchored right at the card's top/bottom edge; plate-content's
+       overflow:hidden clips whichever part of the hover bob exceeds the
+       card bounds. Apex always points toward the card's vertical centre. */
+    .card-tri {
+      position: absolute;
+      left: 50%;
+      width: 42px; height: 20px;
+      pointer-events: none;
+      z-index: 2;
+      display: none;
+      will-change: transform;
+    }
+
+    .card-tri-top {
+      top: 0;
+      /* Matches the animation's 0%/100% keyframe exactly — otherwise, during
+         its staggered animation-delay, the element has no transform at all
+         (not even the translateX(-50%) centering, since that only exists
+         inside the keyframes), so it sits uncentered until the delay ends
+         and visibly snaps into place. */
+      transform: translateX(-50%) translateY(-3px);
+      animation: card-tri-bob-top 2.2s ease-in-out infinite;
+    }
+    .card-tri-bottom {
+      bottom: 0;
+      transform: translateX(-50%) translateY(3px);
+      animation: card-tri-bob-bottom 2.2s ease-in-out infinite;
+    }
+    @keyframes card-tri-bob-top {
+      0%, 100% { transform: translateX(-50%) translateY(-3px); }
+      50%      { transform: translateX(-50%) translateY(-7px); }
+    }
+    @keyframes card-tri-bob-bottom {
+      0%, 100% { transform: translateX(-50%) translateY(3px); }
+      50%      { transform: translateX(-50%) translateY(7px); }
+    }
+
+
+    /* Glow is baked into a tiny SVG image (rasterized once, then just a
+       cached texture riding a compositor-only transform animation). The
+       old per-element filter: drop-shadow() + clip-path forced a re-raster
+       of every triangle on every bob frame — expensive under vMix's CEF
+       off-screen renderer. ::before extends 14px past the 42x20 box so the
+       halo isn't cut off; plate-content's overflow:hidden still clips it
+       at the card edge exactly as before. */
+    .card-tri::before {
+      content: ''; position: absolute;
+      left: -14px; top: -14px; width: 70px; height: 48px;
+      background-repeat: no-repeat; background-size: 100% 100%;
+      pointer-events: none;
+    }
+    .card-tri-top.camp1::before { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'70'%20height%3D'48'%20viewBox%3D'0%200%2070%2048'%3E%3Cdefs%3E%3Cfilter%20id%3D'g'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'1.5'%20result%3D'a'%2F%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'4'%20result%3D'b'%2F%3E%3CfeFlood%20flood-color%3D'%231E64FF'%2F%3E%3CfeComposite%20in2%3D'a'%20operator%3D'in'%20result%3D'ca'%2F%3E%3CfeFlood%20flood-color%3D'%231E64FF'%2F%3E%3CfeComposite%20in2%3D'b'%20operator%3D'in'%20result%3D'cb'%2F%3E%3CfeMerge%3E%3CfeMergeNode%20in%3D'cb'%2F%3E%3CfeMergeNode%20in%3D'ca'%2F%3E%3CfeMergeNode%20in%3D'SourceGraphic'%2F%3E%3C%2FfeMerge%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cpolygon%20points%3D'14%2C14%2056%2C14%2035%2C34'%20fill%3D'%231E64FF'%20filter%3D'url(%23g)'%2F%3E%3C%2Fsvg%3E"); }
+    .card-tri-bottom.camp1::before { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'70'%20height%3D'48'%20viewBox%3D'0%200%2070%2048'%3E%3Cdefs%3E%3Cfilter%20id%3D'g'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'1.5'%20result%3D'a'%2F%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'4'%20result%3D'b'%2F%3E%3CfeFlood%20flood-color%3D'%231E64FF'%2F%3E%3CfeComposite%20in2%3D'a'%20operator%3D'in'%20result%3D'ca'%2F%3E%3CfeFlood%20flood-color%3D'%231E64FF'%2F%3E%3CfeComposite%20in2%3D'b'%20operator%3D'in'%20result%3D'cb'%2F%3E%3CfeMerge%3E%3CfeMergeNode%20in%3D'cb'%2F%3E%3CfeMergeNode%20in%3D'ca'%2F%3E%3CfeMergeNode%20in%3D'SourceGraphic'%2F%3E%3C%2FfeMerge%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cpolygon%20points%3D'35%2C14%2056%2C34%2014%2C34'%20fill%3D'%231E64FF'%20filter%3D'url(%23g)'%2F%3E%3C%2Fsvg%3E"); }
+    .card-tri-top.camp2::before { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'70'%20height%3D'48'%20viewBox%3D'0%200%2070%2048'%3E%3Cdefs%3E%3Cfilter%20id%3D'g'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'1.5'%20result%3D'a'%2F%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'4'%20result%3D'b'%2F%3E%3CfeFlood%20flood-color%3D'%23FF3232'%2F%3E%3CfeComposite%20in2%3D'a'%20operator%3D'in'%20result%3D'ca'%2F%3E%3CfeFlood%20flood-color%3D'%23FF3232'%2F%3E%3CfeComposite%20in2%3D'b'%20operator%3D'in'%20result%3D'cb'%2F%3E%3CfeMerge%3E%3CfeMergeNode%20in%3D'cb'%2F%3E%3CfeMergeNode%20in%3D'ca'%2F%3E%3CfeMergeNode%20in%3D'SourceGraphic'%2F%3E%3C%2FfeMerge%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cpolygon%20points%3D'14%2C14%2056%2C14%2035%2C34'%20fill%3D'%23FF3232'%20filter%3D'url(%23g)'%2F%3E%3C%2Fsvg%3E"); }
+    .card-tri-bottom.camp2::before { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'70'%20height%3D'48'%20viewBox%3D'0%200%2070%2048'%3E%3Cdefs%3E%3Cfilter%20id%3D'g'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'1.5'%20result%3D'a'%2F%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'4'%20result%3D'b'%2F%3E%3CfeFlood%20flood-color%3D'%23FF3232'%2F%3E%3CfeComposite%20in2%3D'a'%20operator%3D'in'%20result%3D'ca'%2F%3E%3CfeFlood%20flood-color%3D'%23FF3232'%2F%3E%3CfeComposite%20in2%3D'b'%20operator%3D'in'%20result%3D'cb'%2F%3E%3CfeMerge%3E%3CfeMergeNode%20in%3D'cb'%2F%3E%3CfeMergeNode%20in%3D'ca'%2F%3E%3CfeMergeNode%20in%3D'SourceGraphic'%2F%3E%3C%2FfeMerge%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cpolygon%20points%3D'35%2C14%2056%2C34%2014%2C34'%20fill%3D'%23FF3232'%20filter%3D'url(%23g)'%2F%3E%3C%2Fsvg%3E"); }
+
+    /* 10th Anniversary — new camp colors + a 2px stroke that reads as INSIDE
+       the triangle's silhouette: the SVG draws the full-size #cdc3d4 triangle
+       (with the camp-colored glow) and a second, smaller triangle (vertices
+       pulled ~2px inward) in the real camp color on top; the sliver of the
+       outer one left visible IS the stroke. */
+    [data-theme="10th_anniversary"] .card-tri-top.camp1::before { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'70'%20height%3D'48'%20viewBox%3D'0%200%2070%2048'%3E%3Cdefs%3E%3Cfilter%20id%3D'g'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'1.5'%20result%3D'a'%2F%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'4'%20result%3D'b'%2F%3E%3CfeFlood%20flood-color%3D'%230095fd'%2F%3E%3CfeComposite%20in2%3D'a'%20operator%3D'in'%20result%3D'ca'%2F%3E%3CfeFlood%20flood-color%3D'%230095fd'%2F%3E%3CfeComposite%20in2%3D'b'%20operator%3D'in'%20result%3D'cb'%2F%3E%3CfeMerge%3E%3CfeMergeNode%20in%3D'cb'%2F%3E%3CfeMergeNode%20in%3D'ca'%2F%3E%3CfeMergeNode%20in%3D'SourceGraphic'%2F%3E%3C%2FfeMerge%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cpolygon%20points%3D'14%2C14%2056%2C14%2035%2C34'%20fill%3D'%23cdc3d4'%20filter%3D'url(%23g)'%2F%3E%3Cpolygon%20points%3D'17%2C15%2053%2C15%2035%2C32'%20fill%3D'%230095fd'%2F%3E%3C%2Fsvg%3E"); }
+    [data-theme="10th_anniversary"] .card-tri-bottom.camp1::before { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'70'%20height%3D'48'%20viewBox%3D'0%200%2070%2048'%3E%3Cdefs%3E%3Cfilter%20id%3D'g'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'1.5'%20result%3D'a'%2F%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'4'%20result%3D'b'%2F%3E%3CfeFlood%20flood-color%3D'%230095fd'%2F%3E%3CfeComposite%20in2%3D'a'%20operator%3D'in'%20result%3D'ca'%2F%3E%3CfeFlood%20flood-color%3D'%230095fd'%2F%3E%3CfeComposite%20in2%3D'b'%20operator%3D'in'%20result%3D'cb'%2F%3E%3CfeMerge%3E%3CfeMergeNode%20in%3D'cb'%2F%3E%3CfeMergeNode%20in%3D'ca'%2F%3E%3CfeMergeNode%20in%3D'SourceGraphic'%2F%3E%3C%2FfeMerge%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cpolygon%20points%3D'35%2C14%2056%2C34%2014%2C34'%20fill%3D'%23cdc3d4'%20filter%3D'url(%23g)'%2F%3E%3Cpolygon%20points%3D'35%2C16%2053%2C33%2017%2C33'%20fill%3D'%230095fd'%2F%3E%3C%2Fsvg%3E"); }
+    [data-theme="10th_anniversary"] .card-tri-top.camp2::before { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'70'%20height%3D'48'%20viewBox%3D'0%200%2070%2048'%3E%3Cdefs%3E%3Cfilter%20id%3D'g'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'1.5'%20result%3D'a'%2F%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'4'%20result%3D'b'%2F%3E%3CfeFlood%20flood-color%3D'%23fe243e'%2F%3E%3CfeComposite%20in2%3D'a'%20operator%3D'in'%20result%3D'ca'%2F%3E%3CfeFlood%20flood-color%3D'%23fe243e'%2F%3E%3CfeComposite%20in2%3D'b'%20operator%3D'in'%20result%3D'cb'%2F%3E%3CfeMerge%3E%3CfeMergeNode%20in%3D'cb'%2F%3E%3CfeMergeNode%20in%3D'ca'%2F%3E%3CfeMergeNode%20in%3D'SourceGraphic'%2F%3E%3C%2FfeMerge%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cpolygon%20points%3D'14%2C14%2056%2C14%2035%2C34'%20fill%3D'%23cdc3d4'%20filter%3D'url(%23g)'%2F%3E%3Cpolygon%20points%3D'17%2C15%2053%2C15%2035%2C32'%20fill%3D'%23fe243e'%2F%3E%3C%2Fsvg%3E"); }
+    [data-theme="10th_anniversary"] .card-tri-bottom.camp2::before { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'70'%20height%3D'48'%20viewBox%3D'0%200%2070%2048'%3E%3Cdefs%3E%3Cfilter%20id%3D'g'%20x%3D'0'%20y%3D'0'%20width%3D'100%25'%20height%3D'100%25'%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'1.5'%20result%3D'a'%2F%3E%3CfeGaussianBlur%20in%3D'SourceAlpha'%20stdDeviation%3D'4'%20result%3D'b'%2F%3E%3CfeFlood%20flood-color%3D'%23fe243e'%2F%3E%3CfeComposite%20in2%3D'a'%20operator%3D'in'%20result%3D'ca'%2F%3E%3CfeFlood%20flood-color%3D'%23fe243e'%2F%3E%3CfeComposite%20in2%3D'b'%20operator%3D'in'%20result%3D'cb'%2F%3E%3CfeMerge%3E%3CfeMergeNode%20in%3D'cb'%2F%3E%3CfeMergeNode%20in%3D'ca'%2F%3E%3CfeMergeNode%20in%3D'SourceGraphic'%2F%3E%3C%2FfeMerge%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cpolygon%20points%3D'35%2C14%2056%2C34%2014%2C34'%20fill%3D'%23cdc3d4'%20filter%3D'url(%23g)'%2F%3E%3Cpolygon%20points%3D'35%2C16%2053%2C33%2017%2C33'%20fill%3D'%23fe243e'%2F%3E%3C%2Fsvg%3E"); }
+
+    /* Playoffs — the idle card triangles are the gold playoffs_trianglesdraft.png
+       (61x31, apex down) instead of the glowing SVG triangles. The bottom one
+       is the same art flipped vertically so its apex points up. Box resized to
+       the art; the bob animation still moves the whole box. */
+    [data-theme="playoffs"] .card-tri { width: 61px; height: 31px; }
+    [data-theme="playoffs"] .card-tri::before {
+      left: 0; top: 0; width: 100%; height: 100%;
+      background-image: url('assets/overlay/draft/playoffs/playoffs_trianglesdraft.png');
+    }
+    [data-theme="playoffs"] .card-tri-bottom::before { transform: scaleY(-1); }
+
+    /* ── Pick plate flex layout ────────────────────────────────── */
+    .plates-camp {
+      position: absolute;
+      top: 851px;
+      display: flex;
+      gap: 1px;
+      align-items: flex-start;
+    }
+    .plates-camp-1 { left: 0; }
+    /* Camp2: seat_1 rightmost → row-reverse, container starts at left:1161 */
+    .plates-camp-2 { left: 1161px; flex-direction: row-reverse; }
+
+    /* Flex item — its width transitions drive the squeeze/expand */
+    .seat-unit {
+      flex: 0 0 auto;
+      width: 151px;
+      height: 168px;
+      position: relative;
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      min-width: 0;
+    }
+    .seat-unit.picking-expand { width: 167px; }
+
+    /* 1 picker: others shrink to 147 px */
+    .plates-camp.has-picker .seat-unit:not(.picking-expand) { width: 147px; }
+
+    /* 2 pickers: others shrink to fill remaining span exactly */
+    .plates-camp.has-two-pickers .seat-unit.picking-expand  { width: 167px; }
+    .plates-camp.has-two-pickers .seat-unit:not(.picking-expand) {
+      width: calc((759px - 2 * 167px - 4px) / 3); /* ≈ 140.33 px */
+    }
+
+    /* Plate — fills the seat-unit so plateback.png background grows with it */
+    .plate {
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 168px;
+      background: url('assets/overlay/draft/plateback.png') no-repeat center center / cover;
+    }
+    /* 10th Anniversary — separate blue-side/red-side plate art (regular
+       theme uses the same plateback.png for both sides). .plates-camp-1
+       is blue (campid 1), .plates-camp-2 is red (campid 2) — see
+       buildPickPlates/showPickAnim below for the same split applied to
+       hero banners and the picking*.webm animations. */
+    [data-theme="10th_anniversary"] .plates-camp-1 .plate {
+      background-image: url('assets/overlay/draft/anniversary/plateback1.png');
+    }
+    [data-theme="10th_anniversary"] .plates-camp-2 .plate {
+      background-image: url('assets/overlay/draft/anniversary/plateback2.png');
+    }
+
+    /* Playoffs — gold plate back for both sides. */
+    [data-theme="playoffs"] .plate {
+      background-image: url('assets/overlay/draft/playoffs/playoffs_draftgold.png');
+    }
+
+    /* Content wrapper — fills the plate width so cropping scales with it */
+    .plate-content {
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 168px;
+      overflow: hidden;
+    }
+
+    /* Hero WebM video — 168 px wide (uniform scale), centred.
+       plate-content overflow:hidden crops sides as plate shrinks,
+       and crops top/bottom since the video is taller than 168 px. */
+    .hero-video {
+      position: absolute;
+      left: 50%; top: -3px;
+      transform: translateX(-50%);
+      width: 168px;
+      height: auto;
+      display: none;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Matte-reveal canvas — matches hero-video position exactly */
+    .plate-canvas {
+      position: absolute;
+      left: 50%; top: -3px;
+      transform: translateX(-50%);
+      width: 168px;
+      /* height set dynamically to match hero video natural aspect ratio */
+      opacity: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Name — centred under the seat-unit (auto width = seat-unit width) */
+    .player-name {
+      position: absolute;
+      top: 177px; /* 168 + 9 */
+      left: 0; right: 0;
+      text-align: center;
+      font-family: 'General Sans', 'Arial Black', sans-serif;
+      font-weight: 700;
+      font-size: 17px;
+      color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+
+    /* Pick plate reveal flash (kept for reference, not triggered) */
+    @keyframes reveal-blue {
+      0%   { box-shadow: none; }
+      16%  { box-shadow: inset 0 0 0 4px rgba(30,120,255,1),
+                         0 0 36px 18px rgba(30,120,255,0.95); }
+      32%  { box-shadow: none; }
+      48%  { box-shadow: inset 0 0 0 4px rgba(30,120,255,1),
+                         0 0 36px 18px rgba(30,120,255,0.95); }
+      64%  { box-shadow: none; }
+      80%  { box-shadow: inset 0 0 0 3px rgba(30,120,255,0.6),
+                         0 0 18px 8px rgba(30,120,255,0.4); }
+      100% { box-shadow: none; }
+    }
+    @keyframes reveal-red {
+      0%   { box-shadow: none; }
+      16%  { box-shadow: inset 0 0 0 4px rgba(255,50,50,1),
+                         0 0 36px 18px rgba(255,50,50,0.95); }
+      32%  { box-shadow: none; }
+      48%  { box-shadow: inset 0 0 0 4px rgba(255,50,50,1),
+                         0 0 36px 18px rgba(255,50,50,0.95); }
+      64%  { box-shadow: none; }
+      80%  { box-shadow: inset 0 0 0 3px rgba(255,50,50,0.6),
+                         0 0 18px 8px rgba(255,50,50,0.4); }
+      100% { box-shadow: none; }
+    }
+    @keyframes hero-fadein {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .plate.revealing-blue { animation: reveal-blue 0.72s ease-in-out forwards; }
+    .plate.revealing-red  { animation: reveal-red  0.72s ease-in-out forwards; }
+    .plate-hero.fadein    { animation: hero-fadein 0.45s ease-in forwards; }
+
+    /* ── Hero banner (bluehero / redhero) ──────────────────────── */
+    .hero-banner {
+      position: absolute;
+      top: 0;
+      width: 27px; height: 202px;
+      pointer-events: none;
+      z-index: 4;
+      transition: transform 0.3s ease-out;
+    }
+    .hero-banner-c1 { left:  0; transform: translateX(-100%); }
+    .hero-banner-c2 { right: 0; transform: translateX(100%);  }
+    .hero-banner-c1.slide-in { transform: translateX(0); }
+    .hero-banner-c2.slide-in { transform: translateX(0); }
+
+    .hero-banner-img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 27px; height: 202px;
+      display: block;
+    }
+    .hero-banner-name {
+      position: absolute;
+      top: 9px;
+      left: 50%;
+      transform: translateX(-50%);
+      writing-mode: vertical-lr;
+      text-orientation: mixed;
+      font-family: 'General Sans', 'Arial Black', sans-serif;
+      font-weight: 600;
+      font-size: 15.4px; /* 3.69pt @ 300dpi */
+      color: #fff;
+      text-transform: uppercase;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ── Draft Stats (toggleable) — PICK / CONTENTION RATE / WIN RATE
+       reveal, played once per live hero pick, both sides (blue rect for
+       camp1, red for camp2 — see .dstats-rect-camp1/2 below).
+       Sits inside plate-content so it tracks the seat's own width; fills
+       the whole card like every other reveal layer here.
+
+       .dstats-rect and .dstats-text are SEPARATE siblings (not one nested
+       inside the other) even though they slide together — this matters:
+       mix-blend-mode only blends an element with whatever is already
+       painted behind it within the nearest ancestor that itself forms a
+       stacking context (transform/opacity/filter/etc. all do this). If
+       .dstats-rect were nested inside a wrapper that had its own
+       `transform` (needed for the slide), that wrapper would isolate the
+       rect's blend to just its own empty background instead of reaching
+       through to heroVid — which is exactly the "multiply isn't doing
+       anything" bug this shipped with once. Putting the transform on
+       .dstats-rect itself (a leaf, no transformed ancestor above it
+       besides plate-content, which has none) keeps it blending correctly
+       against heroVid; .dstats-text carries the identical slide via the
+       shared .dstats-slide rules so the two visually move as one unit. */
+    .dstats-slide {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      transform: translateX(-100%);
+    }
+    /* Camp2 (red side) starts off-screen to the RIGHT instead of the left
+       — mirror of camp1. Both .dstatsRect and .dstatsText carry a shared
+       dstats-campN class specifically so this selector's specificity
+       (exactly 2 classes: .dstats-slide + .dstats-campN) matches BOTH
+       elements identically — using each element's OWN differently-named
+       class here (.dstats-rect-campN vs .dstats-text) instead shipped a
+       real bug: .dstats-text.dstats-campN.dstats-slide is a 3-class
+       selector, which unconditionally beat the 2-class .dstats-slide.dstats-in
+       below regardless of source order, so the text layer stayed stuck
+       off-screen forever while the rect (correctly a 2-class tie, resolved
+       by ordering this block first) slid in fine — Draft Stats visually
+       looked like "just an empty rectangle slides in" for the whole red
+       side. This rule MUST stay before .dstats-slide.dstats-in: both are
+       genuine 2-class ties on a (camp2, mid-transition-in) element, and
+       .dstats-in needs to win that tie so "in" resolves to translateX(0)
+       for both camps. The .dstats-out override further below is a 3-class
+       selector on purpose (dstats-campN + dstats-slide + dstats-out) so it
+       always wins on real specificity — no ordering constraint needed
+       there, but it's written with .dstats-campN too for consistency. */
+    .dstats-slide.dstats-camp2 {
+      transform: translateX(100%);
+    }
+    .dstats-slide.dstats-in {
+      transform: translateX(0);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .dstats-slide.dstats-out {
+      transform: translateX(-100%);
+      transition: transform 0.4s cubic-bezier(0.4, 0, 1, 1);
+    }
+    .dstats-slide.dstats-camp2.dstats-out {
+      transform: translateX(100%);
+    }
+    .dstats-rect {
+      z-index: 2;
+      mix-blend-mode: multiply;
+    }
+    .dstats-rect-camp1 { background: #0055ff; }
+    .dstats-rect-camp2 { background: #cd0000; }
+    /* 10th Anniversary — new multiply colors (mix-blend-mode: multiply
+       is set on .dstats-rect above, unchanged). */
+    [data-theme="10th_anniversary"] .dstats-rect-camp1 { background: #0195fc; }
+    [data-theme="10th_anniversary"] .dstats-rect-camp2 { background: #ff243e; }
+    /* Playoffs — gradient map instead of a multiply: the rect becomes a
+       transparent panel whose backdrop-filter maps the hero's luminance onto
+       dark brown -> gold (#po-gradmap, defined at the top of <body>). */
+    [data-theme="playoffs"] .dstats-rect-camp1,
+    [data-theme="playoffs"] .dstats-rect-camp2 {
+      background: transparent;
+      mix-blend-mode: normal;
+      -webkit-backdrop-filter: url(#po-gradmap);
+      backdrop-filter: url(#po-gradmap);
+    }
+    .dstats-text {
+      z-index: 3;
+    }
+    /* Playoffs out animation: the text just fades while the gold gradient
+       map wipes away through picking_reveal's matte (see dstatsPoOut). */
+    [data-theme="playoffs"] .dstats-slide.dstats-in { transition: none; }
+    .dstats-text.dstats-po-fade { opacity: 0; transition: opacity 0.25s ease-out; }
+    /* Canvas that stands in for the backdrop-filter rect during the wipe. */
+    .dstats-po-canvas {
+      position: absolute;
+      left: 50%; top: -3px;
+      transform: translateX(-50%);
+      width: 168px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* Rows sit inset from one edge to clear the vertical hero-name
+       backer (27px wide, .hero-banner) — camp1's sits at the card's left
+       edge so rows shift right to clear it; camp2's sits at the right
+       edge (mirrored, for whenever this gets wired up on that side too)
+       so rows shift left instead. left/right both set with no explicit
+       width lets the box narrow itself automatically. */
+    .dstats-text.dstats-camp1 .dstats-row,
+    .dstats-text.dstats-camp1 .dstats-debut-row { left: 27px; right: 0; }
+    .dstats-text.dstats-camp2 .dstats-row,
+    .dstats-text.dstats-camp2 .dstats-debut-row { left: 0; right: 27px; }
+
+    /* Three stacked rows, each independently faded/slid — see
+       startDraftStats() below for the exact timeline. Every row shares
+       the same untriggered "start" transform (the CONTENTION RATE row's
+       own resting spot — where PICK first pops in during phase 2), so
+       PICK/WIN RATE visually reveal themselves moving away from the spot
+       CONTENTION RATE already occupies when phase 3 fires. */
+    .dstats-row {
+      position: absolute;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.2s ease-out, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .dstats-row-pick       { top: 10px;  transform: translateY(54px);  }
+    .dstats-row-contention { top: 54px;  transform: translateY(0);     }
+    .dstats-row-winrate    { top: 112px; transform: translateY(-58px); }
+    .dstats-row.dstats-pop    { opacity: 1; }
+    .dstats-row.dstats-settle { transform: translateY(0); }
+
+    /* PICK pops in oversized (phase 2) then shrinks back to normal size
+       as it shifts up into its final row (phase 3) — same translateY+scale
+       transform, so both read as one continuous motion. Only the pick row
+       gets this; contention/win rate just fade+slide, no scale. */
+    .dstats-row-pick.dstats-pop    { transform: translateY(54px) scale(2.6); }
+    .dstats-row-pick.dstats-settle { transform: translateY(0) scale(1); }
+
+    .dstats-label {
+      font-family: 'General Sans', 'Arial Black', sans-serif;
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      color: #fff;
+      text-transform: uppercase;
+      line-height: 1.15;
+    }
+    .dstats-value {
+      font-family: 'Anton', sans-serif;
+      font-weight: 400;
+      font-size: 26px;
+      color: #fff;
+      line-height: 1;
+      margin-top: 2px;
+    }
+
+    /* Debut Pick — replaces the whole PICK/CONTENTION RATE/WIN RATE
+       reveal when the hero's pick count is 0 (never picked before, so
+       there's no stat worth showing yet). Still rides on the same phase 1
+       rect slide-in; "DEBUT" pops in first, "PICK!" pops in right after,
+       each with its own bouncy "button" pop — no phase 3 (nothing to
+       settle into), straight to the hold once both are in. */
+    .dstats-debut-row {
+      position: absolute;
+      text-align: center;
+      opacity: 0;
+      transform: scale(0.5);
+      transition: opacity 0.25s ease-out, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .dstats-debut-row.dstats-pop { opacity: 1; transform: scale(1); }
+    .dstats-row-debut-label { top: 50px; }
+    .dstats-row-debut-value { top: 78px; }
+    .dstats-debut-label {
+      font-family: 'General Sans', 'Arial Black', sans-serif;
+      font-weight: 700;
+      font-size: 24px;
+      letter-spacing: 0.08em;
+      color: #fff;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+    .dstats-debut-value {
+      font-family: 'Anton', sans-serif;
+      font-weight: 400;
+      font-size: 48px;
+      color: #fff;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    /* Patch buff/nerf/adjust badge — pops in once the whole Draft Stats
+       container has fully slid back out (see startDraftStats()'s final
+       timer). Corner position is mirrored per camp so it never sits under
+       that camp's own hero-name banner (camp1's banner is at the card's
+       left edge, so the badge sits top-right; camp2's banner is at the
+       right edge, so the badge sits top-left instead). */
+    .dstats-buff-badge {
+      position: absolute;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5; /* above the hero-banner (4) — it's a corner overlay, meant to sit on top */
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(0.4);
+      transition: opacity 0.2s ease-out, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .dstats-buff-badge.dstats-pop { opacity: 1; transform: scale(1); }
+    .dstats-buff-camp1 { top: 3px; right: 3px; }
+    .dstats-buff-camp2 { top: 3px; left: 3px; }
+    .dstats-buff-nerf   { background: #e8121f; }
+    .dstats-buff-buff   { background: #1fbf4c; }
+    .dstats-buff-adjust { background: #0055ff; }
+
+    /* Solid triangle, built the same clip-path way as .card-tri above. */
+    .dstats-buff-arrow {
+      width: 12px; height: 12px;
+      background: #fff;
+    }
+    .dstats-buff-arrow-down { clip-path: polygon(50% 100%, 0 20%, 100% 20%); }
+    .dstats-buff-arrow-up   { clip-path: polygon(50% 0%, 0 80%, 100% 80%); }
+
+    .dstats-buff-gear { width: 15px; height: 15px; color: #fff; }
+    .dstats-buff-gear svg { width: 100%; height: 100%; display: block; }
+
+    /* ── Post-pick glow overlay (div above canvas, z-index 3) ──── */
+    .plate-glow {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+    }
+    /* The inset glow is a STATIC box-shadow on a pseudo-element whose
+       OPACITY is animated — animating box-shadow itself repaints the layer
+       every frame (CPU raster, costly under vMix's CEF), opacity is a
+       compositor-only property. Visually the same fade in/out. */
+    .plate-glow::before {
+      content: ''; position: absolute; inset: 0;
+      opacity: 0; pointer-events: none;
+      box-shadow: inset 0 0 0 3px rgba(255,215,80,1),
+                  inset 0 0 50px 20px rgba(255,200,60,0.75);
+    }
+    @keyframes picked-glow-gold {
+      0%   { opacity: 0; }
+      25%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    .plate-glow.picked::before { animation: picked-glow-gold 0.9s ease-out forwards; }
+
+    @keyframes hero-brighten {
+      0%   { filter: brightness(1); }
+      25%  { filter: brightness(2); }
+      100% { filter: brightness(1); }
+    }
+    .hero-video.brightening   { animation: hero-brighten 0.9s ease-out forwards; }
+    .plate-canvas.brightening { animation: hero-brighten 0.9s ease-out forwards; }
+
+    /* ── Role icons ────────────────────────────────────────────── */
+    /* Anchored at left:5 top:5; default transform centres it in the plate.
+       (151-70)/2 - 5 = 35.5   (168-70)/2 - 5 = 44                        */
+    .role-icon {
+      position: absolute;
+      width: 70px; height: 70px;
+      /* always centred regardless of plate-content width */
+      left: calc(50% - 35px); top: calc(50% - 35px);
+      object-fit: contain;
+      transform-origin: center;
+      transform: scale(1);
+      transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+      pointer-events: none;
+      z-index: 2;
+      filter: brightness(0) invert(1) brightness(0.086);
+    }
+    /* 10th Anniversary — pure white instead of the near-black Regular
+       tone (same brightness(0) invert(1) base, just without the final
+       brightness(0.086) dimming step). */
+    [data-theme="10th_anniversary"] .role-icon {
+      filter: brightness(0) invert(1);
+    }
+    /* Playoffs — #121212 (18/255 = 0.0706 after the black->white base). */
+    [data-theme="playoffs"] .role-icon {
+      filter: brightness(0) invert(1) brightness(0.0706);
+    }
+
+    /* Press squishes from centre — translate calculated in JS at animationend */
+    @keyframes role-press {
+      0%   { transform: scale(1);    }
+      35%  { transform: scale(0.78); }
+      65%  { transform: scale(1.10); }
+      100% { transform: scale(1);    }
+    }
+    .role-icon.pressing {
+      animation: role-press 0.55s ease-out forwards;
+      transition: none;
+    }
+
+    /* ── Ban plates ────────────────────────────────────────────── */
+    /* overflow:hidden clips the hero tween to the banplate area.
+       The element's own box-shadow (outer glow) is NOT clipped by
+       its own overflow:hidden — it renders outside the bounds. */
+    .banplate {
+      position: absolute;
+      width: 91px; height: 71px;
+      overflow: hidden;
+    }
+
+    /* Inset border on top of hero via ::after (same size → no overflow clipping) */
+    .banplate::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* Red glow when banning — inset only, slow pulse. Static shadow +
+       animated opacity (compositor-only) instead of animating box-shadow. */
+    @keyframes ban-inner {
+      0%, 100% { opacity: 0; }
+      50%      { opacity: 1; }
+    }
+    .banplate.banning::after {
+      box-shadow: inset 0 0 0 3px rgba(255,50,50,1),
+                  inset 0 0 14px 3px rgba(255,50,50,0.55);
+      opacity: 0;
+      animation: ban-inner 1.8s ease-in-out infinite;
+    }
+
+    /* Playoffs — empty ban slots show playoffs_bandrafticon.png (44x45). It is
+       NOT allowed to sit over a banned hero, so it fades out as the hero is
+       revealed (see updateBanSeat). Only built under the playoffs theme. */
+    .ban-icon {
+      position: absolute; left: 23.5px; top: 13px; width: 44px; height: 45px;
+      pointer-events: none; z-index: 1;
+      opacity: 1; transition: opacity 250ms ease;
+    }
+    .ban-icon.ban-icon-off { opacity: 0; }
+
+    /* Ban hero image */
+    .ban-hero {
+      width: 91px; height: 71px;
+      object-fit: cover; display: block;
+      opacity: 0;
+    }
+
+    /* Ban reveal: slides up from below (masked by overflow:hidden),
+       then fades to greyscale + 50% brightness */
+    @keyframes ban-reveal {
+      0%   { transform: translateY(71px); filter: none; }
+      55%  { transform: translateY(0);    filter: none; }
+      100% { transform: translateY(0);    filter: grayscale(1) brightness(0.5); }
+    }
+    .ban-hero.ban-revealing { animation: ban-reveal 0.95s ease-out forwards; }
+
+    /* ── Pick gradient overlay ─────────────────────────────────── */
+    .pick-gradient {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      display: none;
+      z-index: 2; /* must render over the player photo (z-index: 1) */
+      animation: grad-pulse 1.4s ease-in-out infinite;
+      /* screen (not normal) blending — lightens/brightens the photo
+         underneath by its own color instead of just tinting over it, so it
+         reads as the photo glowing rather than being covered by a wash */
+      mix-blend-mode: screen;
+    }
+    .pick-gradient.camp1 {
+      background: linear-gradient(to top, rgba(30,100,255,0.85) 0%, transparent 70%);
+    }
+    .pick-gradient.camp2 {
+      background: linear-gradient(to top, rgba(255,50,50,0.85) 0%, transparent 70%);
+    }
+    /* 10th Anniversary — same orange glow for both sides instead of the
+       camp-colored blue/red split. */
+    [data-theme="10th_anniversary"] .pick-gradient.camp1,
+    [data-theme="10th_anniversary"] .pick-gradient.camp2 {
+      background: linear-gradient(to top, rgba(255,163,68,0.85) 0%, transparent 70%);
+    }
+    /* Playoffs — gold glow for both sides. */
+    [data-theme="playoffs"] .pick-gradient.camp1,
+    [data-theme="playoffs"] .pick-gradient.camp2 {
+      background: linear-gradient(to top, rgba(237,197,85,0.85) 0%, transparent 70%);
+    }
+    @keyframes grad-pulse {
+      0%, 100% { opacity: 0.25; }
+      50%       { opacity: 0.9;  }
+    }
+
+    /* ── Player photo (FRONT → VICTORY sequence during picking) ──── */
+    .player-photo {
+      position: absolute;
+      left: 50%; top: 7px;
+      transform: translateX(-50%) translateY(30px);
+      width: 333px; /* 168px card frame × 2.2, scaled down 10% */
+      height: auto;
+      opacity: 0;
+      z-index: 1;
+      pointer-events: none;
+      display: none;
+    }
+    @keyframes photo-ease-up-in {
+      from { opacity: 0; transform: translateX(-50%) translateY(30px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    @keyframes photo-quick-fadeout {
+      from { opacity: 1; }
+      to   { opacity: 0; }
+    }
+    @keyframes photo-bounce-in {
+      0%   { opacity: 0; transform: translateX(-50%) scale(0.7); }
+      60%  { opacity: 1; transform: translateX(-50%) scale(1.06); }
+      100% { opacity: 1; transform: translateX(-50%) scale(1); }
+    }
+    .player-photo.photo-entering  { animation: photo-ease-up-in     0.6s  cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+    .player-photo.photo-quick-out { animation: photo-quick-fadeout  0.15s ease-in forwards; }
+    .player-photo.photo-bounce-in { animation: photo-bounce-in      0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+    /* FRONT renders visually larger than VICTORY at the same box width
+       (source-image framing), so FRONT gets an extra 10% reduction */
+    .player-photo.photo-front-size { width: 300px; }
+
+    /* Erase canvas — mirrors player-photo positioning; driven by the same
+       matte mask (s17_matte2.webm) that reveals the hero video */
+    .photo-canvas {
+      position: absolute;
+      left: 50%; top: 7px;
+      transform: translateX(-50%);
+      width: 333px;
+      z-index: 1;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ── Pick background video + matte canvas (inside each plate) ── */
+    .plate { overflow: hidden; }
+
+    .plate-pick-video {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100%; height: 100%;
+      object-fit: fill;
+      display: none;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Layers on top of .plate-pick-video (later in the same untiered
+       stacking group — see DOM order in buildPickPlates), but still under
+       the player photo, which has an explicit z-index. */
+    [data-theme="playoffs"] .plate-pick-video { display: none !important; }
+    .plate-pick-anim {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100%; height: 100%;
+      object-fit: fill;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+    }
+    .plate-pick-anim.pick-anim-visible { opacity: 1; }
+    /* 10th Anniversary — pickingblue/red.webm's black background was never
+       transparent (no alpha channel in the source file, Regular included —
+       this isn't something the white recolor introduced), it just read as
+       fine against Regular's own bluepickbg1/redpickbg1 loop. Against the
+       brighter anniversary ambient loop it reads as a solid black box
+       covering it. mix-blend-mode: screen fixes this the same way it's
+       already used elsewhere in this file for a video-over-video overlay
+       (see the photo-glow comment above): black contributes nothing to
+       the blend (so the ambient loop shows straight through), only the
+       white "PICKING" text adds brightness on top of it. Regular is left
+       untouched — its own black-on-black look has been the standing
+       behavior and wasn't asked to change. */
+    [data-theme="10th_anniversary"] .plate-pick-anim {
+      mix-blend-mode: screen;
+    }
+
+
+    /* ── Timer bar ─────────────────────────────────────────────── */
+    #timer-bar {
+      position: absolute;
+      left: 0px; top: 1066px;
+      width: 1920px; height: 14px;
+      background: rgb(0,80,220);
+      transform-origin: center center;
+      transform: scaleX(1);
+      display: none;
+    }
+    /* 10th Anniversary — left-to-right gradient instead of flat blue.
+       Lives on the same box the countdown scaleX() shrinks, so it
+       compresses along with the bar as time runs out rather than
+       needing separate handling. */
+    [data-theme="10th_anniversary"] #timer-bar {
+      background: linear-gradient(to right, #0e94fb, #f93b52);
+    }
+    /* Playoffs — gold whichever camp is picking (JS leaves the inline
+       background empty for this theme, see the timer start code). */
+    [data-theme="playoffs"] #timer-bar {
+      background: linear-gradient(to bottom, #edc555, #d0a43e);
+    }
+
+    /* ── Score boxes ─────────────────────────────────────────────── */
+    .score-box {
+      position: absolute;
+      top: 860px;
+      width: 55px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+    #score-c1 { left: 768px; }
+    #score-c2 { left: 1097px; }
+    .score-bar {
+      width: 11px;
+      height: 40px;
+      background: #161616;
+      flex-shrink: 0;
+    }
+    #score-c1 .score-bar.scored { background: #1E64FF; }
+    #score-c2 .score-bar.scored { background: #FF3232; }
+    /* 10th Anniversary — same anniversary blue/red pair used across the
+       rest of the broadcast (Consolidated Post 2's Damage bars, Post
+       H2H's comparison bars, Match Board's own score bar). */
+    [data-theme="10th_anniversary"] #score-c1 .score-bar.scored { background: #0094fb; }
+    [data-theme="10th_anniversary"] #score-c2 .score-bar.scored { background: #ff243e; }
+
+    /* ── Team tricode labels ────────────────────────────────────── */
+    #team-c1, #team-c2 {
+      position: absolute;
+      top: 1028.849px;
+      font-family: 'Anton', sans-serif;
+      font-weight: 400;
+      font-size: 31px; /* 7.5pt @ 300dpi */
+      color: #fff;
+      text-transform: uppercase;
+      line-height: 1;
+      text-align: center;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #team-c1 { left: 816.964px; transform: translateX(-50%); }
+    #team-c2 { left: 1107.737px; transform: translateX(-50%); }
+
+    /* ── Team logos ────────────────────────────────────────────── */
+    .draft-team-logo {
+      position: absolute;
+      top: 929.849px;
+      width: 70px; height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    #draft-logo-c1 { left: 810.964px; transform: translateX(-50%); }
+    #draft-logo-c2 { left: 1110.737px; transform: translateX(-50%); }
+    #draft-logo-c1 .draft-logo-fallback {
+      position: absolute;
+      width: 70px; height: 70px;
+      border-radius: 50%;
+      background: rgb(42, 0, 255);
+    }
+    #draft-logo-c2 .draft-logo-fallback {
+      position: absolute;
+      width: 70px; height: 70px;
+      border-radius: 50%;
+      background: rgb(210, 30, 30);
+    }
+    .draft-logo-img {
+      position: absolute;
+      width: 70px; height: 70px;
+      object-fit: contain;
+    }
+
+    /* ── Sponsor loop ───────────────────────────────────────────── */
+    #sponsor-loop {
+      position: absolute;
+      left: 890px;
+      top: 1019px;
+      width: 140px;
+      height: 50px;
+      overflow: hidden;
+    }
+    #sponsor-img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 140px;
+      height: 50px;
+      object-fit: contain;
+      transform: translateX(-110%);
+    }
+    #sponsor-img.spon-in {
+      transform: translateX(0);
+      transition: transform 0.4s cubic-bezier(0.0, 0.0, 0.2, 1.0);
+    }
+    #sponsor-img.spon-out {
+      transform: translateX(110%);
+      transition: transform 0.35s cubic-bezier(0.4, 0.0, 1.0, 1.0);
+    }
+
+    /* ── Map bug — same box/asset as mploverlay_v7's #sb-map (ingame
+       scoreboard), centered here directly above the ban/pick draft area
+       (bans start at BAN_TOP = 780px) instead of the ingame position. ── */
+    #draft-map {
+      position: absolute;
+      left: 758px;
+      top: 711px;
+      width: 403px;
+      height: 69px;
+      z-index: 50;
+      pointer-events: none;
+      transition: transform .55s cubic-bezier(.4,0,.2,1);
+    }
+    /* Backer art lives on a pseudo-element (z-index:-1 stays inside
+       #draft-map's own stacking context) so Map Detail v2 can fade just
+       the art out — logo/name stay — revealing the plate's own top row. */
+    #draft-map::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background-image: url('/assets/overlay/draft/mapbacker_v2.png');
+      background-size: 100% 100%;
+      transition: opacity .45s linear;
+    }
+    /* Playoffs uses the Map Detail v2 art pair from its own folder (collapsed =
+       mapbacker_v2, open = mapdetail_v2 via #mapdetail2-plate below); the
+       expand/collapse animation is the shared one every theme uses. Map
+       icon/name/description positions are seeded in the Draft::playoffs bucket
+       of overlay_styles.json (copied from 10th Anniversary — same art layout). */
+    [data-theme="playoffs"] #draft-map::before { background-image: url('/assets/overlay/draft/playoffs/mapbacker_v2.png'); }
+    /* ── Map Detail v2 — the map bug (#draft-map, art mapbacker_v2.png
+       403x62, same width as the description plate) itself expands:
+       OPEN slides the whole bug up 56px (so the stack's bottom edge lands
+       flush on BAN_TOP 780), scales the icon up, and the description plate
+       (#mapdetail2-plate, bottom row of mapdetail_v2.png) emerges from
+       behind it. Plate sits at its FINAL position; collapsed = shifted up
+       6px so it's fully hidden behind the bug. ── */
+    #mapdetail2-plate {
+      position: absolute;
+      left: 758px; top: 655px;
+      width: 403px; height: 125px;
+      z-index: 49;
+      background-image: url('/assets/overlay/draft/mapdetail_v2.png');
+      background-size: 100% 100%;
+      transform: translateY(56px);
+      clip-path: inset(0 0 56px 0);
+      transition: transform .55s cubic-bezier(.4,0,.2,1), clip-path .55s cubic-bezier(.4,0,.2,1);
+      pointer-events: none;
+    }
+    [data-theme="playoffs"] #mapdetail2-plate { background-image: url('/assets/overlay/draft/playoffs/mapdetail_v2.png'); }
+    #mapdetail2-plate.md2-open { transform: none; clip-path: inset(0 0 0 0); }
+    [data-theme="playoffs"] #mapdetail2-plate { background-image: url('/assets/overlay/draft/playoffs/mapdetail_v2.png'); }
+    #mapdetail2-desc {
+      position: absolute;
+      left: 165px; top: 66px;
+      width: 235px; height: 52px;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0;
+      transition: opacity .2s linear;
+    }
+    #mapdetail2-plate.md2-open #mapdetail2-desc { opacity: 1; transition: opacity .3s linear .25s; }
+    .mapdetail2-desc-text {
+      font-family: 'General Sans', sans-serif;
+      font-weight: 500;
+      font-size: 14px;
+      line-height: 1.2;
+      color: #000;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    #draft-map.draft-map-v2-open { transform: translateY(-56px); }
+    #draft-map.draft-map-v2-open::before { opacity: 0; }
+    /* Open-state icon target — an empty box inside #draft-map (Edit tab:
+       Map Detail v2 -> "Map Icon (open)"). On show the icon glides/scales
+       into it (mapDetail2LogoSync), on hide it glides back to its own
+       closed box. Default = the old translate(0,28px) scale(1.3). */
+    #draft-map-logo-open {
+      position: absolute;
+      left: -1px; top: 17px;
+      width: 92px; height: 92px;
+      pointer-events: none;
+    }
+    #draft-map-logo {
+      position: absolute;
+      left: 10px;
+      top: 0;
+      width: 71px;
+      height: 71px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transform-origin: 0 0;
+      transition: transform .55s cubic-bezier(.4,0,.2,1);
+    }
+    #draft-map-logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    #draft-map-name {
+      position: absolute;
+      left: 165px;
+      top: 10px;
+      width: 230px;
+      height: 50px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .draft-map-name-text {
+      font-family: 'Anton', sans-serif;
+      font-weight: 400;
+      color: #000000;
+      text-transform: uppercase;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* ── Match/Game indicator — from Match Board's match+computed-game
+       state, shown as "MATCH 1 - GAME 1" centered above the draft area. ── */
+    #draft-match-game {
+      position: absolute;
+      left: 837px;
+      top: 851px;
+      width: 247px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .draft-match-game-text {
+      font-family: 'General Sans', sans-serif;
+      font-weight: 700;
+      font-size: 18px; /* 4.4pt @ 300dpi */
+      color: #000000;
+      text-transform: uppercase;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* ── Coach BPM + headset + name — home=blue/left, away=red/right,
+       mirror(x) = 1920 − x − width (same formula as the map bug / pui
+       cards elsewhere in this codebase). Heart+beat pattern is the same
+       one ingame_blue.html's #p*-bpm-box uses against the live HRM feed
+       (GET /feed, coach_home1 / coach_away1 slots — already served by
+       lib/feeds.js, just not consumed here yet). ── */
+    .dcoach-bpm {
+      position: absolute;
+      top: 793px;
+      width: 91px; height: 44px;
+    }
+    .dcoach-bpm.dcoach-home { left: 7px; }
+    .dcoach-bpm.dcoach-away { left: 1822px; }
+    .dcoach-bpm-heart {
+      position: absolute;
+      left: 2px; top: 11px;
+      width: 22px; height: 22px;
+      color: #e8121f;
+      transition: color 0.6s;
+    }
+    .dcoach-bpm-heart svg { width: 100%; height: 100%; display: block; }
+    .dcoach-bpm-num {
+      position: absolute;
+      left: 26px; top: 0;
+      width: 44px; height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Anton', sans-serif;
+      font-size: 32px;
+      line-height: 1;
+      color: #141414;
+      transition: color 0.6s;
+    }
+    .dcoach-bpm-unit {
+      position: absolute;
+      left: 71px; top: 9px;
+      width: 20px; height: 14px;
+      font-family: 'General Sans', sans-serif;
+      font-weight: 700;
+      font-size: 9px;
+      line-height: 10px;
+      color: #141414;
+    }
+
+    .dcoach-headset {
+      position: absolute;
+      top: 801px;
+      width: 27px; height: 27px;
+      color: #141414;
+    }
+    .dcoach-headset.dcoach-home { left: 130px; }
+    .dcoach-headset.dcoach-away { left: 1763px; }
+    .dcoach-headset svg { width: 100%; height: 100%; display: block; }
+
+    .dcoach-name {
+      position: absolute;
+      top: 802px;
+      width: 129px; height: 27px;
+      /* No overflow-x/overflow-y mix here on purpose — per spec, pairing
+         hidden with visible forces the visible axis to compute as auto
+         (a scrollbar), which is not what we want. Width never actually
+         overflows (dcoachFitName guarantees it fits), so plain `visible`
+         on both axes is enough and never shows a scrollbar. */
+      overflow: visible;
+      display: flex;
+      align-items: center;
+    }
+    .dcoach-name.dcoach-home { left: 165px;  justify-content: flex-start; }
+    .dcoach-name.dcoach-away { left: 1626px; justify-content: flex-end; }
+    .dcoach-name-text {
+      display: block;
+      max-width: 129px;
+      font-family: 'General Sans', sans-serif;
+      font-weight: 700;
+      color: #141414;
+    }
+    .dcoach-name.dcoach-home .dcoach-name-text { text-align: left; }
+    .dcoach-name.dcoach-away .dcoach-name-text { text-align: right; }
+
+  </style>
+</head>
+<body>
+<!-- Playoffs Draft Stats gradient map (see .dstats-rect under [data-theme="playoffs"]):
+     luminance of whatever is behind the rect -> dark brown / mid gold / light gold. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="po-gradmap" color-interpolation-filters="sRGB">
+    <feColorMatrix type="matrix" values="0.2126 0.7152 0.0722 0 0  0.2126 0.7152 0.0722 0 0  0.2126 0.7152 0.0722 0 0  0 0 0 1 0"/>
+    <feComponentTransfer>
+      <feFuncR type="table" tableValues="0.15 0.47 0.82"/>
+      <feFuncG type="table" tableValues="0.11 0.36 0.68"/>
+      <feFuncB type="table" tableValues="0.03 0.12 0.31"/>
+    </feComponentTransfer>
+  </filter>
+</svg>
+
+<div id="scene"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* Dashboard Control-tab preview iframe loads this page with ?preview=1
+     (same convention as the Edit tab and mplfs.html-style previewButton
+     entries). When set, this instance is fully decoupled from the REAL
+     broadcast show/hide state — it never auto-shows/hides itself based on
+     what's actually live, only in response to window.previewTrigger(...)
+     calls the dashboard makes directly. Without this, a preview iframe
+     would react to the same live SSE events as the real vMix instance,
+     doubling video-decode/canvas-compositing load exactly when this scene
+     is heaviest (see CLAUDE.md-adjacent perf notes on this page). */
+  var PREVIEW_ONLY = /[?&]preview=1(?:&|$)/.test(window.location.search);
+
+  /* 10th Anniversary reskin — draftbg.png, bluehero/redhero.png, and the
+     picking*.webm animations (recolored white; plateback swap is CSS-only,
+     see .plates-camp-1/-2 .plate below) all have anniversary/ variants. */
+  /* Playoffs picking art (opaque white "PICKING" loop, both sides) + its own
+     reveal matte (luma runs black→white, so its baked alpha = luma — the
+     opposite polarity of s17_matte2). Read at plate-build time. */
+  function isPlayoffsDraft() {
+    return document.documentElement.getAttribute('data-theme') === 'playoffs';
+  }
+  function isAnniversaryTheme() {
+    return document.documentElement.getAttribute('data-theme') === '10th_anniversary';
+  }
+
+  /* Star match backgrounds (Epic Rivalry, Enduring Legacy, etc. — see
+     html/match-dashboard.html's MATCH_TYPES for the full label list) —
+     same suffix convention as the asset filenames on disk
+     (assets/overlay/draft/draftbg_<SUFFIX>.png / assets/overlay/draft/anniversary/
+     draftbg_<SUFFIX>.png). Not every matchType has art in every theme
+     (or at all yet) — resolved at runtime via Image() preload (this is a
+     CSS background-image, not an <img>, so onerror isn't usable directly)
+     rather than a hardcoded whitelist, so a newly-dropped-in asset just
+     works with no code change, and a missing one silently falls back to
+     the plain themed background instead of a broken image. */
+  var STAR_MATCH_SUFFIX = {
+    epic: 'EPIC RIVALRY', international: 'INTERNATIONAL RIVALRY',
+    golden: 'GOLDEN RIVALRY', clash: 'CLASH OF TITANS', enduring: 'ENDURING LEGACY',
+  };
+  /* 10th Anniversary's golden/clash art is hyphen-named on disk
+     (draftbg_GOLDEN-RIVALRY.png); Regular keeps the spaced convention. */
+  var STAR_MATCH_SUFFIX_ANNIV = {
+    golden: 'GOLDEN-RIVALRY', clash: 'CLASH-OF-TITANS',
+  };
+  function starSuffixFor(matchType) {
+    if (isAnniversaryTheme() && STAR_MATCH_SUFFIX_ANNIV[matchType]) return STAR_MATCH_SUFFIX_ANNIV[matchType];
+    /* Playoffs: Golden Rivalry art is hyphen-named too (assets/overlay/draft/playoffs/draftbg_GOLDEN-RIVALRY.png) */
+    if (document.documentElement.getAttribute('data-theme') === 'playoffs' && matchType === 'golden') return STAR_MATCH_SUFFIX_ANNIV.golden;
+    return STAR_MATCH_SUFFIX[matchType];
+  }
+  function setBgWithFallback(el, primaryUrl, fallbackUrl) {
+    if (!el) return;
+    if (primaryUrl === fallbackUrl) { el.style.backgroundImage = "url('" + fallbackUrl + "')"; return; }
+    var probe = new Image();
+    probe.onload  = function () { el.style.backgroundImage = "url('" + primaryUrl + "')"; };
+    probe.onerror = function () { el.style.backgroundImage = "url('" + fallbackUrl + "')"; };
+    probe.src = primaryUrl;
+  }
+
+  /* Game feed: the server's cached + normalised copy of the Game API (built-in Dire API in LIVE/DEBUG mode ->
+     /dire/api/gamedata, already in the enriched seat_1..5 shape) — never the upstream URL. Pick/ban state comes
+     straight from it: data.state / state_left_time / banpick_paused, camp_list[].ban_hero_list and per seat
+     heroid / ban_heroid / picking / banning / ban_order / pick_order. Polled with GameRefresh.loop (see startPolling). */
+  var GAME_FEED_URL = '/api/gamedata-proxy';
+
+  /* Player photo names (basenames with both FRONT + VICTORY variants). */
+  var PLAYER_PHOTO_NAMES  = [];
+  var PLAYER_PHOTO_LOOKUP = {}; /* lowercased name → canonical name */
+  fetch('/api/player-photos', { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      PLAYER_PHOTO_NAMES = d.names || [];
+      PLAYER_PHOTO_NAMES.forEach(function(n) { PLAYER_PHOTO_LOOKUP[n.toLowerCase()] = n; });
+    })
+    .catch(function(){});
+
+  /* 'live' = match the seat's real player name to a photo; 'random' = test mode.
+     Server defaults to 'live' on every restart; dashboard can flip it at runtime. */
+  var draftPhotoMode = 'live';
+  fetch('/overlay/draft-photo-mode', { cache: 'no-store' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if (d.mode) draftPhotoMode = d.mode; })
+    .catch(function(){});
+
+  /* Draft Stats / Draft Recap / Draft Predict were driven by external APIs (draft-info-only, previous-draft, predictions) that
+     the built-in Dire API doesn't provide — dropped. draftStatsEnabled stays false (see its declaration). */
+
+  /* Player photo layout — matches .player-photo / .photo-canvas CSS width */
+  var PHOTO_W = 333;
+
+  /* Pick plate layout */
+  var PLATE_W = 151, PLATE_H = 168, PLATE_TOP = 851, PLATE_GAP = 1;
+  var NAME_TOP = 1028;
+  /* role string → icon filename */
+  var ROLE_MAP = {
+    'exp_laner':  'assets/game/role/EXP LANER.png',
+    'jungler':    'assets/game/role/JUNGLER.png',
+    'mid_laner':  'assets/game/role/MID LANER.png',
+    'roamer':     'assets/game/role/ROAMER.png',
+    'gold_laner': 'assets/game/role/GOLD LANER.png',
+  };
+  /* ordered list — seat index fallback when all roles missing */
+  var ALL_ROLES = ['exp_laner', 'jungler', 'mid_laner', 'roamer', 'gold_laner'];
+  /* ROLE_FILES[i] used only as initial placeholder before first poll */
+  var ROLE_FILES = ALL_ROLES.map(function(r) { return ROLE_MAP[r]; });
+
+  /* Lane icon per seat: the feed's seat order IS the lane order (seat_1 EXP, 2 JUNGLE, 3 MID, 4 ROAM, 5 GOLD — lib/dire.js
+     roster / rawAdapter.resolveRoles), so the role comes from seat.role when it is a known lane, else from the seat index. */
+  var ROLE_ALIASES = {
+    'exp_laner': 'exp_laner', 'exp': 'exp_laner', 'exp laner': 'exp_laner',
+    'jungler': 'jungler', 'jungle': 'jungler',
+    'mid_laner': 'mid_laner', 'mid': 'mid_laner', 'mid laner': 'mid_laner',
+    'roamer': 'roamer', 'roam': 'roamer', 'support': 'roamer',
+    'gold_laner': 'gold_laner', 'gold': 'gold_laner', 'gold laner': 'gold_laner', 'marksman': 'gold_laner'
+  };
+  function seatRole(seat, seatIdx) {
+    return ROLE_ALIASES[String((seat && seat.role) || '').toLowerCase().trim()] || ALL_ROLES[seatIdx] || null;
+  }
+
+  /* Ban plate layout — no gap between seats */
+  var BAN_W = 91, BAN_H = 71, BAN_TOP = 780;
+  var C1_BAN_X = [0,1,2,3,4].map(function(i){ return 304 + i * BAN_W; });
+  var C2_BAN_X = [0,1,2,3,4].map(function(i){ return 1525 - i * BAN_W; });
+
+  /* ── DOM refs ──────────────────────────────────────────────── */
+  var scene    = document.getElementById('scene');
+
+
+  /* ── Timer bar (smooth rAF countdown) ─────────────────────── */
+  var TIMER_MAX    = 50;   /* max seconds per pick/ban turn */
+  var timerEl      = null;
+  var tmSyncAt     = 0;    /* performance.now() when this turn's value was locked in */
+  var tmSyncVal    = 0;    /* leftTime locked in at the start of this turn */
+  var tmCampid     = 0;    /* 0 = hidden, 1/2 = active camp */
+  var tmRAF        = null;
+  var tmHasStart   = false; /* true once first value is locked for the current turn */
+
+  function tmGetCurrent() {
+    return Math.max(0, tmSyncVal - (performance.now() - tmSyncAt) / 1000);
+  }
+
+  function tmFrame() {
+    var t     = tmGetCurrent();
+    var scale = Math.min(1, Math.max(0, t / TIMER_MAX));
+    timerEl.style.transform = 'scaleX(' + scale + ')';
+    if (t > 0) {
+      tmRAF = requestAnimationFrame(tmFrame);
+    } else {
+      tmRAF = null;
+      tmHasStart = false; /* unlock so the next non-zero value starts a fresh turn */
+    }
+  }
+
+  function tmSync(campid, leftTime) {
+    if (!timerEl) return;
+    if (campid === 0 || leftTime <= 0) {
+      timerEl.style.display = 'none';
+      if (tmRAF) { cancelAnimationFrame(tmRAF); tmRAF = null; }
+      tmCampid   = 0;
+      tmHasStart = false;
+      return;
+    }
+    /* 10th Anniversary keeps its one gradient regardless of which camp is
+       picking (see [data-theme="10th_anniversary"] #timer-bar CSS) — clear
+       any inline override so that CSS rule can actually apply; Regular
+       keeps the existing camp-colored flat fill. */
+    timerEl.style.background = (isAnniversaryTheme() || document.documentElement.getAttribute('data-theme') === 'playoffs')
+      ? ''
+      : (campid === 1 ? 'rgb(0,80,220)' : 'rgb(220,50,50)');
+    timerEl.style.display    = 'block';
+
+    /* Decide if this is a genuinely new turn:
+       - camp switched sides, OR
+       - no starting value locked yet for this turn, OR
+       - API reports significantly MORE time than our prediction (timer reset for new phase) */
+    var predicted = tmGetCurrent();
+    var isNewTurn = (campid !== tmCampid) || !tmHasStart || (leftTime > predicted + 5);
+
+    if (isNewTurn) {
+      tmSyncAt   = performance.now();
+      tmSyncVal  = leftTime;
+      tmCampid   = campid;
+      tmHasStart = true;
+      if (!tmRAF) tmRAF = requestAnimationFrame(tmFrame);
+    }
+    /* Otherwise: client countdown runs uninterrupted — API inconsistencies ignored */
+  }
+
+  function buildTimerBar() {
+    timerEl = document.createElement('div');
+    timerEl.id = 'timer-bar';
+    scene.appendChild(timerEl);
+  }
+
+
+  /* ── Element / state maps ──────────────────────────────────── */
+  var campContainers = {}; /* campid → flex container div */
+  var pickEls  = {};
+  var prevPick = {};
+  var banEls   = {};  /* campid_i → { banplate, bhi } */
+  var prevBan  = {};  /* campid_i → { ban_heroid, banning } */
+  var teamEls  = {};  /* campid → div */
+  var logoEls  = {};  /* campid → { img, fb } */
+
+  /* ── Update camp-level picker class ────────────────────────── */
+  function updateCampPickerClass(campid) {
+    var container = campContainers[campid];
+    var count = container.querySelectorAll('.seat-unit.picking-expand').length;
+    container.classList.remove('has-picker', 'has-two-pickers');
+    if      (count === 1) container.classList.add('has-picker');
+    else if (count >= 2)  container.classList.add('has-two-pickers');
+  }
+
+  /* ── Build pick plates ─────────────────────────────────────── */
+  function buildPickPlates() {
+    for (var ci = 0; ci < 2; ci++) {
+      var campid = ci + 1;
+
+      /* Flex container for this camp */
+      var container = document.createElement('div');
+      container.className = 'plates-camp plates-camp-' + campid;
+      scene.appendChild(container);
+      campContainers[campid] = container;
+
+      for (var i = 0; i < 5; i++) {
+        var key = campid + '_' + i;
+
+        /* Seat unit — the flex item whose width transitions */
+        var seatUnit = document.createElement('div');
+        seatUnit.className = 'seat-unit';
+
+        /* Plate — always 151 px; edge seats anchor inward so they only expand toward centre */
+        var plate = document.createElement('div');
+        plate.id = 'plate-' + key;
+        /* Expansion direction per seat:
+           Camp1: seat1→right, seat2→left, seat3→right, seat4→left, seat5→left
+           Camp2: TBD */
+        var C1_ANCHORS = ['anchor-left','anchor-right','anchor-left','anchor-right','anchor-right'];
+        var anchor = '';
+        if (campid === 1) { anchor = C1_ANCHORS[i]; }
+        else              { if (i === 0) anchor = 'anchor-right'; else if (i === 4) anchor = 'anchor-left'; }
+        plate.className = 'plate' + (anchor ? ' ' + anchor : '');
+
+        /* Content wrapper — 151 px fixed, clipped, anchored inside the expanding plate */
+        var plateContent = document.createElement('div');
+        plateContent.className = 'plate-content';
+
+        var vid = document.createElement('video');
+        vid.className   = 'plate-pick-video';
+        /* Playoffs: no blue/red pick loop at all — the gold plate back +
+           picking_bg webm replace it (src left unset so nothing loads). */
+        if (!isPlayoffsDraft()) vid.src = isAnniversaryTheme()
+          ? (campid === 1 ? 'assets/overlay/draft/anniversary/motion/bluepickbg1.webm' : 'assets/overlay/draft/anniversary/motion/redpickbg1.webm')
+          : (campid === 1 ? 'assets/overlay/draft/motion/bluepickbg1.webm' : 'assets/overlay/draft/motion/redpickbg1.webm');
+        vid.loop = true; vid.muted = true;
+        vid.playsInline = true; vid.preload = 'none';
+        plate.appendChild(vid); /* direct child of plate so it scales with the full width */
+
+        var pickGrad = document.createElement('div');
+        pickGrad.className = 'pick-gradient ' + (campid === 1 ? 'camp1' : 'camp2');
+        plate.appendChild(pickGrad);
+
+        /* New picking animation — layered on top of the original pick
+           background video/gradient (no z-index needed: it just comes
+           later in the same untiered stacking group), but still behind the
+           player photo, which has an explicit higher z-index. */
+        var pickAnim = document.createElement('video');
+        pickAnim.className = 'plate-pick-anim';
+        /* 10th Anniversary — same "PICKING" animation, recolored white
+           (both sides use the same white file; there's no separate
+           blue/red distinction once it's white). */
+        pickAnim.src = isAnniversaryTheme()
+          ? (campid === 1 ? 'assets/overlay/draft/anniversary/motion/pickingblue.webm' : 'assets/overlay/draft/anniversary/motion/pickingred.webm')
+          : isPlayoffsDraft()
+            ? 'assets/overlay/draft/playoffs/motion/picking_bg_150x170.webm'
+            : (campid === 1 ? 'assets/webm/motion/pickingblue.webm' : 'assets/webm/motion/pickingred.webm');
+        pickAnim.loop = true; pickAnim.muted = true;
+        pickAnim.playsInline = true; pickAnim.preload = 'none';
+        plate.appendChild(pickAnim);
+
+        var heroVid = document.createElement('video');
+        heroVid.className   = 'hero-video';
+        heroVid.loop        = true;
+        heroVid.muted       = true;
+        heroVid.playsInline = true;
+        heroVid.preload     = 'none';
+        plateContent.appendChild(heroVid);
+
+        /* Canvas for matte composite — on top of heroVid during reveal.
+           GPU-composited only (drawImage + destination-in, see
+           startMatteReveal) — no willReadFrequently hint since this
+           canvas is never read back with getImageData. */
+        var cvs = document.createElement('canvas');
+        cvs.className = 'plate-canvas';
+        cvs.width = 168; cvs.height = 168;
+        plateContent.appendChild(cvs);
+        var ctx2d = cvs.getContext('2d');
+
+        /* Player photo (FRONT → VICTORY) + its erase canvas */
+        var photoImg = document.createElement('img');
+        photoImg.className = 'player-photo';
+        photoImg.alt = '';
+        plateContent.appendChild(photoImg);
+
+        var photoCanvas = document.createElement('canvas');
+        photoCanvas.className = 'photo-canvas';
+        photoCanvas.width = PHOTO_W; photoCanvas.height = PHOTO_W;
+        plateContent.appendChild(photoCanvas);
+        var photoCtx = photoCanvas.getContext('2d');
+
+
+        /* Matte video (luma-based wipe mask) — now only the TIMING driver
+           for the reveal (ended / requestVideoFrameCallback). The pixels
+           for both the hero reveal and the photo erase come from
+           heroMatteVid's baked alpha below. */
+        var matteVid = document.createElement('video');
+        matteVid.src = isPlayoffsDraft() ? 'assets/overlay/draft/playoffs/motion/picking_reveal_150x170.webm' : 'assets/overlay/draft/motion/s17_matte2.webm';
+        matteVid.muted = true; matteVid.playsInline = true;
+        matteVid.preload = 'none'; matteVid.style.display = 'none';
+        plateContent.appendChild(matteVid);
+
+        /* Same wipe, pre-baked as a REAL alpha channel (offline, via
+           ffmpeg — alpha = 255 - lumaOfOriginal, identical formula to
+           matteAlphaAt() below, verified pixel-exact against it) so the
+           hero reveal can composite on the GPU via destination-in
+           instead of getImageData/putImageData every frame. */
+        var heroMatteVid = document.createElement('video');
+        heroMatteVid.src = isPlayoffsDraft() ? 'assets/overlay/draft/playoffs/motion/picking_reveal_150x170_alpha.webm' : 'assets/overlay/draft/motion/s17_matte2_alpha.webm';
+        heroMatteVid.muted = true; heroMatteVid.playsInline = true;
+        heroMatteVid.preload = 'none'; heroMatteVid.style.display = 'none';
+        plateContent.appendChild(heroMatteVid);
+
+        var glowDiv = document.createElement('div');
+        glowDiv.className = 'plate-glow';
+        plateContent.appendChild(glowDiv);
+
+        /* Hero banner — bluehero for camp1, redhero for camp2 */
+        var banner = document.createElement('div');
+        banner.className = 'hero-banner ' + (campid === 1 ? 'hero-banner-c1' : 'hero-banner-c2');
+
+        var bannerImg = document.createElement('img');
+        bannerImg.className = 'hero-banner-img';
+        bannerImg.src = isAnniversaryTheme()
+          ? (campid === 1 ? 'assets/overlay/draft/anniversary/bluehero.png' : 'assets/overlay/draft/anniversary/redhero.png')
+          : (campid === 1 ? 'assets/overlay/draft/bluehero.png' : 'assets/overlay/draft/redhero.png');
+        bannerImg.alt = '';
+        banner.appendChild(bannerImg);
+
+        var bannerName = document.createElement('span');
+        bannerName.className = 'hero-banner-name';
+        banner.appendChild(bannerName);
+
+        plateContent.appendChild(banner);
+
+        var roleImg = document.createElement('img');
+        roleImg.className = 'role-icon';
+        roleImg.alt = ''; roleImg.style.opacity = '0';
+        plateContent.appendChild(roleImg);
+
+        /* Idle "not picking yet" edge triangles — blue for camp1, red for camp2.
+           Staggered by seat index so the bob reads as a wave. Camp1's flex
+           container runs seat index left→right, so increasing delay with i
+           sweeps left→right; camp2's is row-reverse (index 0 = rightmost),
+           so the same i-based delay sweeps right→left there — no
+           campid-specific math needed. */
+        var triCampClass = campid === 1 ? 'camp1' : 'camp2';
+        var triDelay = (i * 0.3) + 's';
+        var triTop = document.createElement('div');
+        triTop.className = 'card-tri card-tri-top ' + triCampClass;
+        triTop.style.animationDelay = triDelay;
+        plateContent.appendChild(triTop);
+
+        var triBottom = document.createElement('div');
+        triBottom.className = 'card-tri card-tri-bottom ' + triCampClass;
+        triBottom.style.animationDelay = triDelay;
+        plateContent.appendChild(triBottom);
+
+        /* Draft Stats reveal (toggleable) — see startDraftStats() below.
+           Built identically for both camps; the rect's color (blue/red)
+           is the only camp-specific visual, via dstats-rect-campN.
+           .dstatsRect and .dstatsText are separate siblings (both direct
+           children of plateContent, NOT one nested in the other) so the
+           rect's multiply blend isn't isolated by a transformed ancestor
+           — see the CSS comment above .dstats-slide for why that matters. */
+        var dstatsRect = document.createElement('div');
+        dstatsRect.className = 'dstats-slide dstats-camp' + campid + ' dstats-rect dstats-rect-camp' + campid;
+        plateContent.appendChild(dstatsRect);
+
+        var dstatsText = document.createElement('div');
+        dstatsText.className = 'dstats-slide dstats-text dstats-camp' + campid;
+
+        var dstatsPickRow = document.createElement('div');
+        dstatsPickRow.className = 'dstats-row dstats-row-pick';
+        dstatsPickRow.innerHTML = '<div class="dstats-label">Pick</div><div class="dstats-value dstats-pick-value">0</div>';
+        dstatsText.appendChild(dstatsPickRow);
+
+        var dstatsContentionRow = document.createElement('div');
+        dstatsContentionRow.className = 'dstats-row dstats-row-contention';
+        dstatsContentionRow.innerHTML = '<div class="dstats-label">Contention<br>Rate</div><div class="dstats-value dstats-contention-value">0%</div>';
+        dstatsText.appendChild(dstatsContentionRow);
+
+        var dstatsWinrateRow = document.createElement('div');
+        dstatsWinrateRow.className = 'dstats-row dstats-row-winrate';
+        dstatsWinrateRow.innerHTML = '<div class="dstats-label">Win Rate</div><div class="dstats-value dstats-winrate-value">0%</div>';
+        dstatsText.appendChild(dstatsWinrateRow);
+
+        /* Debut Pick — shown instead of the rows above when pick count is
+           0 (see startDraftStats() below). Two separate elements so each
+           can pop in on its own stagger. */
+        var dstatsDebutLabel = document.createElement('div');
+        dstatsDebutLabel.className = 'dstats-debut-row dstats-row-debut-label dstats-debut-label';
+        dstatsDebutLabel.textContent = 'Debut';
+        dstatsText.appendChild(dstatsDebutLabel);
+
+        var dstatsDebutValue = document.createElement('div');
+        dstatsDebutValue.className = 'dstats-debut-row dstats-row-debut-value dstats-debut-value';
+        dstatsDebutValue.textContent = 'Pick!';
+        dstatsText.appendChild(dstatsDebutValue);
+
+        plateContent.appendChild(dstatsText);
+
+        /* Buff/nerf/adjust corner badge — its own independent element
+           (not inside dstatsText/dstatsRect), since it doesn't slide with
+           the rest of the reveal — it pops in afterward and stays. */
+        var dstatsBuffBadge = document.createElement('div');
+        dstatsBuffBadge.className = 'dstats-buff-badge dstats-buff-camp' + campid;
+        plateContent.appendChild(dstatsBuffBadge);
+
+        plate.appendChild(plateContent);
+
+        /* Player name sits below, centred in the seat-unit */
+        var nameEl = document.createElement('div');
+        nameEl.className = 'player-name';
+        nameEl.id = 'name-' + key;
+
+        seatUnit.appendChild(plate);
+        seatUnit.appendChild(nameEl);
+        container.appendChild(seatUnit);
+
+        pickEls[key] = {
+          key: key, campid: campid,
+          seatUnit: seatUnit, plate: plate, pickVid: vid, pickAnim: pickAnim,
+          heroVid: heroVid, pickGrad: pickGrad,
+          canvasEl: cvs, ctx2d: ctx2d,
+          matteVid: matteVid, heroMatteVid: heroMatteVid,
+          glowDiv: glowDiv, banner: banner, bannerName: bannerName,
+          roleImg: roleImg, nameEl: nameEl,
+          triTop: triTop, triBottom: triBottom,
+          photoImg: photoImg, photoCanvas: photoCanvas, photoCtx: photoCtx,
+          photoH: null,
+          dstatsRect: dstatsRect, dstatsText: dstatsText, dstatsPickRow: dstatsPickRow,
+          dstatsContentionRow: dstatsContentionRow, dstatsWinrateRow: dstatsWinrateRow,
+          dstatsPickValue: dstatsPickRow.querySelector('.dstats-pick-value'),
+          dstatsContentionValue: dstatsContentionRow.querySelector('.dstats-contention-value'),
+          dstatsWinrateValue: dstatsWinrateRow.querySelector('.dstats-winrate-value'),
+          dstatsDebutLabel: dstatsDebutLabel, dstatsDebutValue: dstatsDebutValue,
+          dstatsBuffBadge: dstatsBuffBadge
+        };
+        prevPick[key] = {
+          heroid: undefined, picking: false, banning: false,
+          small: false, expanded: false, matteActive: false,
+          roleid: undefined, assignedRole: undefined,
+          photoName: undefined, photoPhase: 'none', photoErasing: false,
+          photoTimer0: null, photoTimer1: null, photoTimer2: null,
+          pickAnimTimer: null, dstatsTimers: null
+        };
+      }
+    }
+  }
+
+  /* ── Build ban plates ──────────────────────────────────────── */
+  function buildBanPlates() {
+    for (var ci = 0; ci < 2; ci++) {
+      var campid = ci + 1;
+      var xArr = campid === 1 ? C1_BAN_X : C2_BAN_X;
+      for (var i = 0; i < 5; i++) {
+        var key = campid + '_' + i;
+        var x = xArr[i];
+
+        var bp = document.createElement('div');
+        bp.className = 'banplate';
+        bp.id = 'bp-' + key;
+        bp.style.left = x + 'px';
+        bp.style.top  = BAN_TOP + 'px';
+
+        var bhi = document.createElement('img');
+        bhi.className = 'ban-hero';
+        bhi.id  = 'bhi-' + key;
+        bhi.alt = '';
+        bhi.style.opacity = '0';
+        bhi.onerror = function () { this.style.opacity = '0'; };
+        bp.appendChild(bhi);
+        var banIcon = null;
+        if (document.documentElement.getAttribute('data-theme') === 'playoffs') {
+          banIcon = document.createElement('img');
+          banIcon.className = 'ban-icon';
+          banIcon.src = 'assets/overlay/draft/playoffs/playoffs_bandrafticon.png';
+          banIcon.alt = '';
+          bp.appendChild(banIcon);
+        }
+        scene.appendChild(bp);
+
+        banEls[key]  = { banplate: bp, bhi: bhi, icon: banIcon };
+        prevBan[key] = { ban_heroid: undefined, banning: false };
+      }
+    }
+  }
+
+  /* ── Score boxes ───────────────────────────────────────────── */
+  var scoreEls = {};
+
+  function buildScoreBoxes() {
+    [1, 2].forEach(function(c) {
+      var box = document.createElement('div');
+      box.id = 'score-c' + c;
+      box.className = 'score-box';
+      scene.appendChild(box);
+      scoreEls[c] = box;
+    });
+  }
+
+  function renderBars(container, total, scored, goldFromRight) {
+    container.innerHTML = '';
+    for (var i = 0; i < total; i++) {
+      var bar = document.createElement('div');
+      bar.className = 'score-bar';
+      var isGold = goldFromRight ? (i >= total - scored) : (i < scored);
+      if (isGold) bar.classList.add('scored');
+      container.appendChild(bar);
+    }
+  }
+
+  function pollMatchState() {
+    fetch('/match/state', { cache: 'no-store' })
+      .then(function(r) { return r.json(); })
+      .then(function(s) {
+        var maxWins = Math.ceil(parseInt((s.series || 'BO3').replace('BO', '')) / 2);
+        var home    = s.home || s.teamA;
+        var away    = s.away || s.teamB;
+        var swapped = s.swapped !== undefined ? s.swapped : (s.blueTeam === 'B');
+        var c1Team  = swapped ? away : home;
+        var c2Team  = swapped ? home : away;
+        renderBars(scoreEls[1], maxWins, c1Team.score, true);
+        renderBars(scoreEls[2], maxWins, c2Team.score, false);
+
+        /* Match number is the manually-set /match/state field; game number
+           is derived the same way Match Board's computeGame() does —
+           total games played so far (both scores) + 1. */
+        var matchNum = s.match || 1;
+        var gameNum  = (home.score || 0) + (away.score || 0) + 1;
+        var mgTxt = document.querySelector('#draft-match-game .draft-match-game-text');
+        if (mgTxt) mgTxt.textContent = matchLabelFor(matchNum, s) + ' - GAME ' + gameNum;
+
+        /* dcoachSwapped feeds pollCoachBpm()'s coach_home1/coach_away1 pairing. Coach NAME/headset: the game feed has
+           no coach field, so they come from Match Board's manual coach entry (home/away.coach), already resolved to
+           the left (blue/camp1) and right (red/camp2) side by the swap above. */
+        dcoachSwapped = swapped;
+        updateCoachFromDraft('home', c1Team.coach);
+        updateCoachFromDraft('away', c2Team.coach);
+
+        /* Map bug — same source as the ingame scoreboard's #sb-map.
+           'NONE' is an explicit Match Board dropdown choice (match-
+           dashboard.html's #map-select) meaning "no map configured" —
+           checked before the 'Broken Walls' fallback below, which
+           exists only for "field not set yet", not "deliberately
+           cleared". Applies under every theme. */
+        var mapBoxEl = document.getElementById('draft-map');
+        if (s.map === 'NONE') {
+          if (mapBoxEl) mapBoxEl.style.display = 'none';
+          mapDetailCurrentMap = null;
+        } else {
+          if (mapBoxEl) mapBoxEl.style.display = '';
+          var mapVal     = s.map || 'Flying Cloud';
+          mapDetailCurrentMap = mapVal;
+          var mapNameTxt = document.querySelector('#draft-map-name .draft-map-name-text');
+          var mapLogoImg = document.getElementById('draft-map-logo-img');
+          if (mapNameTxt) {
+            mapNameTxt.textContent = mapVal.toUpperCase();
+            draftFitText(mapNameTxt, 228, 36);
+          }
+          if (mapLogoImg && mapLogoImg.dataset.map !== mapVal) {
+            mapLogoImg.dataset.map = mapVal;
+            mapLogoImg.src = '/assets/game/maps/' + encodeURIComponent(mapVal) + '.png';
+          }
+        }
+
+        /* #scene background — a star match (Epic Rivalry, Enduring
+           Legacy, etc.) uses its own draftbg variant when one exists for
+           the active theme, checked at runtime (see setBgWithFallback
+           above) rather than hardcoded per matchType, so this covers
+           both Regular's and 10th Anniversary's assets/draft(/anniversary)/
+           folders uniformly and falls back to the plain themed
+           background if that matchType has no art for this theme. */
+        var curMatch   = (s.todayMatches || [])[(s.match || 1) - 1];
+        var isEnduring = curMatch && curMatch.matchType === 'enduring';
+        var isPlayoffsTheme = document.documentElement.getAttribute('data-theme') === 'playoffs';
+        var draftBase  = 'assets/overlay/draft/' + (isAnniversaryTheme() ? 'anniversary/' : isPlayoffsTheme ? 'playoffs/' : '');
+        var draftPlain = draftBase + 'draftbg.png';
+        /* Playoffs has star-match variants for Epic Rivalry / Enduring Legacy
+           (assets/overlay/draft/playoffs/draftbg_<SUFFIX>.png); any other matchType
+           has no file there and falls back to the plain background. */
+        var starSuffix = curMatch && starSuffixFor(curMatch.matchType);
+        var draftStar  = starSuffix ? draftBase + 'draftbg_' + starSuffix + '.png' : draftPlain;
+        setBgWithFallback(scene, draftStar, draftPlain);
+
+        /* #team-c1/#team-c2 sit directly on that background's gold panel
+           in the Enduring Legacy art (white elsewhere), so they need to
+           flip to black only for that matchType. */
+        var teamC1 = document.getElementById('team-c1');
+        var teamC2 = document.getElementById('team-c2');
+        if (teamC1) teamC1.style.color = isEnduring ? '#0a0a0a' : '#fff';
+        if (teamC2) teamC2.style.color = isEnduring ? '#0a0a0a' : '#fff';
+      })
+      .catch(function() {});
+  }
+
+  /* ── Build team tricode labels ─────────────────────────────── */
+  function buildTeamNames() {
+    [1, 2].forEach(function(c) {
+      var el = document.createElement('div');
+      el.id = 'team-c' + c;
+      scene.appendChild(el);
+      teamEls[c] = el;
+    });
+  }
+
+  /* ── Build team logos ──────────────────────────────────────── */
+  function buildTeamLogos() {
+    [1, 2].forEach(function(c) {
+      var wrap = document.createElement('div');
+      wrap.id = 'draft-logo-c' + c;
+      wrap.className = 'draft-team-logo';
+
+      var fb = document.createElement('div');
+      fb.className = 'draft-logo-fallback';
+
+      var img = document.createElement('img');
+      img.className = 'draft-logo-img';
+      img.alt = '';
+      img.style.display = 'none';
+      img.onload  = function() { img.style.display = 'block'; fb.style.display = 'none'; };
+      img.onerror = function() { img.style.display = 'none';  fb.style.display = ''; };
+
+      wrap.appendChild(fb);
+      wrap.appendChild(img);
+      scene.appendChild(wrap);
+
+      logoEls[c] = { img: img, fb: fb };
+    });
+  }
+
+  /* ── Build map bug ─────────────────────────────────────────── */
+  function buildDraftMap() {
+    var box = document.createElement('div');
+    box.id = 'draft-map';
+
+    var logo = document.createElement('div');
+    logo.id = 'draft-map-logo';
+    var logoImg = document.createElement('img');
+    logoImg.id  = 'draft-map-logo-img';
+    logoImg.alt = '';
+    logo.appendChild(logoImg);
+
+    var name = document.createElement('div');
+    name.id = 'draft-map-name';
+    name.innerHTML = '<span class="draft-map-name-text"></span>';
+
+    var logoOpen = document.createElement('div');
+    logoOpen.id = 'draft-map-logo-open';
+
+    box.appendChild(logo);
+    box.appendChild(name);
+    box.appendChild(logoOpen);
+    scene.appendChild(box);
+  }
+
+  /* ── Map Detail descriptions — keyed by the EXACT map name string Match
+     Board's own #map-select dropdown uses (the same value pollMatchState()
+     reads as `s.map` and mirrors into mapDetailCurrentMap). Text is plain
+     sentence case — CSS text-transform:uppercase renders it all caps. ── */
+  var MAPDETAIL_TEXT = {
+    'Healing Turtle':  'An allied turtle will spawn in the lane to help push.',
+    'Golden Turret':   'Turrets grant significantly more team gold when destroyed.',
+    'Revealing Wisps':  'Pick up a vision wisp to reveal nearby enemies.',
+    'Flying Cloud':    'Clouds appear at the base to speed up rotations.',
+  };
+  /* Mirrors pollMatchState()'s own s.map handling below — null when no
+     map is selected ('NONE') or not yet known, otherwise the exact
+     selected map string. */
+  var mapDetailCurrentMap = null;
+
+  /* ── Map Detail v2 — expanding map bug (CSS block above). Reuses
+     MAPDETAIL_TEXT/mapDetailCurrentMap; show is a no-op for a map with
+     no description. The bug slides up, its backer art fades out and the
+     plate (top row + description row) is revealed beneath. ── */
+  var md2PlateEl, md2DescEl;
+  function buildMapDetail2() {
+    md2PlateEl = document.createElement('div');
+    md2PlateEl.id = 'mapdetail2-plate';
+    var desc = document.createElement('div');
+    desc.id = 'mapdetail2-desc';
+    md2DescEl = document.createElement('span');
+    md2DescEl.className = 'mapdetail2-desc-text';
+    desc.appendChild(md2DescEl);
+    md2PlateEl.appendChild(desc);
+    scene.appendChild(md2PlateEl);
+  }
+  buildMapDetail2();
+
+  /* Moves the map icon from its closed box (#draft-map-logo) into the
+     open target box (#draft-map-logo-open) with one transform (origin 0 0,
+     uniform scale, centred in the target so the art never squashes).
+     Both boxes are px-positioned children of #draft-map, so computed
+     left/top/width/height are valid even while the scene is hidden. */
+  function mapDetail2LogoSync() {
+    var bug  = document.getElementById('draft-map');
+    var logo = document.getElementById('draft-map-logo');
+    var tgt  = document.getElementById('draft-map-logo-open');
+    if (!bug || !logo || !tgt) return;
+    if (!bug.classList.contains('draft-map-v2-open')) { logo.style.transform = ''; return; }
+    var a = getComputedStyle(logo), b = getComputedStyle(tgt);
+    var L = parseFloat(a.left) || 0, T = parseFloat(a.top) || 0;
+    var W = parseFloat(a.width) || 1, H = parseFloat(a.height) || 1;
+    var L2 = parseFloat(b.left) || 0, T2 = parseFloat(b.top) || 0;
+    var W2 = parseFloat(b.width) || W, H2 = parseFloat(b.height) || H;
+    var k = Math.min(W2 / W, H2 / H);
+    var dx = L2 + (W2 - W * k) / 2 - L, dy = T2 + (H2 - H * k) / 2 - T;
+    logo.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')';
+  }
+  function mapDetail2ApplyCmd(action) {
+    var bug = document.getElementById('draft-map');
+    if (action === 'show') {
+      if (!MAPDETAIL_TEXT[mapDetailCurrentMap]) return;
+      md2DescEl.textContent = MAPDETAIL_TEXT[mapDetailCurrentMap];
+      md2PlateEl.classList.add('md2-open');
+      if (bug) bug.classList.add('draft-map-v2-open');
+    } else if (action === 'hide') {
+      md2PlateEl.classList.remove('md2-open');
+      if (bug) bug.classList.remove('draft-map-v2-open');
+    }
+    mapDetail2LogoSync();
+  }
+  var md2EditObserver = null;
+  window.showDraftMapDetail2ForEdit = function () {
+    showDraftScene(true);
+    var m = MAPDETAIL_TEXT[mapDetailCurrentMap] ? mapDetailCurrentMap : 'Healing Turtle';
+    md2DescEl.textContent = MAPDETAIL_TEXT[m];
+    md2PlateEl.classList.add('md2-open');
+    var bug = document.getElementById('draft-map');
+    if (bug) bug.classList.add('draft-map-v2-open');
+    mapDetail2LogoSync();
+    /* Edit tab rewrites <style> overrides on every drag/input — re-sync
+       so the icon follows the "Map Icon (open)" box live. */
+    if (!md2EditObserver) {
+      md2EditObserver = new MutationObserver(mapDetail2LogoSync);
+      md2EditObserver.observe(document.head, { childList: true, subtree: true, characterData: true });
+    }
+  };
+  setTimeout(function () {
+    fetch('/overlay/mapdetailv2-state', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d && d.visible) mapDetail2ApplyCmd('show'); })
+      .catch(function () {});
+  }, 500);
+
+  /* ── Build match/game indicator ──────────────────────────────── */
+  function buildDraftMatchGame() {
+    var box = document.createElement('div');
+    box.id = 'draft-match-game';
+    box.innerHTML = '<span class="draft-match-game-text"></span>';
+    scene.appendChild(box);
+  }
+
+  /* Hero KOTAK art is WebP-only: assets/hero/web/HERO_<id>_KOTAK.webp (512px, ~25 KB). Every use displays <= ~90px. */
+  function heroThumbSrc(id) { return 'assets/hero/web/HERO_' + id + '_KOTAK.webp'; }
+  function heroThumbFallback(img, id) { /* no PNG fallback any more — kept as a no-op for the existing call sites */ }
+
+  /* ── Build coach BPM + headset + name (home + away) ──────────── */
+  var DCOACH_HEART_SVG =
+    '<svg viewBox="0 0 24 22" xmlns="http://www.w3.org/2000/svg">' +
+    '<path fill="currentColor" d="M12 20.5C12 20.5 1.5 13.8 1.5 7.2 1.5 3.6 4.3 1 7.6 1c1.9 0 3.6.9 4.4 2.4C12.8 1.9 14.5 1 16.4 1c3.3 0 6.1 2.6 6.1 6.2 0 6.6-10.5 13.3-10.5 13.3z"/>' +
+    '<path fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" d="M0 11h5l2.2-4.5L11 15l2-7.5 1.6 3.5H24"/>' +
+    '</svg>';
+  var DCOACH_HEADSET_SVG =
+    '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/>' +
+    '<rect x="2" y="14" width="6" height="8" rx="2.5" fill="currentColor" stroke="none"/>' +
+    '<rect x="16" y="14" width="6" height="8" rx="2.5" fill="currentColor" stroke="none"/>' +
+    '</svg>';
+
+  var dcoachRefs = {};   /* CSS position key ('home'=left, 'away'=right) -> { heartEl, numEl, nameTextEl } */
+  var dcoachSwapped = false; /* mirrors /match/state's swapped flag — see pollMatchState() */
+
+  function buildCoachSide(side) {
+    var bpm = document.createElement('div');
+    bpm.className = 'dcoach-bpm dcoach-' + side;
+    var heart = document.createElement('div');
+    heart.className = 'dcoach-bpm-heart';
+    heart.innerHTML = DCOACH_HEART_SVG;
+    var num = document.createElement('div');
+    num.className = 'dcoach-bpm-num';
+    num.textContent = '--';
+    var unit = document.createElement('div');
+    unit.className = 'dcoach-bpm-unit';
+    unit.textContent = 'BPM';
+    bpm.appendChild(heart);
+    bpm.appendChild(num);
+    bpm.appendChild(unit);
+    scene.appendChild(bpm);
+
+    var headset = document.createElement('div');
+    headset.className = 'dcoach-headset dcoach-' + side;
+    headset.innerHTML = DCOACH_HEADSET_SVG;
+    /* Hidden until the draft API confirms a real coach_in (see poll() /
+       updateCoachFromDraft) — starting hidden avoids a flash of a headset
+       icon with no coach name next to it before the first poll tick. */
+    headset.style.display = 'none';
+    scene.appendChild(headset);
+
+    var name = document.createElement('div');
+    name.className = 'dcoach-name dcoach-' + side;
+    var nameText = document.createElement('span');
+    nameText.className = 'dcoach-name-text';
+    name.appendChild(nameText);
+    scene.appendChild(name);
+
+    dcoachRefs[side] = { heartEl: heart, numEl: num, nameTextEl: nameText, headsetEl: headset, phase: Math.random(), bpm: 0, connected: false };
+  }
+
+  /* Coach name fit — maximize a single line to fill the 27px-tall box;
+     only wrap to two (smaller) lines when a name genuinely doesn't fit
+     on one, e.g. "MASTER THE BASICS" vs. the usual short coach names. */
+  function dcoachFitName(el, nameStr) {
+    var maxW = 129, maxH = 27;
+
+    function fitsOneLine(size) {
+      el.textContent      = nameStr;
+      el.style.whiteSpace = 'nowrap';
+      el.style.fontSize   = size + 'px';
+      el.style.lineHeight = maxH + 'px';
+      return el.scrollWidth <= maxW;
+    }
+
+    /* Single line, maximized: the largest size — down to a floor below
+       which it'd look too small — that fits the width at full box
+       height. Covers the common case ("most coaches have short names"). */
+    var ceiling = maxH - 3, floor = 15;
+    for (var s = ceiling; s >= floor; s--) {
+      if (fitsOneLine(s)) return;
+    }
+
+    /* Doesn't fit on one line even at the floor size (e.g. "MASTER THE
+       BASICS") — force an explicit two-line break at the most balanced
+       word boundary (rather than relying on natural reflow, which can
+       coincidentally settle back onto one cramped line at this box's
+       width). Keep the SAME size range single-line uses instead of
+       shrinking further just because it wrapped — each line only needs
+       to fit the box WIDTH; the stacked pair is allowed to exceed the
+       box's height. */
+    var words = nameStr.split(' ');
+    var line1 = nameStr, line2 = '';
+    if (words.length > 1) {
+      var best = 1, bestDiff = Infinity;
+      for (var i = 1; i < words.length; i++) {
+        var l1 = words.slice(0, i).join(' '), l2 = words.slice(i).join(' ');
+        var diff = Math.abs(l1.length - l2.length);
+        if (diff < bestDiff) { bestDiff = diff; best = i; }
+      }
+      line1 = words.slice(0, best).join(' ');
+      line2 = words.slice(best).join(' ');
+    }
+    function fitsTwoLines(size) {
+      el.innerHTML        = line1 + '<br>' + line2;
+      el.style.whiteSpace = 'nowrap';
+      el.style.fontSize   = size + 'px';
+      el.style.lineHeight = (size + 1) + 'px';
+      return el.scrollWidth <= maxW;
+    }
+    for (var s2 = ceiling; s2 >= floor; s2--) {
+      if (fitsTwoLines(s2)) return;
+    }
+    /* Extremely long individual word(s) — only now drop below the
+       single-line floor, since the horizontal bound still can't be
+       crossed. */
+    for (var s3 = floor - 1; s3 >= 7; s3--) {
+      if (fitsTwoLines(s3)) return;
+    }
+    fitsTwoLines(7); /* smallest fallback if even that won't fit */
+  }
+
+  function buildCoachBpm() {
+    buildCoachSide('home');
+    buildCoachSide('away');
+    /* Left blank (and headset hidden, per buildCoachSide) until poll()
+       gets a real coach_in from the draft API — see updateCoachFromDraft. */
+  }
+
+  /* Coach name + headset visibility, driven by the draft API's per-camp
+     coach_in (see poll()). campid is already positional (1=blue/left,
+     2=red/right — same convention as everywhere else in this codebase),
+     so unlike the BPM feed's coach_home1/coach_away1 pairing this needs
+     no swap logic: camp1 always maps to 'home' (left), camp2 to 'away'
+     (right). "Unknown" (the API's not-yet-set sentinel) and any other
+     falsy value are treated the same — blank name, headset hidden. */
+  function updateCoachFromDraft(side, coachIn) {
+    var refs = dcoachRefs[side];
+    if (!refs) return;
+    var known = !!coachIn && coachIn !== 'Unknown';
+    dcoachFitName(refs.nameTextEl, known ? coachIn : '');
+    if (refs.headsetEl) refs.headsetEl.style.display = known ? '' : 'none';
+  }
+
+  /* Heartbeat scale bump, phase-driven by actual BPM — same easing curve
+     as ingame_blue.html's bpmAnimate so the coach heart beats in time. */
+  var dcoachLast = 0;
+  function dcoachAnimate(ts) {
+    var dt = (ts - (dcoachLast || ts)) / 1000;
+    dcoachLast = ts;
+    ['home', 'away'].forEach(function(side) {
+      var h = dcoachRefs[side];
+      if (!h) return;
+      var active = h.bpm > 0 && h.connected;
+      if (active) h.phase = (h.phase + (h.bpm / 60) * dt) % 1;
+      var beat = 0;
+      if (active && h.phase >= 0.22 && h.phase <= 0.50) {
+        beat = Math.pow(1 - (h.phase - 0.22) / 0.28, 4);
+      }
+      h.heartEl.style.transform = 'scale(' + (1 + beat * 0.4).toFixed(3) + ')';
+    });
+    requestAnimationFrame(dcoachAnimate);
+  }
+
+  function pollCoachBpm() {
+    fetch('/feed', { cache: 'no-store' })
+      .then(function(r) { return r.json(); })
+      .then(function(list) {
+        if (!Array.isArray(list)) return;
+        /* LEFT box (home position) is camp1 — coach_home1 unless swapped,
+           matching pollMatchState()'s c1Team/c2Team logic. */
+        var pairs = dcoachSwapped
+          ? [['home', 'coach_away1'], ['away', 'coach_home1']]
+          : [['home', 'coach_home1'], ['away', 'coach_away1']];
+        pairs.forEach(function(pair) {
+          var side = pair[0], slot = pair[1];
+          var h = dcoachRefs[side];
+          if (!h) return;
+          var entry = list.find(function(e) { return e.slot === slot; });
+          var bpm = entry ? (parseInt(entry.bpm) || 0) : 0;
+          h.bpm = bpm;
+          h.connected = !!entry && bpm > 0;
+          h.numEl.textContent   = h.connected ? bpm : '--';
+          h.heartEl.style.color = h.connected ? '#e8121f' : '#999';
+        });
+      })
+      .catch(function() {});
+  }
+
+  /* Shrink-to-fit — same binary-search approach as overlay-scoreboard.js's
+     sbFitText, since "Expanding Rivers" runs much longer than "Flying
+     Cloud" inside the same fixed-width name box. */
+  function draftFitText(el, maxWidth, maxPx) {
+    maxPx = maxPx || 13;
+    el.style.fontSize = maxPx + 'px';
+    if (el.scrollWidth <= maxWidth) return;
+    var lo = 6, hi = maxPx;
+    while (hi - lo > 0.5) {
+      var mid = (lo + hi) / 2;
+      el.style.fontSize = mid + 'px';
+      if (el.scrollWidth <= maxWidth) lo = mid; else hi = mid;
+    }
+    el.style.fontSize = lo + 'px';
+  }
+
+  /* ── Build status / countdown area ────────────────────────── */
+  function buildStatusArea() {
+    var area = document.createElement('div');
+    area.id = 'status-area';
+
+    var stxt = document.createElement('div');
+    stxt.id = 'status-text';
+    area.appendChild(stxt);
+
+    var row = document.createElement('div');
+    row.id = 'countdown-row';
+
+    var triL = document.createElement('div');
+    triL.className = 'tri';
+    triL.id = 'tri-camp1';
+
+    var cdown = document.createElement('div');
+    cdown.id = 'countdown-text';
+
+    var triR = document.createElement('div');
+    triR.className = 'tri';
+    triR.id = 'tri-camp2';
+
+    row.appendChild(triL);
+    row.appendChild(cdown);
+    row.appendChild(triR);
+    area.appendChild(row);
+
+    scene.appendChild(area);
+
+    var sponsorBox = document.createElement('div');
+    sponsorBox.id = 'sponsor-loop';
+    var sponsorImg = document.createElement('img');
+    sponsorImg.id = 'sponsor-img';
+    sponsorBox.appendChild(sponsorImg);
+    scene.appendChild(sponsorBox);
+  }
+
+
+  /* ── Sponsor loop ──────────────────────────────────────────── */
+  var SPONSORS = [];
+  var sponsorIdx = 0;
+
+  function startSponsorLoop() {
+    fetch('/api/sponsors' + SponsorSet.qs())
+      .then(function(r) { return r.json(); })
+      .then(function(list) {
+        if (!list || !list.length) return;
+        SPONSORS = list;
+        runSponsorLoop();
+      })
+      .catch(function() {});
+  }
+
+  function runSponsorLoop() {
+    var img = document.getElementById('sponsor-img');
+    (function nextSponsor() {
+      var s = SPONSORS[sponsorIdx];
+      img.className = '';
+      img.src = s.src;
+      void img.offsetWidth;
+      img.classList.add('spon-in');
+
+      function onIn(ev) {
+        if (ev.propertyName !== 'transform') return;
+        img.removeEventListener('transitionend', onIn);
+        setTimeout(function() {
+          img.classList.remove('spon-in');
+          img.classList.add('spon-out');
+          function onExit(ev) {
+            if (ev.propertyName !== 'transform') return;
+            img.removeEventListener('transitionend', onExit);
+            sponsorIdx = (sponsorIdx + 1) % SPONSORS.length;
+            nextSponsor();
+          }
+          img.addEventListener('transitionend', onExit);
+        }, s.dur);
+      }
+      img.addEventListener('transitionend', onIn);
+    })();
+  }
+
+  /* ── Player photo sequence (FRONT → VICTORY) ───────────────── */
+  function clearPhotoTimers(p) {
+    if (p.photoTimer0) { clearTimeout(p.photoTimer0); p.photoTimer0 = null; }
+    if (p.photoTimer1) { clearTimeout(p.photoTimer1); p.photoTimer1 = null; }
+    if (p.photoTimer2) { clearTimeout(p.photoTimer2); p.photoTimer2 = null; }
+  }
+
+  function resetPlayerPhoto(e, p) {
+    clearPhotoTimers(p);
+    e.photoImg.className   = 'player-photo';
+    e.photoImg.style.display = 'none';
+    e.photoImg.style.opacity = '0';
+    e.photoImg.style.transform = '';
+    e.photoImg.src = '';
+    e.photoCanvas.style.opacity = '0';
+    e.photoCtx.clearRect(0, 0, e.photoCanvas.width, e.photoCanvas.height);
+    e.photoH = null;
+    p.photoName    = undefined;
+    p.photoPhase   = 'none';
+    p.photoErasing = false;
+  }
+
+  var PHOTO_FRONT_EASE_MS = 600; /* matches .photo-entering CSS duration */
+  var PHOTO_FRONT_HOLD_MS = 500;
+  var PHOTO_QUICKOUT_MS   = 150; /* matches .photo-quick-out CSS duration */
+
+  /* Role icon takes 550ms to press + 900ms to fly to its corner (see the
+     'pressing' setTimeout below) — hold the photo off-screen until it has
+     mostly cleared the centre so the two don't overlap. Trimmed 550ms off
+     the full 1450ms clear time to keep the entrance snappier. */
+  var ROLE_ICON_DEPART_MS = 550 + 900 - 300 - 250;
+
+  /* Picking animation (pickingblue/red.webm) — same "wait for the role icon
+     to clear" delay as the player photo, then a plain opacity fade in
+     rather than popping straight to visible. */
+  function showPickAnimDelayed(e, p) {
+    clearTimeout(p.pickAnimTimer);
+    p.pickAnimTimer = setTimeout(function () {
+      e.pickAnim.currentTime = 0;
+      e.pickAnim.play().catch(function () {});
+      e.pickAnim.classList.add('pick-anim-visible');
+    }, ROLE_ICON_DEPART_MS);
+  }
+
+  function hidePickAnim(e, p) {
+    clearTimeout(p.pickAnimTimer);
+    p.pickAnimTimer = null;
+    e.pickAnim.classList.remove('pick-anim-visible');
+    e.pickAnim.pause();
+  }
+
+  /* Waits for the role icon to clear, then: FRONT fades+eases up → holds
+     0.5s → quick fade-out → VICTORY bounces in. 'live' mode matches the
+     seat's real player name to a photo (skips if no match yet); 'random'
+     mode picks any available name — for testing only. */
+  function startPlayerPhotoSequence(e, p, playerName) {
+    var name;
+    if (draftPhotoMode === 'random') {
+      if (!PLAYER_PHOTO_NAMES.length) return;
+      name = PLAYER_PHOTO_NAMES[Math.floor(Math.random() * PLAYER_PHOTO_NAMES.length)];
+    } else {
+      name = PLAYER_PHOTO_LOOKUP[(playerName || '').trim().toLowerCase()];
+      if (!name) return;
+    }
+    resetPlayerPhoto(e, p);
+    p.photoName = name;
+
+    p.photoTimer0 = setTimeout(function () {
+      beginPhotoFrontPhase(e, p, name);
+    }, ROLE_ICON_DEPART_MS);
+  }
+
+  function beginPhotoFrontPhase(e, p, name) {
+    p.photoPhase = 'front';
+
+    var img = e.photoImg;
+    img.src = 'assets/photo/FRONT/' + name + '_FRONT_resized.webp';
+    img.style.display = 'block';
+    img.style.opacity = '0';
+    img.className = 'player-photo photo-front-size';
+    void img.offsetWidth;
+    img.classList.add('photo-entering');
+
+    p.photoTimer1 = setTimeout(function () {
+      img.classList.remove('photo-entering');
+      /* Removing 'photo-entering' drops its animation-driven transform,
+         which would otherwise snap back to the base (pre-entrance, lower)
+         translateY — pin it at the settled position so the fade-out doesn't
+         visibly jump before it starts. */
+      img.style.transform = 'translateX(-50%) translateY(0)';
+      img.classList.add('photo-quick-out');
+      p.photoTimer2 = setTimeout(function () {
+        img.src = 'assets/photo/VICTORY/' + name + '_VICTORY_resized.webp';
+        img.className = 'player-photo';
+        img.style.opacity = '0';
+        void img.offsetWidth;
+        img.classList.add('photo-bounce-in');
+        p.photoPhase = 'victory';
+      }, PHOTO_QUICKOUT_MS);
+    }, PHOTO_FRONT_EASE_MS + PHOTO_FRONT_HOLD_MS);
+  }
+
+  /* Draws the currently-visible photo into the erase canvas (at the photo's
+     own — larger — resolution) and shows it in place of the <img>, so
+     per-frame alpha updates can take over. */
+  function preparePhotoErase(e, p) {
+    if (!p.photoName || p.photoPhase === 'none') {
+      /* Hero was picked before the delayed front-phase ever showed anything
+         (faster than ROLE_ICON_DEPART_MS) — cancel the pending timer instead
+         of erasing a photo that was never drawn. */
+      resetPlayerPhoto(e, p);
+      return;
+    }
+    p.photoErasing = true;
+
+    var natW = e.photoImg.naturalWidth  || PHOTO_W;
+    var natH = e.photoImg.naturalHeight || Math.round(PHOTO_W * 1.6);
+    var Hp   = Math.round(natH * PHOTO_W / natW);
+
+    e.photoH = Hp;
+    e.photoCanvas.width  = PHOTO_W;
+    e.photoCanvas.height = Hp;
+    e.photoCanvas.style.height = Hp + 'px';
+
+    /* No readback: the erase is composited on the GPU every frame in
+       updatePhotoErase (photo drawn, then heroMatteVid's baked alpha
+       knocked out of it with destination-out), so all that's needed
+       here is to size the canvas and paint the first frame. */
+    updatePhotoErase(e, null);
+    e.photoCanvas.style.opacity = '1';
+    e.photoImg.style.opacity = '0';
+  }
+
+  /* Erases the photo using the SAME matte mask that reveals the hero video —
+     resampled at the photo's own resolution so the wipe aligns with its size.
+     Wherever the mask reveals the hero, the photo fades by the complement. */
+  function updatePhotoErase(e, maskVid) {
+    if (!e.photoH) return;
+    var ctx = e.photoCtx, Hp = e.photoH;
+    ctx.clearRect(0, 0, PHOTO_W, Hp);
+    ctx.drawImage(e.photoImg, 0, 0, PHOTO_W, Hp);
+    if (maskVid) {
+      /* heroMatteVid's alpha = 255 - matteLuma, i.e. exactly the amount the
+         hero is revealed; destination-out leaves photoAlpha * (1 - reveal),
+         the same fade-by-the-complement as before, but as one GPU
+         composite instead of getImageData + a per-pixel JS loop +
+         putImageData every frame. (Only differs from the old
+         Math.min(photoAlpha, 1 - reveal) on the photo's semi-transparent
+         edge pixels, mid-erase.) */
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.drawImage(maskVid, 0, 0, PHOTO_W, Hp);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+
+  function finishPhotoErase(e, p) {
+    p.photoErasing = false;
+    e.photoH = null;
+    e.photoCanvas.style.opacity = '0';
+    e.photoImg.style.display = 'none';
+    e.photoCtx.clearRect(0, 0, e.photoCanvas.width, e.photoCanvas.height);
+    p.photoName  = undefined;
+    p.photoPhase = 'none';
+  }
+
+  /* ── Matte reveal over hero video ──────────────────────────── */
+  /* Per-pixel alpha derived from a matte-video sample at index i (RGBA offset).
+     Shared by the hero reveal and the photo erase so both read the same mask. */
+  function matteAlphaAt(m, i) {
+    return m[i + 3] < 254
+      ? 255 - m[i + 3]
+      : 255 - ((m[i] * 77 + m[i + 1] * 150 + m[i + 2] * 29) >> 8);
+  }
+
+  /* ── Draft Stats reveal ────────────────────────────────────────
+     Toggleable (Control tab → Draft Overlay → Feature Toggles →
+     "Draft Stats"); fires once per live hero pick, both sides. Real
+     numbers come straight from the draft API's pickCnt/contentionRate/
+     winRate fields (see normalizeDraftPayload() and updatePickSeat()) —
+     a pick count of 0 (hero never picked before) is a special case,
+     see startDraftStats()'s isDebut branch below. Buffstatus (NONE/
+     ADJUST/BUFF/NERF, from the same API) drives the small corner badge
+     that pops in once the whole reveal below has slid back out — see
+     showBuffBadge(). */
+  var draftStatsEnabled = false; /* permanently off: pickCnt/contentionRate/winRate/buffStatus have no source in the game feed */
+
+  /* Gear/cog — standard chunky 8-tooth gear silhouette (the FontAwesome
+     "gear" glyph outline), not a thin-spoked sun/asterisk shape. The
+     center hole is punched automatically by the inner circle subpath
+     winding the opposite direction from the outer gear body — default
+     nonzero fill-rule handles that with no separate cutout element
+     needed. viewBox fills edge-to-edge so this icon maximizes inside its
+     own box, in turn sized to nearly fill the 20px badge. */
+  var DBUFF_GEAR_SVG =
+    '<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="currentColor">' +
+    '<path d="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4l-55.6 17.6c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z"/>' +
+    '</svg>';
+  var BUFF_BADGE_CLASS = { NERF: 'dstats-buff-nerf', BUFF: 'dstats-buff-buff', ADJUST: 'dstats-buff-adjust' };
+  var BUFF_BADGE_ICON = {
+    NERF: '<div class="dstats-buff-arrow dstats-buff-arrow-down"></div>',
+    BUFF: '<div class="dstats-buff-arrow dstats-buff-arrow-up"></div>',
+    ADJUST: '<div class="dstats-buff-gear">' + DBUFF_GEAR_SVG + '</div>'
+  };
+
+  function showBuffBadge(e, status) {
+    var cls = BUFF_BADGE_CLASS[status];
+    if (!cls) return; /* NONE, or unrecognized — no badge */
+    e.dstatsBuffBadge.innerHTML = BUFF_BADGE_ICON[status];
+    e.dstatsBuffBadge.className = 'dstats-buff-badge dstats-buff-camp' + e.campid + ' ' + cls;
+    void e.dstatsBuffBadge.offsetWidth;
+    e.dstatsBuffBadge.classList.add('dstats-pop');
+  }
+
+  function hideBuffBadge(e) {
+    e.dstatsBuffBadge.classList.remove('dstats-pop');
+    e.dstatsBuffBadge.innerHTML = '';
+  }
+
+  /* Suppressed-reveal path (Final Changes seat swap — see the
+     draftStatsAllowed gate in poll()): skip the whole Draft Stats
+     slide-in/hold/slide-out entirely and just pop the buff badge in
+     right away, once the hero-reveal (matte wipe + glow + banner
+     slide-in) has already finished. Still cancels/resets any Draft
+     Stats visual that might be mid-flight from a previous, allowed
+     reveal on this same seat, so nothing gets stuck half-shown. */
+  function showBadgeOnly(e, p, status) {
+    if (p.dstatsTimers) { p.dstatsTimers.forEach(clearTimeout); p.dstatsTimers = null; }
+    dstatsSlideReset(e);
+    dstatsClearContent(e);
+    showBuffBadge(e, status);
+  }
+
+  /* Normal reveal — phase 1 (slide, 300ms) → phase 2 starts right after
+     (PICK pops in oversized and holds, ~750ms — 500ms longer than a plain
+     pop so the bigger count actually gets seen) → phase 3 starts shortly
+     after that (PICK shrinks back to normal size while settling into its
+     final row, ~450ms) — then a 1.8s hold, then a 400ms slide back out. */
+  var DSTATS_PHASE1_MS = (document.documentElement.getAttribute('data-theme') === 'playoffs') ? 700 : 300;  // rect slide-in duration (playoffs: text starts 300ms before the 1s wipe ends)
+  var DSTATS_PHASE2_MS = 750;  // delay from phase 1 end to phase 3 start (oversized PICK hold)
+  var DSTATS_PHASE3_MS = 450;  // reserved for the settle transition before the hold begins
+  var DSTATS_HOLD_MS   = 1800;
+  var DSTATS_OUT_MS    = 400;
+
+  /* Debut reveal — same phase 1 slide, then "DEBUT" pops in, "PICK!" pops
+     in shortly after (each its own bouncy pop, no phase 3 — nothing to
+     settle into), then the same hold/out. */
+  var DSTATS_DEBUT_GAP_MS = 220; // delay between DEBUT popping and PICK! popping
+  var DSTATS_DEBUT_POP_MS = 400; // reserved for PICK!'s own pop transition before the hold begins
+
+  /* .dstatsRect and .dstatsText are separate siblings (see the CSS
+     comment above .dstats-slide for why) but always slide together —
+     this pair of helpers is the only place that needs to know that. */
+  function dstatsSlideIn(e) {
+    if (isPlayoffsDraft()) {
+      /* No slide: rect + text snap into place (CSS transition none) while
+         the gradient map wipes in on the canvas. */
+      e.dstatsRect.classList.remove('dstats-out');
+      e.dstatsText.classList.remove('dstats-out');
+      e.dstatsRect.classList.add('dstats-in');
+      e.dstatsText.classList.add('dstats-in');
+      dstatsPoWipe(e, true);
+      return;
+    }
+    e.dstatsRect.classList.remove('dstats-out');
+    e.dstatsText.classList.remove('dstats-out');
+    e.dstatsRect.classList.add('dstats-in');
+    e.dstatsText.classList.add('dstats-in');
+  }
+  /* Playoffs: the gold gradient map doesn't slide out — it is redrawn on a
+     canvas (hero luminance -> gold via #po-gradmap, over the gold plate back,
+     same as the backdrop-filter rect shows) and erased by the inverse of
+     picking_reveal_150x170_alpha.webm (alpha 0->1, so destination-out leaves
+     the map fully there at the start and gone at the end). */
+  var DSTATS_PO_OUT_MS = 1000;
+  var dstatsPoBg = null;
+  function dstatsPoOutCancel(e) {
+    var o = e.dstatsPoOut;
+    if (!o) return;
+    if (o.raf) { cancelAnimationFrame(o.raf); o.raf = null; }
+    clearTimeout(o.endTimer);
+    if (o.vid) o.vid.pause();
+    if (o.cvs) o.cvs.style.display = 'none';
+    e.dstatsRect.style.visibility = '';
+    e.dstatsText.classList.remove('dstats-po-fade');
+  }
+  function dstatsPoWipe(e, wipeIn) {
+    var o = e.dstatsPoOut;
+    if (!o) {
+      var cvs = document.createElement('canvas');
+      cvs.className = 'dstats-po-canvas';
+      cvs.style.display = 'none';
+      e.dstatsRect.parentNode.insertBefore(cvs, e.dstatsText);
+      var vid = document.createElement('video');
+      vid.src = 'assets/overlay/draft/playoffs/motion/picking_reveal_150x170_alpha.webm';
+      vid.muted = true; vid.playsInline = true; vid.preload = 'auto';
+      vid.style.display = 'none';
+      e.dstatsRect.parentNode.appendChild(vid);
+      o = e.dstatsPoOut = { cvs: cvs, ctx: cvs.getContext('2d'), vid: vid, raf: null };
+    }
+    if (!dstatsPoBg) { dstatsPoBg = new Image(); dstatsPoBg.src = 'assets/overlay/draft/playoffs/playoffs_draftgold.png'; }
+    var hv = e.heroVid;
+    var natW = hv.videoWidth || 168, natH = hv.videoHeight || 300;
+    var H = Math.round(natH * 168 / natW);
+    o.cvs.width = 168; o.cvs.height = H; o.cvs.style.height = H + 'px';
+    function frame() {
+      var c = o.ctx;
+      c.globalCompositeOperation = 'source-over';
+      c.clearRect(0, 0, 168, H);
+      c.filter = 'url(#po-gradmap)';
+      try {
+        if (dstatsPoBg.complete && dstatsPoBg.naturalWidth) c.drawImage(dstatsPoBg, 0, 3, 168, 168);
+        if (hv.readyState >= 2) c.drawImage(hv, 0, 0, 168, H);
+      } catch (err) {}
+      c.filter = 'none';
+      /* Until the matte video has actually restarted from frame 0 it still
+         holds its LAST frame (alpha ~1) from the previous run — masking with
+         that would flash the full map (in) or erase it (out). Wipe-in shows
+         nothing yet; wipe-out shows the unmasked map. */
+      if (!o.ready) {
+        if (wipeIn) c.clearRect(0, 0, 168, H);
+        c.globalCompositeOperation = 'source-over';
+        return;
+      }
+      c.globalCompositeOperation = wipeIn ? 'destination-in' : 'destination-out';
+      try { c.drawImage(o.vid, 0, 0, 168, H); } catch (err) {}
+      c.globalCompositeOperation = 'source-over';
+    }
+    frame();
+    o.cvs.style.display = 'block';
+    e.dstatsRect.style.visibility = 'hidden';
+    if (!wipeIn) e.dstatsText.classList.add('dstats-po-fade');
+    clearTimeout(o.endTimer);
+    o.ready = false;
+    o.vid.currentTime = 0;
+    o.vid.play().then(function () {
+      (function chk() {
+        if (o.vid.seeking || o.vid.currentTime > 0.1) { if (o.vid.seeking) return requestAnimationFrame(chk); }
+        o.ready = true;
+      }());
+    }).catch(function () { o.ready = true; });
+    (function loop() {
+      frame();
+      o.raf = requestAnimationFrame(loop);
+    }());
+    if (wipeIn) {
+      /* Wipe done — hand over to the real backdrop-filter rect (already in
+         place, same look) and drop the canvas. */
+      o.endTimer = setTimeout(function () {
+        if (o.raf) { cancelAnimationFrame(o.raf); o.raf = null; }
+        o.vid.pause();
+        o.cvs.style.display = 'none';
+        e.dstatsRect.style.visibility = '';
+      }, DSTATS_PO_OUT_MS);
+    }
+  }
+  function dstatsSlideOut(e) {
+    if (isPlayoffsDraft()) { dstatsPoWipe(e, false); return; }
+    e.dstatsRect.classList.remove('dstats-in');
+    e.dstatsText.classList.remove('dstats-in');
+    e.dstatsRect.classList.add('dstats-out');
+    e.dstatsText.classList.add('dstats-out');
+  }
+  function dstatsSlideReset(e) {
+    dstatsPoOutCancel(e);
+    e.dstatsRect.classList.remove('dstats-in', 'dstats-out');
+    e.dstatsText.classList.remove('dstats-in', 'dstats-out');
+  }
+
+  function dstatsClearContent(e) {
+    e.dstatsPickRow.classList.remove('dstats-pop', 'dstats-settle');
+    e.dstatsContentionRow.classList.remove('dstats-pop', 'dstats-settle');
+    e.dstatsWinrateRow.classList.remove('dstats-pop', 'dstats-settle');
+    e.dstatsDebutLabel.classList.remove('dstats-pop');
+    e.dstatsDebutValue.classList.remove('dstats-pop');
+    hideBuffBadge(e);
+  }
+
+  function startDraftStats(e, p, stats) {
+    var isDebut = Number(stats.pick) === 0;
+    if (p.dstatsTimers) { p.dstatsTimers.forEach(clearTimeout); }
+    p.dstatsTimers = [];
+
+    /* Reset to the untriggered state before replaying, in case a
+       previous run is still mid-flight (e.g. rapid test-button clicks). */
+    dstatsSlideReset(e);
+    dstatsClearContent(e);
+    void e.dstatsRect.offsetWidth;
+
+    /* Phase 1 — blue rectangle (+ text layer riding along with it) slides
+       in from the left. Shared by both the normal and debut reveals. */
+    dstatsSlideIn(e);
+
+    var introEndMs; // when the intro content finishes animating, before the hold begins
+
+    if (isDebut) {
+      /* "DEBUT" pops in, then "PICK!" pops in right after — no stats to
+         show for a hero that's never been picked, so skip straight from
+         phase 1 to this instead of the usual PICK/CONTENTION/WIN RATE flow. */
+      p.dstatsTimers.push(setTimeout(function () {
+        e.dstatsDebutLabel.classList.add('dstats-pop');
+      }, DSTATS_PHASE1_MS));
+
+      p.dstatsTimers.push(setTimeout(function () {
+        e.dstatsDebutValue.classList.add('dstats-pop');
+      }, DSTATS_PHASE1_MS + DSTATS_DEBUT_GAP_MS));
+
+      introEndMs = DSTATS_PHASE1_MS + DSTATS_DEBUT_GAP_MS + DSTATS_DEBUT_POP_MS;
+    } else {
+      e.dstatsPickValue.textContent = stats.pick;
+      e.dstatsContentionValue.textContent = stats.contention;
+      e.dstatsWinrateValue.textContent = stats.winrate;
+
+      /* Phase 2 — PICK + its count pop in at the card's vertical centre. */
+      p.dstatsTimers.push(setTimeout(function () {
+        e.dstatsPickRow.classList.add('dstats-pop');
+      }, DSTATS_PHASE1_MS));
+
+      /* Phase 3 — PICK settles upward; CONTENTION RATE/WIN RATE fade in
+         from that same centre point and settle down into their own rows. */
+      p.dstatsTimers.push(setTimeout(function () {
+        e.dstatsPickRow.classList.add('dstats-settle');
+        e.dstatsContentionRow.classList.add('dstats-pop', 'dstats-settle');
+        e.dstatsWinrateRow.classList.add('dstats-pop', 'dstats-settle');
+      }, DSTATS_PHASE1_MS + DSTATS_PHASE2_MS));
+
+      introEndMs = DSTATS_PHASE1_MS + DSTATS_PHASE2_MS + DSTATS_PHASE3_MS;
+    }
+
+    /* Hold, then slide the whole assembly back out the way it came in. */
+    p.dstatsTimers.push(setTimeout(function () {
+      dstatsSlideOut(e);
+    }, introEndMs + DSTATS_HOLD_MS));
+
+    /* Fully offscreen — clear row state, then pop in the buff/nerf/adjust
+       corner badge (if any — NONE shows nothing). */
+    p.dstatsTimers.push(setTimeout(function () {
+      dstatsSlideReset(e);
+      dstatsClearContent(e);
+      showBuffBadge(e, stats.buffStatus);
+      p.dstatsTimers = null;
+    }, introEndMs + DSTATS_HOLD_MS + (isPlayoffsDraft() ? DSTATS_PO_OUT_MS : DSTATS_OUT_MS)));
+  }
+
+  /* Cancels any in-flight reveal and snaps the layer back to fully
+     hidden — used when a seat's pick is cleared out from under it
+     (draft swap, auto-pick edge case) so a stale animation can't get
+     stuck mid-flight on the next occupant's card. */
+  function resetDraftStats(e, p) {
+    if (p.dstatsTimers) { p.dstatsTimers.forEach(clearTimeout); p.dstatsTimers = null; }
+    dstatsSlideReset(e);
+    dstatsClearContent(e);
+  }
+
+  function startMatteReveal(e, campid, p) {
+    var cvs          = e.canvasEl;
+    var ctx          = e.ctx2d;
+    var matteVid     = e.matteVid;
+    var heroMatteVid = e.heroMatteVid;
+    var heroVid      = e.heroVid;
+    var rafId        = null;
+
+    function fireGlow() {
+      var gd = e.glowDiv;
+      gd.classList.remove('picked');
+      cvs.classList.remove('brightening');
+      heroVid.classList.remove('brightening');
+      void gd.offsetWidth;
+      gd.classList.add('picked');
+      cvs.classList.add('brightening');
+      heroVid.classList.add('brightening');
+      /* picked-glow-gold runs 0.9s — use setTimeout instead of animationend */
+      setTimeout(function () {
+        /* Captured BEFORE resetting below — true only when this reveal
+           came from a genuine picking turn (the plate actually grew for
+           it). A Final Changes seat swap into an already-occupied seat
+           never sets this: `pick` stays false throughout (see the "Plate
+           expand" block in updatePickSeat), so the plate never grows in
+           the first place. This matters below: it decides whether there
+           are real CSS transitions worth waiting on at all. */
+        var wasExpanded = prevPick[e.key].expanded;
+        prevPick[e.key].expanded = false;
+        e.seatUnit.classList.remove('picking-expand');
+        updateCampPickerClass(campid);
+
+        /* Draft Stats / buff badge trigger — p.pickCnt/contentionRate/
+           winRate/buffStatus/draftStatsAllowed were stashed from the live
+           seat data in updatePickSeat() below. draftStatsAllowed false
+           means this reveal is a Final Changes swap, not a genuine pick
+           (see the gate in poll()) — skip the stats reveal and just pop
+           the badge for the hero now sitting in this seat. */
+        function triggerStatsOrBadge() {
+          if (!draftStatsEnabled) return;
+          if (p.draftStatsAllowed) {
+            startDraftStats(e, p, {
+              pick: String(p.pickCnt),
+              contention: Math.round(p.contentionRate) + '%',
+              winrate: Math.round(p.winRate) + '%',
+              buffStatus: p.buffStatus
+            });
+          } else {
+            showBadgeOnly(e, p, p.buffStatus);
+          }
+        }
+
+        if (wasExpanded) {
+          /* Genuine picking turn — the plate really did grow, so wait for
+             its real collapse transition, then the banner's own real
+             slide-in transition, before triggering (existing
+             choreography: keeps the reveal reading as one sequence
+             instead of everything popping in at once). */
+          function onCollapse(ev) {
+            if (ev.propertyName !== 'width') return;
+            e.seatUnit.removeEventListener('transitionend', onCollapse);
+            e.banner.classList.add('slide-in');
+            function onBannerIn(bev) {
+              if (bev.propertyName !== 'transform') return;
+              e.banner.removeEventListener('transitionend', onBannerIn);
+              triggerStatsOrBadge();
+            }
+            e.banner.addEventListener('transitionend', onBannerIn);
+          }
+          e.seatUnit.addEventListener('transitionend', onCollapse);
+        } else {
+          /* Not a genuine picking turn this cycle — a Final Changes seat
+             swap into an already-occupied seat. Neither the plate width
+             nor the banner's slide-in transform actually CHANGES value
+             here (the plate never expanded; the banner was already
+             showing from the hero this one replaced), so neither would
+             ever fire a transitionend — waiting on either, as the
+             wasExpanded branch does, would silently hang forever and the
+             badge would never appear. Nothing left to visually wait on,
+             so trigger immediately. */
+          e.banner.classList.add('slide-in'); // no-op if already present
+          triggerStatsOrBadge();
+        }
+      }, 900);
+    }
+
+    function done() {
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+      prevPick[e.key].matteActive = false;
+      cvs.style.opacity = '0';
+      cvs.classList.remove('brightening');
+      heroMatteVid.pause();
+      /* Stop pick video now that reveal is complete */
+      e.pickVid.style.display = 'none';
+      e.pickVid.pause();
+      hidePickAnim(e, p);
+      /* Hero video was hidden — show it now that matte has revealed it */
+      heroVid.style.display = 'block';
+      if (p.photoErasing) finishPhotoErase(e, p);
+      fireGlow();
+    }
+
+    /* GPU-only composite: heroMatteVid's alpha channel IS the mask
+       (pre-baked offline to the exact matteAlphaAt() value below), so
+       destination-in multiplies heroVid's opaque pixels by it directly —
+       no getImageData/putImageData round trip. clearRect isn't needed
+       first since the hero draw is a full opaque overwrite either way. */
+    function compositeFrame(H) {
+      ctx.drawImage(heroVid, 0, 0, 168, H);
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.drawImage(heroMatteVid, 0, 0, 168, H);
+      ctx.globalCompositeOperation = 'source-over';
+      if (p.photoErasing) updatePhotoErase(e, heroMatteVid);
+    }
+
+    function composite(H) {
+      if (matteVid.ended) { done(); return; }
+      try { compositeFrame(H); } catch (err) { done(); return; }
+      rafId = requestAnimationFrame(function () { composite(H); });
+    }
+
+    function beginComposite() {
+      /* Size canvas to exactly match hero video's natural aspect ratio at 168 px wide */
+      var natW = heroVid.videoWidth  || 168;
+      var natH = heroVid.videoHeight || 300;
+      var H    = Math.round(natH * 168 / natW);
+      cvs.width = 168; cvs.height = H; cvs.style.height = H + 'px';
+
+      cvs.style.opacity = '1';
+      matteVid.currentTime = 0;
+      matteVid.addEventListener('ended', done, { once: true });
+
+      /* Same timeline as matteVid, started together — matteVid stays the
+         timing driver (ended/requestVideoFrameCallback below); this one
+         only ever gets drawn from, never inspected for state. */
+      heroMatteVid.currentTime = 0;
+      heroMatteVid.play().catch(function () {});
+
+      preparePhotoErase(e, p);
+
+      matteVid.play()
+        .then(function () {
+          if ('requestVideoFrameCallback' in matteVid) {
+            (function onVF() {
+              if (matteVid.ended) return;
+              try { compositeFrame(H); } catch (err) { done(); return; }
+              matteVid.requestVideoFrameCallback(onVF);
+            }());
+          } else {
+            composite(H);
+          }
+        })
+        .catch(done);
+    }
+
+    /* Start hero video playing (still hidden), wait for metadata before
+       sizing canvas — prevents the wrong-size-then-snap issue */
+    if (heroVid.readyState >= 1 /* HAVE_METADATA */) {
+      heroVid.play().catch(function () {});
+      beginComposite();
+    } else {
+      heroVid.addEventListener('loadedmetadata', function () {
+        heroVid.play().catch(function () {});
+        beginComposite();
+      }, { once: true });
+      heroVid.load(); /* trigger load since preload="none" */
+    }
+  }
+
+  /* ── Ban hero reveal ───────────────────────────────────────── */
+  function revealBanHero(bhi) {
+    bhi.style.opacity = '1';
+    bhi.style.transform = '';
+    bhi.style.filter = '';
+    bhi.classList.remove('ban-revealing');
+    void bhi.offsetWidth;
+    bhi.classList.add('ban-revealing');
+    /* ban-reveal runs 0.95s — use setTimeout instead of animationend */
+    setTimeout(function () {
+      bhi.classList.remove('ban-revealing');
+      bhi.style.transform = 'translateY(0)';
+      bhi.style.filter    = 'grayscale(1) brightness(0.5)';
+    }, 950);
+  }
+
+  /* ── Update pick seat ──────────────────────────────────────── */
+  function updatePickSeat(campid, seatIdx, seat) {
+    var key    = campid + '_' + seatIdx;
+    var e      = pickEls[key];
+    var p      = prevPick[key];
+    var heroid = seat.heroid  || 0;
+    var pick   = !!seat.picking;
+    var ban    = !!seat.banning;
+
+    e.nameEl.textContent = seat.name || '';
+
+    /* Idle edge triangles — only before this seat's own picking turn */
+    if (e.triTop) {
+      var showTri = heroid === 0 && !pick;
+      e.triTop.style.display    = showTri ? 'block' : 'none';
+      e.triBottom.style.display = showTri ? 'block' : 'none';
+    }
+
+    /* Keep banner name in sync */
+    /* hero_name is a plain string from Dire's feed but a 1-item array from rawAdapter — accept both
+       (indexing a string with [0] showed only its first letter). */
+    var heroNm = Array.isArray(seat.hero_name) ? seat.hero_name[0] : seat.hero_name;
+    if (heroNm && e.bannerName.textContent !== heroNm) {
+      e.bannerName.textContent = heroNm;
+    }
+
+    /* Role icon — follows the player (roleid), not the seat slot.
+       Updates whenever a different player occupies this slot (e.g. draft swap). */
+    var roleid = seat.roleid || 0;
+    var assignedRole = seatRole(seat, seatIdx);
+    if (assignedRole !== p.assignedRole) {
+      if (assignedRole && ROLE_MAP[assignedRole]) {
+        e.roleImg.src = ROLE_MAP[assignedRole];
+        e.roleImg.style.opacity = '';
+      }
+      p.assignedRole = assignedRole;
+    }
+    p.roleid = roleid;
+
+    if (heroid !== p.heroid) {
+      if (heroid > 0) {
+        /* Load and play the hero WebM */
+        e.heroVid.src = 'assets/hero/webm/HERO_PICK_DRAFT_' + heroid + '.webm';
+        e.heroVid.currentTime = 0;
+
+        if (p.heroid !== undefined) {
+          /* Live pick: matte reveal drives play() and display. Stash this
+             pick's draft-stats fields now (straight from the API, see
+             normalizeDraftPayload()) so startMatteReveal()'s fireGlow()
+             has real numbers by the time it triggers startDraftStats(),
+             several steps and a couple of transitionend hops later. */
+          p.pickCnt        = seat.pickCnt || 0;
+          p.contentionRate = seat.contentionRate || 0;
+          p.winRate        = seat.winRate || 0;
+          p.buffStatus     = seat.buffStatus || 'NONE';
+          p.draftStatsAllowed = seat.draftStatsAllowed !== false;
+          e.heroVid.style.display = 'none'; /* hidden until canvas reveals it */
+          p.matteActive = true;
+          startMatteReveal(e, campid, p);
+        } else {
+          /* First load: show video directly, no matte, banner instant */
+          e.heroVid.style.display = 'block';
+          e.heroVid.play().catch(function () {});
+          e.banner.style.transition = 'none';
+          e.banner.classList.add('slide-in');
+          void e.banner.offsetWidth;
+          e.banner.style.transition = '';
+        }
+
+        e.roleImg.style.display = 'none';
+        e.roleImg.style.transform = '';
+      } else {
+        /* Slot reset */
+        e.banner.classList.remove('slide-in');
+        e.bannerName.textContent = '';
+        e.pickGrad.style.display = 'none';
+        e.heroVid.pause();
+        e.heroVid.src = '';
+        e.heroVid.style.display = 'none';
+        e.heroVid.classList.remove('brightening');
+        e.canvasEl.style.opacity = '0';
+        e.canvasEl.classList.remove('brightening');
+        e.ctx2d.clearRect(0, 0, e.canvasEl.width, e.canvasEl.height);
+        e.glowDiv.classList.remove('picked');
+        p.expanded = false;
+        e.seatUnit.classList.remove('picking-expand');
+        updateCampPickerClass(campid);
+        e.roleImg.style.display = '';
+        resetPlayerPhoto(e, p);
+        resetDraftStats(e, p);
+      }
+      p.heroid = heroid;
+    }
+
+    /* Plate expand: grows to 168 px when picking starts, squeezes others */
+    if (pick && !p.picking && !p.expanded) {
+      p.expanded = true;
+      e.seatUnit.classList.add('picking-expand');
+      updateCampPickerClass(campid);
+    }
+
+    /* Pick background video + anim + gradient */
+    if (pick && !p.picking) {
+      e.pickVid.currentTime = 0;
+      e.pickVid.style.display = 'block';
+      e.pickVid.play().catch(function () {});
+      showPickAnimDelayed(e, p);
+      e.pickGrad.style.display = 'block';
+      startPlayerPhotoSequence(e, p, seat.name);
+    } else if (!pick && p.picking) {
+      e.pickGrad.style.display = 'none';
+      if (!p.matteActive) {
+        e.pickVid.style.display = 'none';
+        e.pickVid.pause();
+        hidePickAnim(e, p);
+      }
+      /* if matteActive, done() in startMatteReveal will stop it */
+      /* Turn ended without a pick (e.g. timeout/auto-pick edge case) — don't
+         leave the photo sequence orphaned on screen */
+      if (heroid === 0) resetPlayerPhoto(e, p);
+    }
+
+
+    /* Role icon: press + fly to corner when picking starts */
+    var ri = e.roleImg;
+    if (pick && !p.picking && !p.small) {
+      p.small = true;
+      ri.classList.remove('pressing', 'small');
+      void ri.offsetWidth;
+      ri.classList.add('pressing');
+      /* role-press runs 0.55s — use setTimeout instead of animationend */
+      setTimeout(function () {
+        ri.classList.remove('pressing');
+        void ri.offsetWidth;
+        /* Calculate corner translate using the live plate width.
+           left:calc(50%-35px) centres the icon; after scale(0.343) the
+           visual half-size is 12px, so to land top-left at (5,5):
+           tx = 5 - (plate_w/2 - 12) = 17 - plate_w/2
+           ty = 5 - (plate_h/2 - 12) = 17 - 84 = -67 (constant) */
+        var pw = e.plate.offsetWidth;
+        var tx = 17 - pw / 2;
+        ri.style.transform = 'translate(' + tx + 'px, -67px) scale(0.343)';
+      }, 550);
+    }
+    /* Reset role icon to centre if the draft resets */
+    if (heroid === 0 && p.heroid > 0) {
+      p.small = false;
+      ri.style.display = '';
+      ri.style.transform = '';
+      ri.classList.remove('pressing');
+    }
+
+    p.picking = pick;
+    p.banning = ban;
+  }
+
+  /* ── Update ban seat ───────────────────────────────────────── */
+  function updateBanSeat(campid, seatIdx, seat) {
+    var key        = campid + '_' + seatIdx;
+    var e          = banEls[key];
+    var p          = prevBan[key];
+    var ban_heroid = seat.ban_heroid || 0;
+    var banning    = !!seat.banning;
+
+    if (ban_heroid !== p.ban_heroid) {
+      if (e.icon) e.icon.classList.toggle('ban-icon-off', ban_heroid > 0);
+      if (ban_heroid > 0) {
+        heroThumbFallback(e.bhi, ban_heroid);
+        e.bhi.src = heroThumbSrc(ban_heroid);
+        if (p.ban_heroid !== undefined) {
+          revealBanHero(e.bhi);
+          p.revealDoneAt = Date.now() + 950; /* ban-reveal's own length, see revealBanHero */
+        } else {
+          /* First load: show already-banned hero silently */
+          e.bhi.style.opacity   = '1';
+          e.bhi.style.transform = 'translateY(0)';
+          e.bhi.style.filter    = 'grayscale(1) brightness(0.5)';
+        }
+      } else {
+        e.bhi.src = '';
+        e.bhi.style.opacity   = '0';
+        e.bhi.style.transform = '';
+        e.bhi.style.filter    = '';
+      }
+      p.ban_heroid = ban_heroid;
+    }
+
+    /* Ban plate red glow when banning */
+    if (banning !== p.banning) {
+      if (banning) {
+        e.banplate.classList.add('banning');
+      } else {
+        e.banplate.classList.remove('banning');
+      }
+      p.banning = banning;
+    }
+  }
+
+  /* ── Update status text + countdown + triangles ────────────── */
+  function fmtTime(s) {
+    s = Math.max(0, Math.round(s));
+    var m = Math.floor(s / 60);
+    var r = s % 60;
+    if (m > 0) return m + ':' + (r < 10 ? '0' : '') + r;
+    return String(s);
+  }
+
+  function updateStatus(gameData, allSeats) {
+    var anyBanning = allSeats.some(function (s) { return !!s.banning; });
+    var anyPicking = allSeats.some(function (s) { return !!s.picking; });
+    var allPicked  = allSeats
+      .filter(function (s) { return !s.judger; })
+      .every(function (s)  { return (s.heroid || 0) > 0; });
+
+    var txt = '';
+    if (gameData.game_time > 0) txt = '';   /* the match has started — draft is over, no phase text / countdown */
+    else if (anyBanning) txt = 'BANNING';
+    else if (anyPicking) txt = 'PICKING';
+    else if (allPicked)  txt = 'FINAL CHANGES';
+
+    document.getElementById('status-text').textContent = txt;
+
+    var leftTime = gameData.state_left_time || 0;
+    document.getElementById('countdown-text').textContent =
+      (txt && leftTime > 0) ? fmtTime(leftTime) : '';
+
+    /* Triangle: show camp1 side if camp1 is active, camp2 side if camp2 */
+    var camp1Active = allSeats.some(function (s) {
+      return s.campid === 1 && (!!s.picking || !!s.banning);
+    });
+    var camp2Active = allSeats.some(function (s) {
+      return s.campid === 2 && (!!s.picking || !!s.banning);
+    });
+
+    var triL = document.getElementById('tri-camp1');
+    var triR = document.getElementById('tri-camp2');
+    triL.classList.toggle('active', camp1Active);
+    triR.classList.toggle('active', camp2Active);
+
+    /* Timer bar */
+    var activeCamp = camp1Active ? 1 : camp2Active ? 2 : 0;
+    tmSync(activeCamp, gameData.state_left_time || 0);
+
+  }
+
+  /* ── Poll ──────────────────────────────────────────────────── */
+  /* ── Full reset on new battleid ────────────────────────────── */
+  var currentBattleId = null;
+
+  function resetAll() {
+    /* Clear cached roles — server holds the lock, client will re-fetch on next poll */
+
+    /* Pick seats */
+    Object.keys(pickEls).forEach(function (key) {
+      var e = pickEls[key];
+      var p = prevPick[key];
+
+      /* Videos */
+      e.heroVid.pause(); e.heroVid.src = ''; e.heroVid.style.display = 'none';
+      e.heroVid.classList.remove('brightening');
+      e.pickVid.pause(); e.pickVid.style.display = 'none';
+      hidePickAnim(e, p);
+      e.pickGrad.style.display = 'none';
+
+      /* Canvas */
+      e.ctx2d.clearRect(0, 0, e.canvasEl.width, e.canvasEl.height);
+      e.canvasEl.style.opacity = '0';
+      e.canvasEl.classList.remove('brightening');
+
+      /* Glow / banner / role */
+      e.glowDiv.classList.remove('picked');
+      e.banner.classList.remove('slide-in');
+      e.bannerName.textContent = '';
+      e.roleImg.src = '';
+      e.roleImg.style.opacity = '0';
+      e.roleImg.style.display = '';
+      e.roleImg.style.transform = '';
+      e.roleImg.classList.remove('pressing');
+
+      /* Plate / seat-unit state */
+      e.seatUnit.classList.remove('picking-expand');
+      e.nameEl.textContent = '';
+
+      /* Idle edge triangles */
+      if (e.triTop) { e.triTop.style.display = 'none'; e.triBottom.style.display = 'none'; }
+
+      /* Player photo */
+      resetPlayerPhoto(e, p);
+
+      /* Reset prev state */
+      prevPick[key] = {
+        heroid: undefined, picking: false, banning: false,
+        small: false, expanded: false, matteActive: false,
+        roleid: undefined, assignedRole: undefined,
+        photoName: undefined, photoPhase: 'none', photoErasing: false,
+        photoTimer0: null, photoTimer1: null, photoTimer2: null,
+        pickAnimTimer: null
+      };
+    });
+
+    /* Camp containers */
+    [1, 2].forEach(function (c) {
+      if (campContainers[c]) {
+        campContainers[c].classList.remove('has-picker', 'has-two-pickers');
+      }
+    });
+
+    /* Ban seats */
+    Object.keys(banEls).forEach(function (key) {
+      var e = banEls[key];
+      e.bhi.src = ''; e.bhi.style.opacity = '0';
+      e.bhi.style.transform = ''; e.bhi.style.filter = '';
+      e.bhi.classList.remove('ban-revealing');
+      e.banplate.classList.remove('banning');
+      if (e.icon) e.icon.classList.remove('ban-icon-off');
+      prevBan[key] = { ban_heroid: undefined, banning: false };
+    });
+
+    /* Team names + logos */
+    if (teamEls[1]) teamEls[1].textContent = '';
+    if (teamEls[2]) teamEls[2].textContent = '';
+    [1, 2].forEach(function(c) {
+      var le = logoEls[c];
+      if (!le) return;
+      le.img.src = '';
+      le.img.style.display = 'none';
+      delete le.img.dataset.team;
+      le.fb.style.display = '';
+    });
+
+    /* Status / countdown / triangles */
+    document.getElementById('status-text').textContent  = '';
+    document.getElementById('countdown-text').textContent = '';
+    document.getElementById('tri-camp1').classList.remove('active');
+    document.getElementById('tri-camp2').classList.remove('active');
+
+    /* Timer bar */
+    tmHasStart = false;
+    tmSync(0, 0);
+  }
+
+  // GameRefresh.loop (startPolling) never overlaps ticks; the 8s fetch timeout keeps a hung server from stalling the loop.
+  var pollInFlight = false;
+  function poll() {
+    if (pollInFlight) return Promise.resolve();
+    pollInFlight = true;
+    return fetch(GAME_FEED_URL, { cache: 'no-store', signal: AbortSignal.timeout(8000) })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (json) {
+        if (json.code !== 0 || !json.data) throw new Error('unexpected payload');
+
+        /* Detect new battle → reset everything before processing new data */
+        var bid = json.data.battleid || null;
+        if (bid && bid !== currentBattleId) {
+          if (currentBattleId !== null) { window.location.reload(); return; }
+          currentBattleId = bid;
+        }
+
+        var campList = json.data.camp_list || [];
+        var camp1 = campList.find(function (c) { return c.campid === 1; });
+        var camp2 = campList.find(function (c) { return c.campid === 2; });
+
+        if (teamEls[1]) teamEls[1].textContent = (camp1 && camp1.team_simple_name) || '';
+        if (teamEls[2]) teamEls[2].textContent = (camp2 && camp2.team_simple_name) || '';
+
+        /* Team logos — only reload when team name changes */
+        [1, 2].forEach(function(campid) {
+          var camp = campid === 1 ? camp1 : camp2;
+          var le   = logoEls[campid];
+          if (!le) return;
+          var name = ((camp && camp.team_simple_name) || '').toUpperCase();
+          if (name && le.img.dataset.team !== name) {
+            le.img.dataset.team  = name;
+            le.img.style.display = 'none';
+            le.fb.style.display  = '';
+            le.img.src           = '/assets/team/logos/' + name + '.png';
+          }
+        });
+
+        var allSeats = [];
+
+        /* Ban slots fill in chronological order, left to right: rank this camp's seats by ban_order (the feed numbers
+           bans and picks on one 1..20 timeline), unassigned (0) last, ties by seat. Pick plates stay on the seat/lane. */
+        function banSlots(camp) {
+          var idx = [0, 1, 2, 3, 4], slot = [0, 0, 0, 0, 0];
+          function bo(k) { var st = camp && camp['seat_' + (k + 1)]; return st && st.ban_order > 0 ? st.ban_order : 1e9; }
+          idx.sort(function (a, b) { return (bo(a) - bo(b)) || (a - b); });
+          idx.forEach(function (seatIdx, rank) { slot[seatIdx] = rank; });
+          return slot;
+        }
+        var banSlot1 = banSlots(camp1), banSlot2 = banSlots(camp2);
+
+        for (var i = 1; i <= 5; i++) {
+          if (camp1 && camp1['seat_' + i]) {
+            updatePickSeat(1, i - 1, camp1['seat_' + i]);
+            updateBanSeat (1, banSlot1[i - 1], camp1['seat_' + i]);
+            allSeats.push(camp1['seat_' + i]);
+          }
+          if (camp2 && camp2['seat_' + i]) {
+            updatePickSeat(2, i - 1, camp2['seat_' + i]);
+            updateBanSeat (2, banSlot2[i - 1], camp2['seat_' + i]);
+            allSeats.push(camp2['seat_' + i]);
+          }
+        }
+
+        updateStatus(json.data, allSeats);
+      })
+      .catch(function () {})
+      .finally(function () { pollInFlight = false; });
+  }
+
+  /* ── Whole-scene show/hide — slides upward to show, downward to hide
+     (see #scene / #scene.draft-hidden in the <style> block above).
+     `instant` skips the transition, used only for the restore-on-load
+     fetch below so a reload doesn't visibly replay the slide. ── */
+  function showDraftScene(instant) {
+    var scene = document.getElementById('scene');
+    if (!scene) return;
+    if (instant) scene.style.transition = 'none';
+    scene.classList.remove('draft-hidden');
+    if (instant) requestAnimationFrame(function () { scene.style.transition = ''; });
+  }
+  function hideDraftScene(instant) {
+    var scene = document.getElementById('scene');
+    if (!scene) return;
+    if (instant) scene.style.transition = 'none';
+    scene.classList.add('draft-hidden');
+    if (instant) requestAnimationFrame(function () { scene.style.transition = ''; });
+  }
+
+  /* Restore-on-load — runs immediately (not gated behind the 2s SSE
+     delay below) since the default (no class) is visible; only need to
+     act if the server says it was explicitly hidden, so a reload never
+     shows a spurious blank frame while this resolves.
+     PREVIEW_ONLY skips this entirely — a preview instance starts hidden
+     regardless of real state and only reveals itself via
+     window.previewTrigger, never by guessing what's actually live. */
+  if (PREVIEW_ONLY) {
+    hideDraftScene(true);
+  } else {
+    fetch('/overlay/draft-state', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d && d.active === false) hideDraftScene(true); })
+      .catch(function () {});
+  }
+
+  /* SSE — listen for global debug hide.
+     Opened after a short delay so Chrome's tab throbber settles on load. */
+  setTimeout(function() {
+    // Backed by the shared SharedWorker (html/js/overlay-shared-worker.js)
+    // — this page opens zero real connections of its own now, so having
+    // several overlay browser sources/tabs open at once no longer eats
+    // into the browser's shared connection pool per page.
+    var sse = createOverlaySSE();
+    sse.addEventListener('theme', function(ev) { applyTheme(JSON.parse(ev.data).theme); });
+    /* Fired by routes/overlayStyles.js after any Edit-tab Save — force a
+       hard reload so new position/size overrides apply immediately
+       (see mplfs.html's connectSSE() for the identical pattern). */
+    sse.addEventListener('reload', function() { window.location.reload(); });
+    sse.addEventListener('draftphotomode', function(ev) {
+      try {
+        var d = JSON.parse(ev.data);
+        if (d.mode) draftPhotoMode = d.mode;
+      } catch (e) {}
+    });
+    sse.addEventListener('draft', function(ev) {
+      if (PREVIEW_ONLY) return; /* decoupled from real state — see PREVIEW_ONLY above */
+      try {
+        var d = JSON.parse(ev.data);
+        if (d.action === 'show') showDraftScene();
+        else if (d.action === 'hide') hideDraftScene();
+      } catch (e) {}
+    });
+    sse.addEventListener('mapdetailv2', function(ev) {
+      try {
+        var d = JSON.parse(ev.data);
+        mapDetail2ApplyCmd(d.action);
+      } catch (e) {}
+    });
+  }, 2000);
+
+  /* ── Local-only preview trigger — called directly by the dashboard's
+     Control-tab Preview button via this iframe's contentWindow, bypassing
+     the network/SSE entirely (same contract as mplfs.html's
+     window.previewTrigger). This is the ONLY thing that shows/hides this
+     page when PREVIEW_ONLY is set. ── */
+  window.previewTrigger = function (event, action) {
+    if (event === 'draft') {
+      if (action === 'show') showDraftScene();
+      else hideDraftScene();
+    }
+  };
+
+  buildPickPlates();
+  buildBanPlates();
+  buildScoreBoxes();
+  buildTeamNames();
+  buildTeamLogos();
+  buildStatusArea();
+  buildDraftMap();
+  buildDraftMatchGame();
+  buildCoachBpm();
+  buildTimerBar();
+  startSponsorLoop();
+  pollMatchState();
+  setInterval(pollMatchState, 3000);
+  requestAnimationFrame(dcoachAnimate);
+  pollCoachBpm();
+  setInterval(pollCoachBpm, 1000);
+
+  /* Game feed poll at the Settings "Game API refresh rate" (game-refresh.js); never overlaps. */
+  GameRefresh.loop(poll);
+
+  /* ── Load saved position/size overrides from dashboard editor ── */
+  (function loadDraftOverrides() {
+    fetch('/api/overlay-styles?file=Draft')
+      .then(function(r) { return r.json(); })
+      .then(function(styles) {
+        if (!styles || !Object.keys(styles).length) return;
+        var css = Object.keys(styles).map(function(sel) {
+          var props = styles[sel];
+          var decls = Object.keys(props).map(function(prop) {
+            var cssProp = prop === 'fontSize' ? 'font-size' : prop;
+            return cssProp + ':' + props[prop] + ' !important';
+          }).join(';');
+          return sel + '{' + decls + '}';
+        }).join('\n');
+        var style = document.createElement('style');
+        style.id = 'draft-overrides';
+        style.textContent = css;
+        document.head.appendChild(style);
+      })
+      .catch(function() {});
+  })();
+})();
+</script>
+</body>
+</html>

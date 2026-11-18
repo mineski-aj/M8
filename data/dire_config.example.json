@@ -1,7 +1,5 @@
 {
-  "authKey": "",
-  "authUrl": "https://royal-rain-9cbc.andrewjames-s.workers.dev",
-  "accessToken": "<X-Access-Token for the auth-key worker \u2014 or set env DIRE_ACCESS_TOKEN>",
+  "localAuthKey": "<paste the upstream auth key here>",
   "judgeIds": {
     "global": "1369004764",
     "indo": "1369004764"

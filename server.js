@@ -117,8 +117,8 @@ app.post('/match/team-lineups', function (req, res) {
 
 // Short per-country links for browser sources: /ingame/ID -> the Ingame page for the ID sponsor set (same for /postgame/<SET>).
 // Plain /ingame and /postgame mean the MAIN set. The page itself reads ?set= (html/js/sponsor-set.js).
-['ingame', 'postgame'].forEach(function (page) {
-  const file = page === 'ingame' ? 'ingame.html' : 'postgame.html';
+['ingame', 'postgame', 'draft'].forEach(function (page) {
+  const file = page === 'ingame' ? 'ingame.html' : page === 'draft' ? 'Draft.html' : 'postgame.html';
   app.get(['/' + page, '/' + page + '/:set'], function (req, res) {
     const set = String(req.params.set || 'MAIN').toUpperCase().replace(/[^A-Z]/g, '');
     res.redirect('/html/' + file + '?set=' + (['MAIN', 'ID', 'MY', 'PH'].includes(set) ? set : 'MAIN'));
@@ -168,32 +168,7 @@ app.listen(PORT, '0.0.0.0', () => {
   require('./lib/eventLog').add({ level: 'success', page: 'server', kind: 'server', msg: 'Overlay server started on :' + PORT });
   // Server restarted while API Mode is DEBUG -> bring the built-in DiredudeAPI (lib/dire.js) back up.
   require('./lib/dire').onModeChange(require('./lib/apiMode').getApiMode()).catch(function () {});
-  console.log("================================================");
-  console.log(`  Overlay Server running on :${PORT}`);
-  console.log(`  Dashboard  → http://localhost:${PORT}/`);
-  console.log(`  Feed       → http://localhost:${PORT}/feed`);
-  console.log(`  Camp Feed  → http://localhost:${PORT}/feed/order`);
-  console.log(`  Postgame   → http://localhost:${PORT}/postgame`);
-  console.log(`  League     → http://localhost:${PORT}/stats/league`);
-  console.log(`  Overlay    → GET  http://localhost:${PORT}/overlay/slot1  (show)`);
-  console.log(`             → GET  http://localhost:${PORT}/overlay/hide   (hide)`);
-  console.log(`  Fights OL  → GET  http://localhost:${PORT}/overlay/fights/show`);
-  console.log(`             → GET  http://localhost:${PORT}/overlay/fights/hide`);
-  console.log(`  Positions  → GET  http://localhost:${PORT}/positions`);
-  console.log(`  Fights     → GET  http://localhost:${PORT}/fights`);
-  console.log(`             →      ?last=N  for last N fights`);
-  console.log(`             →      ?camp=1&seat=2&from=0&to=600`);
-  console.log(`             →      camp 1|2  seat 1-5  from/to in seconds`);
-  console.log(`  Match      → GET  http://localhost:${PORT}/match/state`);
-  console.log(`             → POST http://localhost:${PORT}/match/state  (auth)`);
-  console.log(`             → GET  http://localhost:${PORT}/match/events  (SSE)`);
-  console.log(`  Timer      → POST http://localhost:${PORT}/match/timer  { action: start|pause|set, seconds }`);
-  console.log(`  Lineups    → GET  http://localhost:${PORT}/match/team-lineups`);
-  console.log(`             → POST http://localhost:${PORT}/match/team-lineups  (auth)`);
-  console.log(`  Sponsors   → GET  http://localhost:${PORT}/api/sponsors`);
-  console.log(`             → GET  http://localhost:${PORT}/api/sponsors-config`);
-  console.log(`             → POST http://localhost:${PORT}/api/sponsors-config  (auth)`);
-  console.log(`  Game API   → GET  http://localhost:${PORT}/api/game-url`);
-  console.log(`             → POST http://localhost:${PORT}/api/game-url  { url }`)
-  console.log("================================================");
+  console.log(`Overlay server running on :${PORT}`);
+  console.log(`Dashboard  http://localhost:${PORT}/html/dashboard.html`);
+  console.log(`API mode   ${require('./lib/apiMode').getApiMode().toUpperCase()} (built-in Dire API)`);
 });

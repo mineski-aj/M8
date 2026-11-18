@@ -1113,24 +1113,23 @@
         <label>Active Set</label>
         <div class="api-mode-segmented" id="api-mode-segmented">
           <button class="api-mode-seg-btn" data-mode="live">LIVE</button>
-          <button class="api-mode-seg-btn" data-mode="web">WEB</button>
           <button class="api-mode-seg-btn" data-mode="debug">DEBUG</button>
         </div>
       </div>
-      <!-- DEBUG = the built-in self-hosted DiredudeAPI (lib/dire.js). Only shown while DEBUG is the active mode. -->
-      <div class="settings-row" id="dire-row" style="display:none">
+      <!-- LIVE and DEBUG both use the built-in self-hosted DiredudeAPI (lib/dire.js). LIVE = judge's game (forced Refresh, no Debug button). -->
+      <div class="settings-row" id="dire-row">
         <label>Self-hosted API</label>
-        <button id="dire-debug-btn" class="settings-btn" title="GET /dire/api/debug — load the most recent battle of the last 24h (testing without a live game)">Debug</button>
+        <button id="dire-debug-btn" class="settings-btn" title="GET /dire/api/debug — load a random battle from the last 24h (testing without a live game)">Find New Match</button>
         <button id="dire-refresh-btn" class="settings-btn" title="GET /dire/api/refresh — fetch the judge's current battle and restart polling">Refresh</button>
         <span id="dire-action-status" class="settings-status"></span>
       </div>
-      <div class="settings-row" id="dire-judge-row" style="display:none">
+      <div class="settings-row" id="dire-judge-row">
         <label for="dire-judge-input">Judge ID</label>
         <input type="text" id="dire-judge-input" class="settings-input" inputmode="numeric" spellcheck="false" autocomplete="off" placeholder="judge id" style="max-width:190px" />
         <button id="dire-judge-apply" class="settings-btn" title="Saved to data/dire_config.json — press Refresh to load this judge's current battle">Apply</button>
         <span id="dire-judge-status" class="settings-status"></span>
       </div>
-      <div class="settings-row" id="dire-status-row" style="display:none">
+      <div class="settings-row" id="dire-status-row">
         <label></label>
         <span id="dire-status" class="settings-status">…</span>
       </div>
@@ -1541,7 +1540,7 @@
      active (server-side, see lib/apiMode.js) — flipping this switches
      ALL of them at once, which is exactly why it needs its own
      confirmation instead of behaving like a normal Apply button. */
-  var API_MODES = ['live', 'web', 'debug'];
+  var API_MODES = ['live', 'debug'];
   var apiModeSegBtns = {};
   API_MODES.forEach(function (m) {
     apiModeSegBtns[m] = document.querySelector('.api-mode-seg-btn[data-mode="' + m + '"]');
@@ -1553,7 +1552,11 @@
     API_MODES.forEach(function (m) {
       apiModeSegBtns[m].classList.toggle('active', m === mode);
     });
-    direShow(mode === 'debug');
+    // DEBUG: one "Find New Match" button (random /debug battle). LIVE: Refresh (forced judge game) + Judge ID.
+    direBtns.debug.style.display = mode === 'debug' ? '' : 'none';
+    direBtns.refresh.style.display = mode === 'debug' ? 'none' : '';
+    direJudgeRow.style.display = mode === 'debug' ? 'none' : '';
+    direShow(true);
   }
 
   /* ── DEBUG mode = built-in self-hosted DiredudeAPI (lib/dire.js, /dire/api/*) ──
@@ -1566,12 +1569,12 @@
   var direTimer = null;
   function direFmtStatus(st) {
     if (!st) return 'no status';
-    if (!st.configured) return '⚠ not configured — add the access token to data/dire_config.json';
+    if (!st.configured) return '⚠ no auth key — set localAuthKey in data/dire_config.json';
     var parts = [st.running ? '● polling' : '○ stopped'];
     if (st.battleId) parts.push('battle ' + String(st.battleId).slice(0, 8) + '…' + String(st.battleId).slice(-4));
-    parts.push(st.isDebug ? 'latest game (Debug)' : 'judge game (Refresh)');
+    parts.push(st.isDebug ? 'random match (Debug)' : 'judge game (Live)');
     if (st.lastUpdated) parts.push('updated ' + new Date(st.lastUpdated).toLocaleTimeString());
-    else parts.push('no data yet — press Debug or Refresh');
+    else parts.push(currentApiMode === 'debug' ? 'no data yet — press Find New Match' : 'no data yet — press Refresh');
     return parts.join(' · ');
   }
   function direPoll() {
@@ -1601,7 +1604,7 @@
   direJudgeApply.addEventListener('click', direSaveJudge);
   direJudgeInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') direSaveJudge(); });
   function direShow(on) {
-    direJudgeRow.style.display = on ? '' : 'none';
+    direJudgeRow.style.display = on && currentApiMode !== 'debug' ? '' : 'none';   // Judge ID only matters for LIVE's Refresh
     if (on) direFillJudge();
     direRow.style.display = on ? '' : 'none';
     direStatusRow.style.display = on ? '' : 'none';
@@ -1616,7 +1619,7 @@
       if (!j.success) throw new Error(j.error || 'failed');
       var d = j.data || {};
       direActionEl.textContent = kind === 'debug'
-        ? 'Loaded debug battle ' + d.debugBattleId + ' (' + d.totalFound + ' found in 24h)'
+        ? 'Draft found: ' + d.debugBattleId + ' (' + d.stage + ', checked ' + d.checked + ')'
         : 'Judge battle ' + d.battleId + (d.changed ? ' (new)' : ' (unchanged)');
       direActionEl.style.color = '#44cc88';
       direPoll();
@@ -1805,21 +1808,6 @@
   hlApiApply.addEventListener('click', saveHighlightsApiUrl);
 
   /* ── Standings API URL ───────────────────────────────────── */
-
-
-
-
-  /* ── Draft (Pick/Ban) API URL ────────────────────────────── */
-
-
-
-
-  /* ── Draft Recap API URL ─────────────────────────────────── */
-
-
-
-
-  /* ── Draft Predict API URL ───────────────────────────────── */
 
 
 
@@ -2347,7 +2335,7 @@
     } catch (err) {}
   });
 
-  ['itemcheck', 'emblemcheck', 'golddiffcheck', 'goldgraphcheck', 'livewinrate', 'scoreboard', 'playerui', 'draftrecap', 'draftpredict3', 'bpmmeter', 'bpmmeter_tag', 'stolengold', 'matchcard', 'l3lobby', 'headlineticker', 'teamfightcheck', 'heatmappage'].forEach(function (key) {
+  ['itemcheck', 'emblemcheck', 'golddiffcheck', 'goldgraphcheck', 'livewinrate', 'scoreboard', 'playerui', 'bpmmeter', 'bpmmeter_tag', 'stolengold', 'matchcard', 'l3lobby', 'headlineticker', 'teamfightcheck', 'heatmappage'].forEach(function (key) {
     dashboardSSE.addEventListener(key, function (e) {
       try {
         var d = JSON.parse(e.data);
@@ -2370,6 +2358,17 @@
     draftShowBtn.textContent = draftShowState ? '● Showing' : '○ Hidden';
     draftShowBtn.className   = 'btn btn-toggle ' + (draftShowState ? 'btn-toggle-on' : 'btn-toggle-off');
   }
+  fetch('/overlay/draft-state').then(function (r) { return r.json(); }).then(function (d) {
+    draftShowState = !!(d && d.active);
+    applyDraftShowBtn();
+  }).catch(function () {});
+  dashboardSSE.addEventListener('draft', function (e) {
+    try {
+      var d = JSON.parse(e.data);
+      draftShowState = d.action === 'show';
+      applyDraftShowBtn();
+    } catch (err) {}
+  });
 
   dashboardSSE.addEventListener('sidecheck', function (e) {
     try {
@@ -2498,6 +2497,23 @@
 
   /* ── Overlay definitions ──────────────────────────────────── */
   var OVERLAYS = [
+    {
+      id: 'draft',
+      name: 'Draft Overlay',
+      file: 'Draft.html',
+      show: '/overlay/draft/show',
+      hide: '/overlay/draft/hide',
+      toggleShowHide: true,
+      deferredPreview: true,
+      photoModeToggle: true,
+      extraActionGroups: [
+        /* Map Detail v2 — the map bug itself expands (icon grows, description reveals) — see Draft.html's #mapdetail2-plate. */
+        { label: 'Map Detail v2', actions: [
+          { label: 'Show Map Detail v2', action: '/overlay/mapdetailv2/show' },
+          { label: 'Hide Map Detail v2', action: '/overlay/mapdetailv2/hide' },
+        ] },
+      ],
+    },
     {
       id: 'mplfs',
       name: 'Postgame',
@@ -2634,7 +2650,7 @@
 
   /* M8 V2: the Control sidebar only lists these overlays. Every other OVERLAYS entry is kept (its
      wiring/state lookups still work) but is not shown — add an id here to bring it back. */
-  var CONTROL_VISIBLE = { mploverlay7: true, mplfs: true };
+  var CONTROL_VISIBLE = { draft: true, mploverlay7: true, mplfs: true };
 
   /* ── DOM helpers ──────────────────────────────────────────── */
   var _copyTipTimer = null;
@@ -3255,6 +3271,39 @@
 
 
 
+  /* ── Draft photo mode (live API match vs. random test) ────── */
+  function buildDraftPhotoModeControl(body) {
+    if (body.children.length) body.appendChild(el('div', 'divider'));
+    body.appendChild(el('div', 'features-label', 'Player Photo Source'));
+
+    var row = el('div', 'btn-row');
+    var btnLive   = el('button', 'btn btn-action', 'Live API');
+    var btnRandom = el('button', 'btn btn-action', 'Random Test');
+
+    function applyStyle(mode) {
+      btnLive.style.cssText   = mode === 'live'   ? 'background:#001a00;color:#0a9200;border-color:#0a9200;' : '';
+      btnRandom.style.cssText = mode === 'random' ? 'background:#1a1200;color:#ffcc00;border-color:#ffcc00;' : '';
+    }
+
+    fetch('/overlay/draft-photo-mode').then(function(r){ return r.json(); }).then(function(d) {
+      applyStyle(d.mode || 'live');
+    }).catch(function(){});
+
+    btnLive.addEventListener('click', function() {
+      applyStyle('live');
+      fetch('/overlay/draft-photo-mode/live').catch(function(){});
+    });
+    btnRandom.addEventListener('click', function() {
+      applyStyle('random');
+      fetch('/overlay/draft-photo-mode/random').catch(function(){});
+    });
+
+    row.appendChild(btnLive);
+    row.appendChild(btnRandom);
+    body.appendChild(row);
+  }
+
+
   /* ── MPL Full Screen playerboard photo source (same 'debugphotos' feature
      toggle underneath, styled the same as the Draft Overlay control above) ── */
   function buildDebugPhotosControl(body) {
@@ -3536,55 +3585,41 @@
         var parts0 = route0.split('/');
         row.appendChild(buildPreviewToggleBtn(parts0[parts0.length - 2]));
       }
+      if (ov.deferredPreview && (ov.show || ov.hide)) {
+        /* Unlike ov.previewButton above, this overlay's iframe is NOT already loaded (see selectOverlay's
+           deferredPreview branch) — this button loads it fresh (?preview=1), waits for it, then triggers show;
+           turning it off unloads the iframe (about:blank) so the page's video decode stops instead of idling. */
+        var dpvb = document.createElement('button');
+        dpvb.className = 'btn btn-preview-live';
+        dpvb.textContent = '◈ Preview';
+        (function (o) {
+          var route = o.show || o.hide;
+          var parts = route.split('/');
+          var eventName = parts[parts.length - 2];
+          dpvb.addEventListener('click', function () {
+            draftPreviewActive = !draftPreviewActive;
+            dpvb.classList.toggle('active', draftPreviewActive);
+            if (draftPreviewActive) {
+              previewDisabledMsg.style.display = 'none';
+              previewIframe.onload = function () {
+                previewIframe.onload = null;
+                var iw = previewIframe.contentWindow;
+                if (iw && typeof iw.previewTrigger === 'function') iw.previewTrigger(eventName, 'show');
+              };
+              previewIframe.src = '/html/' + o.file + '?t=' + Date.now() + '&preview=1';
+            } else {
+              previewIframe.onload = null;
+              previewIframe.src = 'about:blank';
+              previewDisabledMsg.style.display = 'flex';
+              draftSubPreviewResets.forEach(function (reset) { reset(); });
+            }
+          });
+        })(ov);
+        row.appendChild(dpvb);
+        draftPreviewMainBtn = dpvb;
+      }
       body.appendChild(row);
 
-      /* Shared by both the "▶ Test Draft Predict v3" button above and
-         the per-slot test grid below — ensures the preview iframe is
-         actually loaded/active (auto-activating it via the ◈ Preview
-         button first if it isn't) before invoking whatever dp3 function
-         the caller wants, same auto-activate chain v1/v2's test buttons
-         use inline. Declared with `var` (function-scoped, not the
-         if-block above) so both call sites can reach it regardless of
-         which one runs first. Only ever referenced when ov.deferredPreview
-         is also true (both flags are only set together, on the 'draft'
-         OVERLAYS entry), so dpvb/draftPreviewActive/previewIframe are
-         always already defined by the time this is called. */
-      var dp3InvokePreview = function (callback) {
-        if (draftPreviewActive) {
-          callback();
-        } else {
-          var route     = ov.show || ov.hide;
-          var parts     = route.split('/');
-          var eventName = parts[parts.length - 2];
-          dpvb.click();
-          previewIframe.onload = function () {
-            previewIframe.onload = null;
-            var iw = previewIframe.contentWindow;
-            if (iw && typeof iw.previewTrigger === 'function') iw.previewTrigger(eventName, 'show');
-            callback();
-          };
-        }
-      };
-      function dp3InvokePreviewForSlot(slotNum, action) {
-        /* action is 'show' | 'settle' — the LED route takes the same two modes */
-        dp3SendLed('/led/draftpredtest-slot?slot=' + encodeURIComponent(slotNum) + '&mode=' + encodeURIComponent(action));
-        dp3InvokePreview(function () {
-          var iw = previewIframe.contentWindow;
-          if (iw && typeof iw.__dp3TestSlot === 'function') iw.__dp3TestSlot(slotNum, action);
-        });
-      }
-
-      /* Draft Predict v3 — per-slot test grid. Unlike the fake-fixture
-         "▶ Test Draft Predict v3" button above, each row here drives a
-         real slot (1-20) using whatever REAL candidates/rationale
-         Draft.html's own live poll of /proxy/predictions currently has
-         loaded (window.__dp3TestSlot — see Draft.html for the full
-         contract). "▶ Show" = that slot just became the active one
-         picking/banning (panel appears, carousel starts spinning).
-         "✓ Settle" = force a reveal onto that slot's #1-ranked real
-         candidate, same visual pipeline as a real confirmed pick/ban.
-         Preview-iframe-only, same isolation as every other test button
-         on this page — never touches real broadcast state. */
     }
 
     /* Extra action buttons. renderExtraActionsRow builds the flat row of
@@ -4016,6 +4051,9 @@
     }
 
     /* Draft photo source toggle */
+    if (ov.photoModeToggle) {
+      buildDraftPhotoModeControl(body);
+    }
 
     /* LED Draft player photo source (Live API / Placeholders) */
 
@@ -5233,8 +5271,78 @@
     [BRACKET_DEFAULTS, BRACKET_ELEMENTS],
   ].forEach(function (pair) { addPlayoffsSponsorEdit(pair[0], pair[1]); });
 
+  /* ── Map bug (Draft.html) — same box as mploverlay_v7's ingame
+     #sb-map, cloned centered above the draft area. Icon and name box
+     are absolutely positioned WITHIN #draft-map, so moving #draft-map
+     carries both along; each can also be nudged on its own. */
+  var DRAFT_MAP_DEFAULTS = {
+    '#draft-map':           { left: 758, top: 711, width: 403, height: 69 },
+    '#draft-map-logo':      { left: 10,  top: 0,   width: 71,  height: 71 },
+    '#draft-map-name':      { left: 165, top: 10,  width: 230, height: 50 },
+    '.draft-map-name-text': { fontSize: 36 },
+  };
+  var DRAFT_MAP_ELEMENTS = [
+    { group: 'Background', id: '#draft-map',           name: 'Map Bug Background' },
+    { group: 'Icon',       id: '#draft-map-logo',      name: 'Map Icon' },
+    { group: 'Text',       id: '#draft-map-name',      name: 'Map Name Box' },
+    { group: 'Text',       id: '.draft-map-name-text', name: 'Map Name Font Size' },
+  ];
+
+  /* ── Map Detail v2 (Draft.html) — expanding map bug. ── */
+  var DRAFT_MAPDETAIL2_DEFAULTS = {
+    '#mapdetail2-plate': { left: 758, top: 655, width: 403, height: 125 },
+    '#mapdetail2-desc':  { left: 165, top: 66,  width: 235, height: 52 },
+    '#draft-map-logo-open': { left: -1,  top: 17, width: 92,  height: 92 },
+    '#draft-map-name':      { left: 165, top: 10, width: 230, height: 50 },
+    '.draft-map-name-text': { fontSize: 36 },
+  };
+  var DRAFT_MAPDETAIL2_ELEMENTS = [
+    { group: 'Map Detail v2 Plate', id: '#mapdetail2-plate', name: 'Description Plate' },
+    { group: 'Map Detail v2 Desc',  id: '#mapdetail2-desc',  name: 'Description Text Box' },
+    { group: 'Map Detail v2 Icon',  id: '#draft-map-logo-open', name: 'Map Icon (open)' },
+    { group: 'Map Detail v2 Name',  id: '#draft-map-name',      name: 'Map Name Box' },
+    { group: 'Map Detail v2 Name',  id: '.draft-map-name-text', name: 'Map Name Font Size' },
+  ];
+
+  /* ── Match/Game indicator (Draft.html) — "MATCH 1 - GAME 1" box
+     centered above the draft area, sourced from Match Board. ── */
+  var DRAFT_MATCHGAME_DEFAULTS = {
+    '#draft-match-game':           { left: 837, top: 851, width: 247, height: 58 },
+    '.draft-match-game-text':      { fontSize: 18 },
+  };
+  var DRAFT_MATCHGAME_ELEMENTS = [
+    { group: 'Text', id: '#draft-match-game',      name: 'Match/Game Box' },
+    { group: 'Text', id: '.draft-match-game-text', name: 'Match/Game Font Size' },
+  ];
+
+
   /* ── Registry of editable overlays ───────────────────────────── */
   var EDIT_CONFIGS = {
+    draft_mapbug: {
+      label:       'Map Bug · Draft',
+      file:        'Draft.html',
+      styleFile:   'Draft',
+      defaultsKey: 'sb_edit_defaults_draft_mapbug',
+      elements:    DRAFT_MAP_ELEMENTS,
+      defaults:    DRAFT_MAP_DEFAULTS,
+    },
+    draft_mapdetail2: {
+      label:       'Map Detail v2 · Draft',
+      file:        'Draft.html',
+      styleFile:   'Draft',
+      defaultsKey: 'sb_edit_defaults_draft_mapdetail2',
+      elements:    DRAFT_MAPDETAIL2_ELEMENTS,
+      defaults:    DRAFT_MAPDETAIL2_DEFAULTS,
+      showFn:      'showDraftMapDetail2ForEdit',
+    },
+    draft_matchgame: {
+      label:       'Match/Game Indicator · Draft',
+      file:        'Draft.html',
+      styleFile:   'Draft',
+      defaultsKey: 'sb_edit_defaults_draft_matchgame',
+      elements:    DRAFT_MATCHGAME_ELEMENTS,
+      defaults:    DRAFT_MATCHGAME_DEFAULTS,
+    },
     mploverlay_v7: {
       label:       'Scoreboard · Ingame',
       file:        'ingame.html',
