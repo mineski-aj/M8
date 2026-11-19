@@ -1,99 +1,5 @@
 {
   "mploverlay_v7": {
-    "#scoreboard-gametime": {
-      "top": "-1px",
-      "fontSize": "25px"
-    },
-    "#scoreboard-kills-c1": {
-      "left": "846px",
-      "top": "14px",
-      "fontSize": "53px"
-    },
-    "#scoreboard-kills-c2": {
-      "left": "1074px",
-      "top": "14px",
-      "fontSize": "53px"
-    },
-    "#scoreboard-tricode-c1": {
-      "left": "576.941px",
-      "top": "60.351px",
-      "fontSize": "29px"
-    },
-    "#scoreboard-tricode-c2": {
-      "left": "1346.336px",
-      "top": "60.356px",
-      "fontSize": "29px"
-    },
-    "#scoreboard-turtle-c1": {
-      "left": "542.09px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-lord-c1": {
-      "left": "605.59px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-tower-c1": {
-      "left": "668.59px",
-      "top": "19px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-gold-c1": {
-      "left": "734.779px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#sb-goldlead-c1": {
-      "left": "715px",
-      "top": "60px",
-      "fontSize": "18px"
-    },
-    "#scoreboard-turtle-c2": {
-      "left": "1369.09px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-lord-c2": {
-      "left": "1309.09px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-tower-c2": {
-      "left": "1245.59px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-gold-c2": {
-      "left": "1166.983px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#sb-goldlead-c2": {
-      "left": "1209px",
-      "top": "60px",
-      "fontSize": "18px"
-    },
-    "#sb-score-c1": {
-      "left": "746.9px",
-      "top": "40px"
-    },
-    "#sb-score-c2": {
-      "left": "1130.4px",
-      "top": "40px"
-    },
-    "#sb-sponsor-loop": {
-      "left": "1689px",
-      "top": "-2px"
-    },
-    "#sb-logo-c1": {
-      "left": "424px",
-      "top": "5px"
-    },
-    "#sb-logo-c2": {
-      "left": "1431px",
-      "top": "5px"
-    },
     ".sidecheck-header": {
       "fontSize": "24px"
     },
@@ -108,20 +14,6 @@
     ".sidecheck-role-icon": {
       "width": "13px",
       "height": "13px"
-    },
-    "#sb-mi-patch": {
-      "left": "1508px",
-      "top": "107px",
-      "width": "176px",
-      "height": "23px",
-      "fontSize": "13px"
-    },
-    "#sb-mi-casters": {
-      "left": "1664px",
-      "top": "108px",
-      "width": "280px",
-      "height": "19.1px",
-      "fontSize": "12px"
     },
     "#kill-event-sponsor-logo-clip": {
       "left": "866px",
@@ -3719,100 +3611,6 @@
     }
   },
   "mploverlay_v7::10th_anniversary": {
-    "#scoreboard-gametime": {
-      "top": "3px",
-      "fontSize": "21px"
-    },
-    "#scoreboard-kills-c1": {
-      "left": "846px",
-      "top": "14px",
-      "fontSize": "53px"
-    },
-    "#scoreboard-kills-c2": {
-      "left": "1074px",
-      "top": "14px",
-      "fontSize": "53px"
-    },
-    "#scoreboard-tricode-c1": {
-      "left": "576.941px",
-      "top": "60.351px",
-      "fontSize": "29px"
-    },
-    "#scoreboard-tricode-c2": {
-      "left": "1346.336px",
-      "top": "60.356px",
-      "fontSize": "29px"
-    },
-    "#scoreboard-turtle-c1": {
-      "left": "542.09px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-lord-c1": {
-      "left": "605.59px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-tower-c1": {
-      "left": "668.59px",
-      "top": "19px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-gold-c1": {
-      "left": "729.779px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#sb-goldlead-c1": {
-      "left": "790.894px",
-      "top": "58px",
-      "fontSize": "18px"
-    },
-    "#scoreboard-turtle-c2": {
-      "left": "1369.09px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-lord-c2": {
-      "left": "1309.09px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-tower-c2": {
-      "left": "1245.59px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-gold-c2": {
-      "left": "1166.983px",
-      "top": "18px",
-      "fontSize": "19px"
-    },
-    "#sb-goldlead-c2": {
-      "left": "1137.393px",
-      "top": "58px",
-      "fontSize": "18px"
-    },
-    "#sb-score-c1": {
-      "left": "645px",
-      "top": "40px"
-    },
-    "#sb-score-c2": {
-      "left": "1230px",
-      "top": "40px"
-    },
-    "#sb-sponsor-loop": {
-      "left": "1689px",
-      "top": "0px"
-    },
-    "#sb-logo-c1": {
-      "left": "424px",
-      "top": "5px"
-    },
-    "#sb-logo-c2": {
-      "left": "1431px",
-      "top": "5px"
-    },
     ".sidecheck-header": {
       "fontSize": "24px"
     },
@@ -3827,20 +3625,6 @@
     ".sidecheck-role-icon": {
       "width": "13px",
       "height": "13px"
-    },
-    "#sb-mi-patch": {
-      "left": "1521px",
-      "top": "105px",
-      "width": "162px",
-      "height": "23.1px",
-      "fontSize": "20px"
-    },
-    "#sb-mi-casters": {
-      "left": "1666px",
-      "top": "108px",
-      "width": "279px",
-      "height": "19px",
-      "fontSize": "11px"
     },
     "#kill-event-sponsor-logo-clip": {
       "left": "1142px",
@@ -3919,10 +3703,6 @@
       "width": "63px",
       "height": "78px",
       "fontSize": "30px"
-    },
-    "#sb-map": {
-      "left": "1627px",
-      "top": "140px"
     }
   },
   "DraftIndex::10th_anniversary": {
@@ -6017,100 +5797,6 @@
     }
   },
   "mploverlay_v7::playoffs": {
-    "#scoreboard-gametime": {
-      "top": "-1px",
-      "fontSize": "25px"
-    },
-    "#scoreboard-kills-c1": {
-      "left": "846px",
-      "top": "14px",
-      "fontSize": "53px"
-    },
-    "#scoreboard-kills-c2": {
-      "left": "1074px",
-      "top": "14px",
-      "fontSize": "53px"
-    },
-    "#scoreboard-tricode-c1": {
-      "left": "576.941px",
-      "top": "60.351px",
-      "fontSize": "29px"
-    },
-    "#scoreboard-tricode-c2": {
-      "left": "1346.336px",
-      "top": "60.356px",
-      "fontSize": "29px"
-    },
-    "#scoreboard-turtle-c1": {
-      "left": "549.09px",
-      "top": "17px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-lord-c1": {
-      "left": "605.59px",
-      "top": "17px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-tower-c1": {
-      "left": "668.59px",
-      "top": "17px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-gold-c1": {
-      "left": "726.779px",
-      "top": "17px",
-      "fontSize": "19px"
-    },
-    "#sb-goldlead-c1": {
-      "left": "715px",
-      "top": "60px",
-      "fontSize": "18px"
-    },
-    "#scoreboard-turtle-c2": {
-      "left": "1382.09px",
-      "top": "17px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-lord-c2": {
-      "left": "1329.09px",
-      "top": "17px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-tower-c2": {
-      "left": "1269.59px",
-      "top": "17px",
-      "fontSize": "19px"
-    },
-    "#scoreboard-gold-c2": {
-      "left": "1178.983px",
-      "top": "17px",
-      "fontSize": "19px"
-    },
-    "#sb-goldlead-c2": {
-      "left": "1209px",
-      "top": "60px",
-      "fontSize": "18px"
-    },
-    "#sb-score-c1": {
-      "left": "746.9px",
-      "top": "40px"
-    },
-    "#sb-score-c2": {
-      "left": "1130.4px",
-      "top": "40px"
-    },
-    "#sb-sponsor-loop": {
-      "left": "1689px",
-      "top": "-2px"
-    },
-    "#sb-logo-c1": {
-      "left": "424px",
-      "top": "5px"
-    },
-    "#sb-logo-c2": {
-      "left": "1431px",
-      "top": "5px"
-    },
     ".sidecheck-header": {
       "fontSize": "24px"
     },
@@ -6125,20 +5811,6 @@
     ".sidecheck-role-icon": {
       "width": "13px",
       "height": "13px"
-    },
-    "#sb-mi-patch": {
-      "left": "1509px",
-      "top": "111px",
-      "width": "176px",
-      "height": "23px",
-      "fontSize": "15px"
-    },
-    "#sb-mi-casters": {
-      "left": "1665px",
-      "top": "113px",
-      "width": "280px",
-      "height": "19.1px",
-      "fontSize": "11px"
     },
     "#kill-event-sponsor-logo-clip": {
       "left": "1202px",
@@ -6217,10 +5889,6 @@
       "width": "63px",
       "height": "78px",
       "fontSize": "30px"
-    },
-    "#sb-map": {
-      "left": "1627px",
-      "top": "139px"
     }
   },
   "Draft::playoffs": {

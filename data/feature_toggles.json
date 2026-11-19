@@ -1,0 +1,19 @@
+{
+  "killevents": false,
+  "items": false,
+  "skypiercer": false,
+  "lordadv": false,
+  "trinity": true,
+  "swap": false,
+  "lvl15": false,
+  "lvl4": true,
+  "conceal": false,
+  "fights": false,
+  "objectivespawn": false,
+  "debugphotos": false,
+  "credits_v2": false,
+  "ggc_v2": false,
+  "hl_v2": false,
+  "mvp_v2": false,
+  "stolengold": false
+}
