@@ -34,10 +34,13 @@ function themedKey(file, theme) {
 // back to Regular's value, so an element nobody has touched yet still
 // shows up at its normal position instead of disappearing.
 function mergedStyles(file, theme) {
-  var base = load()[file] || {};
+  var all  = load();
+  var base = all[file] || {};
   if (theme === 'regular') return base;
-  var themed = load()[themedKey(file, theme)] || {};
-  return Object.assign({}, base, themed);
+  /* MCT is a clone of M8 ('playoffs') until it gets its own edits: Regular -> M8 -> MCT's own bucket */
+  var parent = theme === 'mct' ? (all[themedKey(file, 'playoffs')] || {}) : {};
+  var themed = all[themedKey(file, theme)] || {};
+  return Object.assign({}, base, parent, themed);
 }
 
 router.get('/api/overlay-styles', function (req, res) {
@@ -84,7 +87,8 @@ router.post('/api/overlay-nudge', function (req, res) {
     // Nudges are relative (+/- a few px) — seed a brand-new themed entry
     // from Regular's current value so the first nudge under a non-Regular
     // theme adjusts from the visible position instead of from {}.
-    all[key][selector] = Object.assign({}, (all[file] && all[file][selector]) || {});
+    var seedFrom = (theme === 'mct' && all[themedKey(file, 'playoffs')] && all[themedKey(file, 'playoffs')][selector]) || (all[file] && all[file][selector]) || {};
+    all[key][selector] = Object.assign({}, seedFrom);
   }
   Object.assign(all[key][selector], props);
   fs.writeFileSync(STYLES_FILE, JSON.stringify(all, null, 2));

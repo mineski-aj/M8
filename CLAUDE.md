@@ -34,7 +34,7 @@ assets/
   game/      items/ role/ spell/ emblem/ maps/      (game-data icons)
   team/      logos/<TRI>.png
   sponsor/   MAIN/ ID/ MY/ PH/ = 4 country sets, each with its own logos (+ white/) AND its own categories/order/durations (data/sponsors_config.json -> sets.<SET>); routes take ?set=, default MAIN — see "Sponsor sets" below
-  fonts/     Anton, General Sans
+  fonts/     Anton, General Sans, Panchang, Spline Sans, Kalnia (M8); MCT/ (Monument Extended, Built Titling, ChuangKeTie, SourceHanSans — not wired in yet)
   webm/      shared background loops (bgloop*, phase2_anniv*), motion/ (kill-event webms), playoffs/ (playoffsbg_*.webm)
   common/    shared images (mpl2026logo.png)
   overlay/   per-scene art for the remaining scenes (ingame, postgame, PostH2H, consolidated_post, mvp, highlights, credits, postkill, richguy, post_heart, visacarry, noisemeter, shared Waiting/Today header+box art used by Tomorrow's Schedule, …); optional playoffs/ and anniversary/ theme subfolders use the same filenames
@@ -139,16 +139,22 @@ Optional local debug card: add a `feature-card` in postgame.html's `` ` `` debug
 Feature notes (mostly unverified against a live feed):
 - **Sky Piercer** (`overlay-skypiercer.js`): Item Pickup card at stack 3/5/7…; stack from `player.extra_param.sky_piercer_stack.stack` (real path never confirmed).
 - **Lord Advantage** (`overlay-lordadv.js`): panel under each tricode for 90s from `camp_list[].kill_lord_advantage.begin_time`, live-updating GOLD/KILLS/TURRET; not in Edit tab.
-- **Trinity / First Item Priority phase 2:** at 1.5s the title swaps to a core-item timing line (`coreItemPhase2()` in `overlay-trinity.js`; `core_item`/`first_item` paths unconfirmed); no data → card leaves at 2.4s as before.
+- **M8 Ingame look (rebuilt from `assets/overlay/M8/Ingame/`):** scoreboard (`overlay-scoreboard.js`, `m8_topbar.png`, Stage from Match Board `stage`), player cards (`overlay-playerui.js`: 168x90 cards, HTML hero/HP with ghost damage, ulti ring, dead = greyscale hero + red respawn timer), Level 4 (`overlay-lvl4.js`, never flipped), First Item (`overlay-items.js`), Trinity (`overlay-trinity.js`: kinds swift/magic/physical/lifesteal/critical/hybrid by item ids; only swift has art, others placeholder text; unlisted combos don't trigger). Fonts: Panchang Bold (numbers/names on bar), Spline Sans (cards); CSS is in appended M8 blocks of `mploverlay_v7.css`.
+- **Smooth timers:** scoreboard clock, spell cooldown and respawn use a free-running local clock steered by the whole-second feed (target N+0.5, 10% slew within 1.6s else snap, freeze when game clock stalls/pauses). Copy that pattern (`_sb`, `puiSteerSpellCd`) for any new countdown — never render the raw feed seconds.
+- **Feature toggles persist** in `data/feature_toggles.json` (loaded at start in `routes/overlay.js`, saved on every toggle). `checkOverlays` show/hide states do NOT persist.
+- **Trinity / First Item Priority phase 2** (no longer used by the M8 art): at 1.5s the title swaps to a core-item timing line (`coreItemPhase2()` in `overlay-trinity.js`; `core_item`/`first_item` paths unconfirmed); no data → card leaves at 2.4s as before.
 - **Kill events:** `killEventTrigger` dashboard picker + Live/Random photo toggle are bespoke. Playoffs webms in `assets/overlay/ingame/playoffs/motion/` have no baked sponsor; sponsor logo is a separate element (`KILL_EVENT_SPONSOR_LOGO`, `killEventApplySponsorFit`).
 - **Objective spawn:** `objSpawnPlayNext` picks lord/turtle webm per theme.
 - **Gold Graph Check / Live Win Rate:** fixed checkpoints at 2, 5, 8, 12, 15 min then +3 (`ggcMarkMinute`/`lwrMarkMinute`); last group is the live "now" dot. Live Win Rate reads the Winrate API (`/api/winrate-proxy`, `{camp1,camp2,time}`); shares Gold Graph's art; neither restored on page load. Playoffs title art `assets/overlay/ingame/playoffs/graph_header.png` (recoloured Regular art — redo if Regular changes).
 
-## Theme system — Regular / 10th Anniversary / Playoffs
+## Theme system — M8 (`playoffs`) / MCT
+
+**Regular and 10th Anniversary were removed as selectable themes** (`THEME_VALID` = `playoffs`, `mct`; default `playoffs`; a saved `regular`/`10th_anniversary` reads as M8). Their code is still in the files as the *base layer* (plain CSS that M8 overrides) and as unreachable `[data-theme="10th_anniversary"]` / `=== '10th_anniversary'` branches — don't build on them; delete opportunistically. The paragraphs below still describe the original 4-theme design.
 
 - One global value in `theme.json`, `GET/POST /api/theme` (`routes/devapi.js`, whitelist `THEME_VALID`), broadcast as SSE `theme`; Settings page `<select id="theme-select">` with confirm dialog.
 - `html/js/theme-apply.js` (on EVERY broadcast page, after `cache-bust.js`) sets `data-theme` on `<html>`. Its initial read is a deliberately **synchronous XHR** so every later script can read `data-theme` at load time (async fetch caused wrong-asset-every-load bugs). Pages with a live SSE add `sse.addEventListener('theme', e => applyTheme(JSON.parse(e.data).theme))`.
 - A 4th theme = update by hand: `THEME_VALID` (devapi.js), `THEME_VALUES` (theme-apply.js), `THEME_VALUES` + `THEME_LABELS` + a `<option>` (dashboard.html). Same for API modes (`API_MODES` in `lib/apiMode.js` + dashboard + 3 `.api-mode-seg-btn`s).
+- **M8 / MCT themes:** the internal key `playoffs` is labelled **M8** in the UI; **`mct`** is a clone aliased to `playoffs` (`THEME_ALIAS` in `theme-apply.js`, sets `data-theme-name="mct"` for MCT-only overrides; style buckets merge regular → playoffs → mct). Write M8 CSS under `[data-theme="playoffs"]`, MCT-only under `[data-theme-name="mct"]`.
 - **Themes are cosmetic by default** (look only — never behavior, timing, layout, or which elements exist). Exception: Playoffs may be a full per-scene re-layout when the user supplies a reference + `assets/<scene>/playoffs/`; do it scoped to `[data-theme="playoffs"]` and leave Regular/10th Anniversary untouched. If tempted to branch behavior on `data-theme` otherwise, confirm first.
 - CSS: scope to the specific theme. **Never write `:not([data-theme="regular"])`** or gate on an absent attribute. Where Regular already sets the same property, use a CSS custom property (`--anniv-accent` with a `var()` fallback) instead of a competing rule. JS-picked values (video `src`, asset dirs) use a per-theme lookup table with fallback to Regular (`SCENE_VIDEO_SRC_BY_THEME`/`getSceneVideoSrc`, `gdcAssetDir`, `icAssetDir`, `mbAsset()`), decided at show/build time — theme switches apply on next show/reload.
 - Playoffs assets live in a `playoffs/` subfolder with the same filenames as Regular. Check pixel size against the old file. Gold = `#edc555` → `#d0a43e`; black text on gold/white, white on blue/red.

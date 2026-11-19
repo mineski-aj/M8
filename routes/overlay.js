@@ -944,7 +944,17 @@ router.get('/overlay/features', (req, res) => {
 });
 
 // GET /overlay/feature/:feature/enable|disable
-const VALID_FEATURES = ['killevents','items','skypiercer','lordadv','trinity','swap','lvl15','conceal','fights','objectivespawn','stolengold','debugphotos','credits_v2','mvp_v2','hl_v2','ggc_v2'];
+// Feature toggles survive a server restart: loaded from data/feature_toggles.json at startup (merged over the defaults in
+// lib/state.js — only known keys, so a removed feature can't linger) and rewritten on every change.
+const FEATURE_TOGGLES_FILE = require('path').join(__dirname, '..', 'data', 'feature_toggles.json');
+try {
+  const saved = JSON.parse(require('fs').readFileSync(FEATURE_TOGGLES_FILE, 'utf8'));
+  for (const k of Object.keys(state.featureToggles)) if (typeof saved[k] === 'boolean') state.featureToggles[k] = saved[k];
+} catch (e) { /* no saved file yet — defaults */ }
+function saveFeatureToggles() {
+  try { require('fs').writeFileSync(FEATURE_TOGGLES_FILE, JSON.stringify(state.featureToggles, null, 2)); } catch (e) { console.warn('[feature toggles] save failed:', e.message); }
+}
+const VALID_FEATURES = ['killevents','items','skypiercer','lordadv','trinity','swap','lvl15','lvl4','conceal','fights','objectivespawn','stolengold','debugphotos','credits_v2','mvp_v2','hl_v2','ggc_v2'];
 router.get('/overlay/feature/:feature/:action', (req, res) => {
   const { feature, action } = req.params;
   if (!VALID_FEATURES.includes(feature) || !['enable','disable'].includes(action)) {
@@ -952,6 +962,7 @@ router.get('/overlay/feature/:feature/:action', (req, res) => {
   }
   const enabled = action === 'enable';
   state.featureToggles[feature] = enabled;
+  saveFeatureToggles();
   const payload = JSON.stringify({ feature, enabled });
   state.overlayClients.forEach(c => { try { c.write(`event: featuretoggle\ndata: ${payload}\n\n`); } catch {} });
   res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, feature, enabled });

@@ -1,70 +1,53 @@
-/* ── First item priority "eventer" overlay ── */
+/* ── First item priority "eventer" overlay — M8 art ──
+   assets/overlay/M8/Ingame/m8_firstitem_left.png (home: flat edge on the screen's left, circle on the right) and
+   m8_firstitem_right.png (away: mirror-drawn, flat edge on the right, circle on the left). 377x106 each; the opaque band
+   is y 6..98, so the art sits 7px above the player card so its top/bottom edges line up with the card's.
+   It covers the card and slides in from the outer screen edge. The item icon goes in the art's grey ring. */
+const FIP_W = 377, FIP_H = 106, FIP_TOP_OFFSET = 7;
+const FIP_CIRCLE = { home: { cx: 320, cy: 56.5 }, away: { cx: 57, cy: 56.5 } };   /* ring centres, measured off the art */
+const FIP_ICON_D = 68;
 function buildItemOverlay(i) {
   const side = i <= 5 ? 'home' : 'away';
   const pos  = i <= 5 ? i - 1 : i - 6;
 
   const clip = document.createElement('div');
-  clip.className = side === 'away' ? 'evt-clip away' : 'evt-clip';
+  clip.className = 'fip2-clip ' + side;
   clip.id = `fip-evt-${i}`;
-  clip.style.left = (side === 'home' ? EVT_LEFT_HOME : EVT_LEFT_AWAY) + 'px';
-  clip.style.top  = EVT_TOPS[pos] + 'px';
+  clip.style.left = (side === 'home' ? 0 : 1920 - FIP_W) + 'px';
+  clip.style.top  = (346 + pos * 90 - FIP_TOP_OFFSET) + 'px';
 
   const card = document.createElement('div');
-  card.className = 'evt-card';
+  card.className = 'fip2-card';
 
   const bg = document.createElement('img');
-  bg.className = 'evt-bg';
-  bg.src = document.documentElement.getAttribute('data-theme') === 'playoffs' ? 'assets/overlay/ingame/playoffs/ui/palyoffs_uistatback.png' : 'assets/overlay/ingame/eventerback.png';
+  bg.className = 'fip2-bg';
+  bg.src = 'assets/overlay/M8/Ingame/m8_firstitem_' + (side === 'home' ? 'left' : 'right') + '.png';
   bg.alt = '';
 
-  const label = document.createElement('span');
-  label.className = 'evt-label';
-  label.textContent = 'FIRST ITEM PRIORITY';
-
-  const time = document.createElement('div');
-  time.className = 'fip-time';
-  const timeNum = document.createElement('span');
-  timeNum.className = 'fip-time-num';
-  timeNum.textContent = '--:--';
-  const timeUnit = document.createElement('span');
-  timeUnit.className = 'fip-time-unit';
-  timeUnit.textContent = 'MIN';
-  time.appendChild(timeNum);
-  time.appendChild(timeUnit);
-
+  const c = FIP_CIRCLE[side];
   const itemBox = document.createElement('div');
-  itemBox.className = 'evt-item-box';
-  itemBox.style.left = '109px';
+  itemBox.className = 'fip2-item';
+  itemBox.style.left = (c.cx - FIP_ICON_D / 2) + 'px';
+  itemBox.style.top  = (c.cy - FIP_ICON_D / 2) + 'px';
   const itemIcon = document.createElement('img');
-  itemIcon.className = 'evt-item-icon';
+  itemIcon.className = 'fip2-icon';
   itemIcon.alt = '';
   const sheen = document.createElement('div');
   sheen.className = 'evt-sheen';
   itemBox.appendChild(itemIcon);
   itemBox.appendChild(sheen);
 
-  /* Phase 2 — same card/CSS as Trinity's (.trn-p2 / .trn-phase2 / .trn-slower in mploverlay_v7.css) */
-  const p2 = document.createElement('div');
-  p2.className = 'trn-p2 trn-p2-notime';   // time is already shown on the card, so phase 2 is arrow + seconds only
-  const p2Time = document.createElement('span'); p2Time.className = 'trn-p2-time';
-  const p2Arrow = document.createElement('span'); p2Arrow.className = 'trn-p2-arrow';
-  const p2Text = document.createElement('span'); p2Text.className = 'trn-p2-text';
-  p2.appendChild(p2Time); p2.appendChild(p2Arrow); p2.appendChild(p2Text);
-
   card.appendChild(bg);
-  card.appendChild(label);
-  card.appendChild(p2);
-  card.appendChild(time);
   card.appendChild(itemBox);
   clip.appendChild(card);
   document.getElementById('scene').insertBefore(clip, document.getElementById('player-ui-overlay'));
 
-  itemRefs[i] = { clip, timeNum, itemIcon, sheen, p2Time, p2Arrow, p2Text };
+  itemRefs[i] = { clip, itemIcon, sheen };
 }
 
 function resetItem(i) {
   const { clip, sheen } = itemRefs[i];
-  clip.classList.remove('evt-in', 'trn-phase2');
+  clip.classList.remove('fip2-in');
   sheen.classList.remove('sweep');
 }
 
@@ -79,13 +62,13 @@ function getFirstItemData(player) {
   return null;
 }
 
-/* core: undefined = look it up in the latest poll when phase 2 is due, null = force "no data", object = use it */
+/* The M8 art has no time / phase-2 slots, so timeStr and core are accepted (old call sites pass them) but not shown. */
 function triggerItem(i, itemId, timeStr, core) {
   if (isPlayingItem[i]) return;
   isPlayingItem[i] = true;
   const btn = document.querySelector(`.item-debug-btn[data-player="${i}"]`);
   if (btn) btn.disabled = true;
-  const { clip, timeNum, itemIcon, sheen, p2Time, p2Arrow, p2Text } = itemRefs[i];
+  const { clip, itemIcon, sheen } = itemRefs[i];
 
   let outerGuard;
   let cleanedUp = false;
@@ -99,40 +82,20 @@ function triggerItem(i, itemId, timeStr, core) {
     if (btn) btn.disabled = false;
     playNextQueued(i);
   };
-  outerGuard = setTimeout(cleanup, 6500);
+  outerGuard = setTimeout(cleanup, 4000);
 
-  timeNum.textContent = timeStr || '--:--';
   itemIcon.src = itemId ? `assets/game/items/${itemId}.png` : '';
   resetItem(i);
   clip.style.display = 'block';
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    clip.classList.add('evt-in');
+    clip.classList.add('fip2-in');
   }));
 
   setTimeout(() => { sheen.classList.add('sweep'); }, 400); /* right after the slide-in settles */
 
-  /* Phase 2 decided 1.5s in (lets a feed that publishes the timing a poll late still land); no data -> leaves at 2.4s as before. */
   setTimeout(() => {
     if (cleanedUp) return;
-    let c = core;
-    if (c === undefined) {
-      const r = lastData ? getPlayerArranged(lastData, i) : null;
-      c = r ? getFirstItemData(r.player) : null;
-    }
-    const p2 = coreItemPhase2(c);   // shared with overlay-trinity.js
-    if (!p2) return;
-    p2Time.textContent  = p2.timeStr;
-    p2Arrow.textContent = p2.slower ? '▼' : '▲';
-    p2Text.textContent  = p2.text;
-    clip.classList.toggle('trn-slower', p2.slower);
-    clip.classList.add('trn-phase2');
-  }, 1500);
-
-  const leave = () => {
-    if (cleanedUp) return;
-    clip.classList.remove('evt-in');
+    clip.classList.remove('fip2-in');
     setTimeout(cleanup, 350);
-  };
-  setTimeout(() => { if (!clip.classList.contains('trn-phase2')) leave(); }, 2400);
-  setTimeout(() => { if (clip.classList.contains('trn-phase2')) leave(); }, 4200);
+  }, 2400);
 }

@@ -179,6 +179,12 @@
       min-height: 0;
     }
     #layout.split #control-panel { display: flex; }
+    #ingame-set-btns { display: flex; gap: 3px; margin-left: auto; margin-right: 8px; }
+    #control-panel-open { white-space: nowrap; }
+    .set-btn { height: 28px; padding: 0 9px; background: #1a1a26; border: 1px solid #2a2a3c; border-radius: 5px;
+      color: #8888aa; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .set-btn:hover { filter: brightness(1.25); }
+    .set-btn.active { background: #1e2a4a; border-color: #3a4f9a; color: #9db8ff; }
     #control-panel-hdr {
       padding: 12px 16px;
       border-bottom: 1px solid #1e1e2c;
@@ -523,6 +529,9 @@
     }
     .settings-btn:hover { filter: brightness(1.2); }
     .settings-status { font-size: 11px; color: #555; }
+    .dire-spin { display: inline-block; width: 11px; height: 11px; margin-right: 7px; vertical-align: -1px;
+      border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: dire-spin .7s linear infinite; }
+    @keyframes dire-spin { to { transform: rotate(360deg); } }
     .settings-btn-danger {
       background: #2a1a1a; border: 1px solid #5a2a2a;
       color: #ff6677;
@@ -946,6 +955,12 @@
     <div id="control-panel">
       <div id="control-panel-hdr">
         <span id="control-panel-title"></span>
+        <div id="ingame-set-btns" style="display:none">
+          <button type="button" class="set-btn" data-set="MAIN">Main</button>
+          <button type="button" class="set-btn" data-set="ID">ID</button>
+          <button type="button" class="set-btn" data-set="MY">MY</button>
+          <button type="button" class="set-btn" data-set="PH">PH</button>
+        </div>
         <a id="control-panel-open" class="btn btn-open" target="_blank" style="display:none">Open ↗</a>
       </div>
       <div id="control-panel-body"></div>
@@ -1091,14 +1106,13 @@
       <div class="settings-row">
         <label>Active Theme</label>
         <select id="theme-select">
-          <option value="regular">Regular</option>
-          <option value="10th_anniversary">10th Anniversary</option>
-          <option value="playoffs">Playoffs</option>
+          <option value="playoffs">M8</option>
+          <option value="mct">MCT</option>
         </select>
       </div>
       <div class="settings-row">
         <label></label>
-        <span class="settings-status">Applies live to every open overlay page — asks for confirmation before switching. For now every theme looks identical — this only picks which one is active.</span>
+        <span class="settings-status">Applies live to every open overlay page — asks for confirmation before switching.</span>
       </div>
     </div>
   </div>
@@ -1119,9 +1133,14 @@
       <!-- LIVE and DEBUG both use the built-in self-hosted DiredudeAPI (lib/dire.js). LIVE = judge's game (forced Refresh, no Debug button). -->
       <div class="settings-row" id="dire-row">
         <label>Self-hosted API</label>
-        <button id="dire-debug-btn" class="settings-btn" title="GET /dire/api/debug — load a random battle from the last 24h (testing without a live game)">Find New Match</button>
+        <button id="dire-debug-btn" class="settings-btn" title="GET /dire/api/debug — find a match that is in its DRAFT right now (fresh draft, few bans/picks filled)">Find Draft</button>
+        <button id="dire-debug-ingame-btn" class="settings-btn" title="GET /dire/api/debug?stage=ingame — find a match whose draft is finished and the game has just started (first ~45s)">Find In-Game Start</button>
         <button id="dire-refresh-btn" class="settings-btn" title="GET /dire/api/refresh — fetch the judge's current battle and restart polling">Refresh</button>
         <span id="dire-action-status" class="settings-status"></span>
+      </div>
+      <div class="settings-row" id="game-proxy-row">
+        <label>Game Proxy</label>
+        <a class="settings-btn" href="/api/gamedata-proxy?fresh=1" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;box-sizing:border-box" title="Opens /api/gamedata-proxy?fresh=1 in a new window — for backend inspection">API<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9 L9 3 M4 3 H9 V8"/></svg></a>
       </div>
       <div class="settings-row" id="dire-judge-row">
         <label for="dire-judge-input">Judge ID</label>
@@ -1553,7 +1572,7 @@
       apiModeSegBtns[m].classList.toggle('active', m === mode);
     });
     // DEBUG: one "Find New Match" button (random /debug battle). LIVE: Refresh (forced judge game) + Judge ID.
-    direBtns.debug.style.display = mode === 'debug' ? '' : 'none';
+    direBtns.debug.style.display = direBtns.ingame.style.display = mode === 'debug' ? '' : 'none';
     direBtns.refresh.style.display = mode === 'debug' ? 'none' : '';
     direJudgeRow.style.display = mode === 'debug' ? 'none' : '';
     direShow(true);
@@ -1565,7 +1584,7 @@
      [Refresh] = GET /dire/api/refresh  the judge's current battle, restart polling */
   var direRow = document.getElementById('dire-row'), direStatusRow = document.getElementById('dire-status-row');
   var direStatusEl = document.getElementById('dire-status'), direActionEl = document.getElementById('dire-action-status');
-  var direBtns = { debug: document.getElementById('dire-debug-btn'), refresh: document.getElementById('dire-refresh-btn') };
+  var direBtns = { debug: document.getElementById('dire-debug-btn'), ingame: document.getElementById('dire-debug-ingame-btn'), refresh: document.getElementById('dire-refresh-btn') };
   var direTimer = null;
   function direFmtStatus(st) {
     if (!st) return 'no status';
@@ -1574,7 +1593,7 @@
     if (st.battleId) parts.push('battle ' + String(st.battleId).slice(0, 8) + '…' + String(st.battleId).slice(-4));
     parts.push(st.isDebug ? 'random match (Debug)' : 'judge game (Live)');
     if (st.lastUpdated) parts.push('updated ' + new Date(st.lastUpdated).toLocaleTimeString());
-    else parts.push(currentApiMode === 'debug' ? 'no data yet — press Find New Match' : 'no data yet — press Refresh');
+    else parts.push(currentApiMode === 'debug' ? 'no data yet — press Find Draft / Find In-Game Start' : 'no data yet — press Refresh');
     return parts.join(' · ');
   }
   function direPoll() {
@@ -1612,22 +1631,28 @@
     if (on) { direPoll(); direTimer = setInterval(direPoll, 2000); }
   }
   function direAct(kind) {
-    var btn = direBtns[kind], other = direBtns[kind === 'debug' ? 'refresh' : 'debug'];
-    btn.disabled = other.disabled = true; var label = btn.textContent; btn.textContent = label + '…';
-    direActionEl.textContent = ''; direActionEl.style.color = '';
-    fetch('/dire/api/' + kind, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+    var btn = direBtns[kind];
+    var all = [direBtns.debug, direBtns.ingame, direBtns.refresh];
+    all.forEach(function (x) { x.disabled = true; }); var label = btn.textContent;
+    btn.innerHTML = '<span class="dire-spin"></span>' + (kind === 'refresh' ? 'Refreshing…' : 'Finding…');   // spinner on the pressed button
+    direActionEl.innerHTML = '<span class="dire-spin"></span>' + (kind === 'ingame' ? 'Searching for a match that just started in-game — this can take up to a minute…'
+      : kind === 'debug' ? 'Searching for a match in draft — this can take up to a minute…' : 'Fetching the judge\'s current battle…');
+    direActionEl.style.color = '#8888aa';
+    var url = kind === 'refresh' ? '/dire/api/refresh' : '/dire/api/debug' + (kind === 'ingame' ? '?stage=ingame' : '');
+    fetch(url, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
       if (!j.success) throw new Error(j.error || 'failed');
       var d = j.data || {};
-      direActionEl.textContent = kind === 'debug'
-        ? 'Draft found: ' + d.debugBattleId + ' (' + d.stage + ', checked ' + d.checked + ')'
+      direActionEl.textContent = kind !== 'refresh'
+        ? (kind === 'ingame' ? 'In-game start found: ' : 'Draft found: ') + d.debugBattleId + ' (' + d.stage + ', checked ' + d.checked + ')'
         : 'Judge battle ' + d.battleId + (d.changed ? ' (new)' : ' (unchanged)');
       direActionEl.style.color = '#44cc88';
       direPoll();
     }).catch(function (e) {
       direActionEl.textContent = '⚠ ' + e.message; direActionEl.style.color = '#ff4455';
-    }).then(function () { btn.disabled = other.disabled = false; btn.textContent = label; });
+    }).then(function () { all.forEach(function (x) { x.disabled = false; }); btn.textContent = label; });
   }
   direBtns.debug.addEventListener('click', function () { direAct('debug'); });
+  direBtns.ingame.addEventListener('click', function () { direAct('ingame'); });
   direBtns.refresh.addEventListener('click', function () { direAct('refresh'); });
 
   fetch('/api/api-mode').then(function(r){ return r.json(); }).then(function(d){
@@ -1669,10 +1694,10 @@
      repoint any data source; the dropdown itself stays in sync via the
      dashboardSSE 'theme' listener below, same as every other toggle on
      this page. */
-  var THEME_VALUES = ['regular', '10th_anniversary', 'playoffs'];
-  var THEME_LABELS = { regular: 'Regular', '10th_anniversary': '10th Anniversary', playoffs: 'Playoffs' };
+  var THEME_VALUES = ['playoffs', 'mct'];
+  var THEME_LABELS = { playoffs: 'M8', mct: 'MCT' };
   var themeSelect = document.getElementById('theme-select');
-  var currentTheme = 'regular';
+  var currentTheme = 'playoffs';
 
   function applyThemeSelect(theme) {
     currentTheme = theme;
@@ -1680,7 +1705,7 @@
   }
 
   fetch('/api/theme').then(function(r){ return r.json(); }).then(function(d){
-    applyThemeSelect(THEME_VALUES.indexOf(d.theme) !== -1 ? d.theme : 'regular');
+    applyThemeSelect(THEME_VALUES.indexOf(d.theme) !== -1 ? d.theme : 'playoffs');
   }).catch(function(){});
 
   themeSelect.addEventListener('change', function () {
@@ -2587,7 +2612,8 @@
       previewDebugTester: true,
       killEventTrigger: true,
       stolenGoldControls: true,
-      extraActions: [
+      /* Hidden for M8 (Recap / Hide Bottom+Side Overlays / Gold+KDA Distri buttons). Rename `_extraActionsHiddenM8` back to `extraActions` to show them again. */
+      _extraActionsHiddenM8: [
         { label: 'Recap Show', action: '/overlay/fights/show' },
         { label: 'Recap Hide', action: '/overlay/fights/hide' },
         { label: 'Hide Bottom Overlays', action: '/overlay/bottomoverlays/hide' },
@@ -2635,6 +2661,7 @@
         { name: 'Trinity',     feature: 'trinity'    },
         { name: 'Quick Swap',  feature: 'swap'       },
         { name: 'Level 15',    feature: 'lvl15'      },
+        { name: 'Level 4',     feature: 'lvl4'       },
         { name: 'Conceal',     feature: 'conceal'    },
         { name: 'Fight Recap', feature: 'fights'     },
         { name: 'Objective Spawn', feature: 'objectivespawn' },
@@ -2869,6 +2896,27 @@
     previewIframe.style.top  = Math.round((wrap.clientHeight - scaledH) / 2) + 'px';
   }
 
+  /* Ingame country set (Main / ID / MY / PH): the preview + Open link load ingame.html?set=<SET>, so sponsors etc. match that feed */
+  var ingameSetBtns = document.getElementById('ingame-set-btns');
+  var ingameSet = 'MAIN';
+  try { var _s = (localStorage.getItem('ingameSet') || '').toUpperCase(); if (['MAIN','ID','MY','PH'].indexOf(_s) !== -1) ingameSet = _s; } catch (e) {}
+  function ingameSetQs(lead) { return ingameSet === 'MAIN' ? '' : lead + 'set=' + ingameSet; }
+  function paintIngameSetBtns() {
+    Array.prototype.forEach.call(ingameSetBtns.querySelectorAll('.set-btn'), function (b) { b.classList.toggle('active', b.dataset.set === ingameSet); });
+  }
+  paintIngameSetBtns();
+  ingameSetBtns.addEventListener('click', function (e) {
+    var b = e.target.closest('.set-btn'); if (!b || b.dataset.set === ingameSet) return;
+    ingameSet = b.dataset.set;
+    try { localStorage.setItem('ingameSet', ingameSet); } catch (err) {}
+    paintIngameSetBtns();
+    if (lastOverlay && lastOverlay.file === 'ingame.html') {
+      controlPanelOpen.href = '/html/ingame.html' + ingameSetQs('?');
+      previewIframe.onload = null;
+      previewIframe.src = '/html/ingame.html?t=' + Date.now() + '&preview=1' + ingameSetQs('&');   /* reload the preview for the chosen set */
+    }
+  });
+
   function selectOverlay(ov, item) {
     if (activeItem === item) return;
     if (activeItem) activeItem.classList.remove('active');
@@ -2876,10 +2924,12 @@
     lastOverlay = ov;
     lastItem = item;
     item.classList.add('active');
-    controlPanelTitle.textContent = ov.name;
+    controlPanelTitle.textContent = ov.file === 'ingame.html' ? '' : ov.name;   /* Ingame: the set buttons take the header's room */
     var srcUrl = ov.url || (ov.file ? '/html/' + ov.file : null);
+    var isIngame = ov.file === 'ingame.html';
+    ingameSetBtns.style.display = isIngame ? 'flex' : 'none';
     if (srcUrl) {
-      controlPanelOpen.href = srcUrl;
+      controlPanelOpen.href = srcUrl + (isIngame ? ingameSetQs('?') : '');
       controlPanelOpen.style.display = '';
     } else {
       controlPanelOpen.style.display = 'none';
@@ -2900,7 +2950,7 @@
       previewDisabledMsg.style.display = 'flex';
     } else {
       previewDisabledMsg.style.display = 'none';
-      if (srcUrl) previewIframe.src = srcUrl + (ov.url ? '' : ('?t=' + Date.now() + '&preview=1' + (ov.id === 'heatmap' ? '&follow=1' : '')));
+      if (srcUrl) previewIframe.src = srcUrl + (ov.url ? '' : ('?t=' + Date.now() + '&preview=1' + (ov.id === 'heatmap' ? '&follow=1' : '') + (isIngame ? ingameSetQs('&') : '')));
     }
     layout.classList.add('split');
     requestAnimationFrame(scalePreview);
@@ -3806,6 +3856,7 @@
       var pdFeatSel = el('select', 'pdebug-select');
       [
         ['lvl15',   'Level 15'],
+        ['lvl4',    'Level 4'],
         ['item',    'Item Pickup'],
         ['skypiercer', 'Sky Piercer Stacks'],
         ['trinity', 'Trinity'],
@@ -4071,7 +4122,12 @@
 
   }
 
-  OVERLAYS.forEach(function (ov) {
+  /* sidebar order: Draft, Ingame, Postgame (OVERLAYS array order is unrelated) */
+  var CONTROL_ORDER = ['draft', 'mploverlay7', 'mplfs'];
+  OVERLAYS.slice().sort(function (x, y) {
+    var ix = CONTROL_ORDER.indexOf(x.id), iy = CONTROL_ORDER.indexOf(y.id);
+    return (ix < 0 ? 99 : ix) - (iy < 0 ? 99 : iy);
+  }).forEach(function (ov) {
     if (!CONTROL_VISIBLE[ov.id]) return;
     var item  = el('div', 'ov-item');
     var dot   = el('div', 'ov-dot unknown');
@@ -4112,29 +4168,31 @@
 
   /* ── Edit page ─────────────────────────────────────────────── */
   var SB_DEFAULTS = {
-    '#scoreboard-gametime':    {                top: 3,       fontSize: 21 },
-    '#scoreboard-kills-c1':   { left: 846,     top: 14,      fontSize: 53 },
-    '#scoreboard-kills-c2':   { left: 1074,    top: 14,      fontSize: 53 },
-    '#scoreboard-tricode-c1': { left: 576.941, top: 60.351,  fontSize: 29 },
-    '#scoreboard-tricode-c2': { left: 1346.336,top: 60.356,  fontSize: 29 },
-    '#scoreboard-turtle-c1':  { left: 542.09,  top: 18,      fontSize: 19 },
-    '#scoreboard-lord-c1':    { left: 605.59,  top: 18,      fontSize: 19 },
-    '#scoreboard-tower-c1':   { left: 668.59,  top: 19,      fontSize: 19 },
-    '#scoreboard-gold-c1':    { left: 734.779, top: 18,      fontSize: 19 },
-    '#sb-goldlead-c1':        { left: 790.894, top: 58,      fontSize: 18 },
-    '#scoreboard-turtle-c2':  { left: 1369.09, top: 18,      fontSize: 19 },
-    '#scoreboard-lord-c2':    { left: 1309.09, top: 18,      fontSize: 19 },
-    '#scoreboard-tower-c2':   { left: 1245.59, top: 18,      fontSize: 19 },
-    '#scoreboard-gold-c2':    { left: 1166.983,top: 18,      fontSize: 19 },
-    '#sb-goldlead-c2':        { left: 1137.393,top: 58,      fontSize: 18 },
-    '#sb-score-c1':           { left: 645,     top: 40 },
-    '#sb-score-c2':           { left: 1230,    top: 40 },
-    '#sb-sponsor-loop':       { left: 1689,    top: 7  },
-    '#sb-map':                { left: 1627,    top: 141 },
-    '#sb-logo-c1':            { left: 424,     top: 5  },
-    '#sb-logo-c2':            { left: 1431,    top: 5  },
-    '#sb-mi-patch':           { left: 1508,    top: 108, width: 133, height: 19, fontSize: 13 },
-    '#sb-mi-casters':         { left: 1641,    top: 108, width: 279, height: 19, fontSize: 13 },
+    '#scoreboard-gametime':    { left: 960,  top: 112,  fontSize: 15 },
+    '#scoreboard-kills-c1':   { left: 835,     top: 7,       fontSize: 34 },
+    '#scoreboard-kills-c2':   { left: 1085,    top: 7,       fontSize: 34 },
+    '#scoreboard-tricode-c1': { left: 383,     top: 111,     fontSize: 15 },
+    '#scoreboard-tricode-c2': { left: 1537,    top: 111,     fontSize: 15 },
+    '#scoreboard-name-c1':    { left: 458,     top: 33,      fontSize: 25 },
+    '#scoreboard-name-c2':    { left: 1459,    top: 33,      fontSize: 25 },
+    '#scoreboard-turtle-c1':  { left: 617,     top: 85,      fontSize: 19 },
+    '#scoreboard-lord-c1':    { left: 697,     top: 85,      fontSize: 19 },
+    '#scoreboard-tower-c1':   { left: 771,     top: 85,      fontSize: 19 },
+    '#scoreboard-gold-c1':    { left: 499,     top: 85,      fontSize: 19 },
+    '#sb-goldlead-c1':        { left: 516,     top: 115,     fontSize: 15 },
+    '#scoreboard-turtle-c2':  { left: 1302,    top: 85,      fontSize: 19 },
+    '#scoreboard-lord-c2':    { left: 1221,    top: 85,      fontSize: 19 },
+    '#scoreboard-tower-c2':   { left: 1146,    top: 85,      fontSize: 19 },
+    '#scoreboard-gold-c2':    { left: 1418,    top: 85,      fontSize: 19 },
+    '#sb-goldlead-c2':        { left: 1400,    top: 115,     fontSize: 15 },
+    '#sb-score-c1':           { left: 825,     top: 73 },
+    '#sb-score-c2':           { left: 1040,    top: 73 },
+    '#sb-sponsor-loop':       { left: 1590,    top: 6  },
+    '#sb-map':                { left: 1786,    top: 101 },
+    '#sb-logo-c1':            { left: 349,     top: 16 },
+    '#sb-logo-c2':            { left: 1500,    top: 18 },
+    '#sb-mi-patch':           { left: 1808,    top: 101, width: 108, height: 24, fontSize: 11 },
+    '#sb-mi-casters':         { left: 1603,    top: 101, width: 182, height: 24, fontSize: 11 },
   };
   var ARROW_MAP = { ArrowLeft:[-1,0], ArrowRight:[1,0], ArrowUp:[0,-1], ArrowDown:[0,1] };
 
@@ -4144,6 +4202,8 @@
     { group: 'Kills',      id: '#scoreboard-kills-c2',   name: 'Kills (Team 2)'   },
     { group: 'Team Codes', id: '#scoreboard-tricode-c1', name: 'Tricode (Team 1)' },
     { group: 'Team Codes', id: '#scoreboard-tricode-c2', name: 'Tricode (Team 2)' },
+    { group: 'Team Names', id: '#scoreboard-name-c1',    name: 'Team Name (Team 1)' },
+    { group: 'Team Names', id: '#scoreboard-name-c2',    name: 'Team Name (Team 2)' },
     { group: 'Team 1',     id: '#scoreboard-turtle-c1',  name: 'Turtle'           },
     { group: 'Team 1',     id: '#scoreboard-lord-c1',    name: 'Lord'             },
     { group: 'Team 1',     id: '#scoreboard-tower-c1',   name: 'Tower'            },

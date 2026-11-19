@@ -335,6 +335,15 @@
     <div id="tab-content-details">
     <div class="meta-row">
       <div class="meta-field grow">
+        <div class="meta-label">Stage</div>
+        <select id="stage">
+          <option value="Wild Card">Wild Card</option>
+          <option value="Swiss Stage">Swiss Stage</option>
+          <option value="Knockouts">Knockouts</option>
+          <option value="Grand Finals">Grand Finals</option>
+        </select>
+      </div>
+      <div class="meta-field grow">
         <div class="meta-label">Format</div>
         <select id="series">
           <option value="BO1">Best of 1</option>
@@ -363,12 +372,6 @@
       <div class="meta-field">
         <div class="meta-label">Game</div>
         <div id="game-display" class="game-display">Game 1</div>
-      </div>
-      <div class="meta-field">
-        <label class="official-wrap" id="official-wrap" for="official-cb">
-          <input type="checkbox" id="official-cb">
-          <span>Official Match</span>
-        </label>
       </div>
       <div class="meta-field" style="justify-content:flex-end;">
         <button class="btn btn-reset" id="reset-btn">Reset Scores</button>
@@ -409,8 +412,8 @@
       </div>
     </div>
 
-    <!-- Row 3: Hosts -->
-    <div class="meta-row" style="margin-top:12px;">
+    <!-- Row 3: Hosts — hidden for M8 (remove display:none to restore) -->
+    <div class="meta-row" style="margin-top:12px;display:none;">
       <div class="meta-field grow">
         <div class="meta-label">Host 1</div>
         <input type="text" id="host-0" list="talent-list" autocomplete="off" value="None">
@@ -441,8 +444,8 @@
       </div>
     </div>
 
-    <!-- Row 5: EN Casters -->
-    <div class="meta-row" style="margin-top:10px;">
+    <!-- Row 5: EN Casters — hidden for M8 -->
+    <div class="meta-row" style="margin-top:10px;display:none;">
       <div class="meta-field grow">
         <div class="meta-label">EN Caster 1</div>
         <input type="text" id="en-caster-0" list="talent-list" autocomplete="off" value="None">
@@ -456,8 +459,8 @@
         <input type="text" id="en-caster-2" list="talent-list" autocomplete="off" value="None">
       </div>
     </div>
-    <!-- Row 6: Panel -->
-    <div class="meta-row" style="margin-top:10px;">
+    <!-- Row 6: Panel — hidden for M8 -->
+    <div class="meta-row" style="margin-top:10px;display:none;">
       <div class="meta-field grow">
         <div class="meta-label">Panel 1</div>
         <input type="text" id="panel-0" list="talent-list" autocomplete="off" value="None">
@@ -472,7 +475,8 @@
       </div>
     </div>
     <datalist id="talent-list"></datalist>
-    <div class="show-label-wrap">
+    <!-- Countdown timer — hidden for M8 -->
+    <div class="show-label-wrap" style="display:none;">
       <span class="show-label-key">Timer</span>
       <div class="timer-input-wrap">
         <div class="timer-input-group">
@@ -597,7 +601,7 @@
     series:  'BO5',
     game:    1,
     swapped: false,
-    official: false,
+    stage: 'Wild Card',
     week:    1,
     day:     1,
     patch:   'Decisive Battle 420',
@@ -738,9 +742,7 @@
     var s = localState;
     document.getElementById('series').value = s.series || 'BO5';
     document.getElementById('series-tomorrow').value = s.tomorrowSeries || 'BO7';
-    var cb = document.getElementById('official-cb');
-    cb.checked = !!s.official;
-    document.getElementById('official-wrap').classList.toggle('on', !!s.official);
+    document.getElementById('stage').value = s.stage || 'Wild Card';
     document.getElementById('game-display').textContent = 'Game ' + computeGame();
     document.getElementById('home-score-val').textContent = s.home.score || 0;
     document.getElementById('away-score-val').textContent = s.away.score || 0;
@@ -1076,10 +1078,10 @@
   document.getElementById('away-plus').addEventListener('click',  function () { changeScore('away',  1); });
   document.getElementById('away-minus').addEventListener('click', function () { changeScore('away', -1); });
 
-  /* ── OFFICIAL MATCH ── */
-  document.getElementById('official-cb').addEventListener('change', function () {
-    document.getElementById('official-wrap').classList.toggle('on', this.checked);
-    push({ official: this.checked });
+  /* ── STAGE ── */
+  document.getElementById('stage').addEventListener('change', function () {
+    localState.stage = this.value;
+    push({ stage: this.value });
   });
 
   /* ── FORMAT ── */
@@ -1281,7 +1283,7 @@
     }
   }
   function applyThemeLayout(theme) {
-    var po = theme === 'playoffs';
+    var po = theme === 'playoffs' || theme === 'mct';
     if (po === poTheme && applyThemeLayout.done) return;
     applyThemeLayout.done = true;
     poTheme = po;

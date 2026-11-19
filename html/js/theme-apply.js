@@ -18,12 +18,16 @@
 // specific theme(s) it's meant for, so adding a FOURTH theme later can't
 // silently inherit changes meant for a different one. See CLAUDE.md's
 // "Theme system" section before adding the first real per-theme override.
-var THEME_VALUES = ['regular', '10th_anniversary', 'playoffs'];
-var THEME_DEFAULT = 'regular';
+var THEME_VALUES = ['playoffs', 'mct'];
+/* 'playoffs' is the M8 theme. 'mct' is (for now) a clone of it: it renders with data-theme="playoffs" so every M8 rule/asset
+   applies, and carries data-theme-name="mct" so MCT-only overrides can be written later:  [data-theme-name="mct"] #x { ... } */
+var THEME_ALIAS = { mct: 'playoffs' };
+var THEME_DEFAULT = 'playoffs';
 
 function applyTheme(theme) {
   var t = THEME_VALUES.indexOf(theme) !== -1 ? theme : THEME_DEFAULT;
-  document.documentElement.setAttribute('data-theme', t);
+  document.documentElement.setAttribute('data-theme', THEME_ALIAS[t] || t);
+  document.documentElement.setAttribute('data-theme-name', t);
   window.CURRENT_THEME = t;
 }
 

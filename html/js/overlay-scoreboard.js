@@ -47,6 +47,14 @@ function sbSetImgWithFallback(imgEl, primarySrc, fallbackSrc) {
   imgEl.src = primarySrc;
 }
 
+/* Top-bar art per theme: MCT (data-theme-name="mct", rendered as data-theme="playoffs") has its own bar; everything else uses the M8 bar. */
+function sbIsMct() { return document.documentElement.getAttribute('data-theme-name') === 'mct'; }
+function sbTopbarSrc() {
+  return sbIsMct()
+    ? '/assets/overlay/M8/Ingame/mct_topbar.png'
+    : '/assets/overlay/M8/Ingame/m8_topbar.png';
+}
+
 (function buildScoreboard() {
   var overlay = document.createElement('div');
   overlay.id = 'scoreboard-overlay';
@@ -63,12 +71,7 @@ function sbSetImgWithFallback(imgEl, primarySrc, fallbackSrc) {
 
   var bg = document.createElement('img');
   bg.id  = 'scoreboard-bg';
-  var sbInitTheme = document.documentElement.getAttribute('data-theme');
-  bg.src = sbInitTheme === '10th_anniversary'
-    ? 'assets/overlay/ingame/anniversary/ingamepng2.png'
-    : sbInitTheme === 'playoffs'
-    ? 'assets/overlay/ingame/playoffs/ingamepng2.png'
-    : 'assets/overlay/ingame/ingamepng2.png';
+  bg.src = sbTopbarSrc();
   bg.alt = '';
   overlay.appendChild(bg);
 
@@ -98,6 +101,13 @@ function sbSetImgWithFallback(imgEl, primarySrc, fallbackSrc) {
   t2.id          = 'scoreboard-tricode-c2';
   t2.textContent = '';
   overlay.appendChild(t2);
+
+  var n1 = document.createElement('div');
+  n1.id = 'scoreboard-name-c1';
+  overlay.appendChild(n1);
+  var n2 = document.createElement('div');
+  n2.id = 'scoreboard-name-c2';
+  overlay.appendChild(n2);
 
   var g1 = document.createElement('div');
   g1.id          = 'scoreboard-gold-c1';
@@ -148,7 +158,7 @@ function sbSetImgWithFallback(imgEl, primarySrc, fallbackSrc) {
     el.id = id;
     var icon = document.createElement('img');
     icon.className = 'sb-goldlead-icon';
-    icon.src = 'assets/overlay/ingame/ingameitemgold.png';
+    icon.src = sbIsMct() ? '/assets/overlay/M8/Ingame/mct_goldicon.png' : 'assets/overlay/ingame/ingameitemgold.png';
     icon.alt = '';
     var amount = document.createElement('span');
     amount.className = 'sb-goldlead-amount';
@@ -177,11 +187,16 @@ function sbSetImgWithFallback(imgEl, primarySrc, fallbackSrc) {
   var miLabel = document.createElement('div');
   miLabel.id = 'sb-mi-label';
   miLabel.textContent = 'REGULAR SEASON';
+  var miTitle = document.createElement('img');
+  miTitle.id = 'sb-mi-title';
+  miTitle.alt = '';
+  miTitle.src = sbIsMct() ? '/assets/overlay/M8/Ingame/mct_logo.png' : '/assets/overlay/M8/Ingame/m8_wildcardtitle.png';
   var miWeek = document.createElement('div');
   miWeek.id = 'sb-mi-week';
   var miMatch = document.createElement('div');
   miMatch.id = 'sb-mi-match';
   mi.appendChild(miLabel);
+  mi.appendChild(miTitle);
   mi.appendChild(miWeek);
   mi.appendChild(miMatch);
   overlay.appendChild(mi);
@@ -274,21 +289,27 @@ fetch('/overlay/check-overlays').then(function(r) { return r.json(); }).then(fun
 
 function formatGold(g) {
   if (g < 1000) return String(g);
-  return (g / 1000).toFixed(1) + 'k';
+  return (g / 1000).toFixed(1) + 'K';
 }
 
-/* ── Local timer (smooth game clock) ── */
+/* ── Local timer (smooth game clock) ──
+   The feed's game_time is whole seconds and arrives in bursts (upstream is polled ~1/s, plus network jitter), so showing it
+   raw makes the clock stutter / skip. Instead a local clock free-runs and the feed only STEERS it:
+   - the feed's second N means the true time is somewhere in N..N+1, so on every feed change we aim the local clock at N+0.5;
+   - if the clock is within 1.6s of that target it is slewed gently (10% per change) — no visible jump;
+   - beyond that (seek / reconnect / long stall) it snaps;
+   - it only freezes when the feed has been unchanged for > 2.5 s of REAL time (game paused). Counting polls instead (the old
+     rule) froze it every second at a 150ms refresh rate, then re-snapped on every feed tick — that was the skipping. */
 var _sb = {
   running:    false,
-  startMs:    0,       // Date.now() at last sync point
-  offsetSec:  0,       // game_time seconds at last sync point
-  frozenSec:  0,       // display value when paused
+  startMs:    0,       // Date.now() at the last reference point
+  offsetSec:  0,       // clock value at that reference point
+  frozenSec:  0,       // display value when paused / not started
   prevApi:    -1,      // last seen api game_time
-  sameCount:  0,       // consecutive polls with identical api time
-  syncTick:   0,       // polls since last drift-sync
-  PAUSE_AT:   2,       // same-time polls before pausing local timer
-  SYNC_EVERY: 10,      // drift-check every N polls
-  DRIFT_MAX:  2,       // seconds of allowed drift before snap
+  lastChange: 0,       // Date.now() when the api value last changed
+  STALL_MS:   2500,    // feed unchanged this long (real time) = game paused
+  SNAP_S:     1.6,     // clock further than this from the feed's target = snap
+  SLEW:       0.1,     // otherwise correct this fraction of the error per feed change
 };
 
 function _sbNow() {
@@ -318,43 +339,24 @@ registerPollHandler(function(data) {
 
   var apiSec = data.game_time || 0;
 
+  var nowMs = Date.now();
   if (apiSec === 0) {
     /* Game not started / ended — reset */
-    if (_sb.running || _sb.frozenSec > 0) {
-      _sb.running = false; _sb.frozenSec = 0;
-      _sb.prevApi = -1;    _sb.sameCount = 0;
-    }
-  } else if (!_sb.running && _sb.frozenSec === 0) {
-    /* First positive time seen — start local timer */
-    _sbSetAt(apiSec);
-    _sb.running = true; _sb.frozenSec = apiSec;
-    _sb.prevApi = apiSec; _sb.sameCount = 0;
-  } else if (apiSec === _sb.prevApi) {
-    /* Time not advancing — count toward pause */
-    _sb.sameCount++;
-    if (_sb.sameCount >= _sb.PAUSE_AT && _sb.running) {
-      _sb.frozenSec = Math.round(_sbNow());
-      _sb.running   = false;
-    }
-  } else {
-    /* Time advanced */
-    if (!_sb.running) {
-      /* Resume from pause */
-      _sbSetAt(apiSec);
-      _sb.running = true;
+    _sb.running = false; _sb.frozenSec = 0; _sb.prevApi = -1;
+  } else if (apiSec !== _sb.prevApi) {
+    /* Feed moved to a new second */
+    _sb.lastChange = nowMs;
+    var target = apiSec + 0.5;
+    if (!_sb.running || _sb.prevApi < 0) {
+      _sbSetAt(target); _sb.running = true;                      /* first reading, or resume from pause */
     } else {
-      /* Drift-sync check every SYNC_EVERY polls */
-      _sb.syncTick++;
-      if (_sb.syncTick >= _sb.SYNC_EVERY) {
-        _sb.syncTick = 0;
-        if (Math.abs(Math.floor(_sbNow()) - apiSec) > _sb.DRIFT_MAX) {
-          _sbSetAt(apiSec);
-        }
-      }
+      var cur = _sbNow(), err = target - cur;
+      _sbSetAt(Math.abs(err) > _sb.SNAP_S ? target : cur + err * _sb.SLEW);
     }
-    _sb.sameCount = 0;
-    _sb.prevApi   = apiSec;
-    _sb.frozenSec = apiSec;
+    _sb.prevApi = apiSec; _sb.frozenSec = apiSec;
+  } else if (_sb.running && nowMs - _sb.lastChange > _sb.STALL_MS) {
+    /* Feed stuck for real: game paused — hold the feed's value */
+    _sb.frozenSec = apiSec; _sb.running = false;
   }
 
   var camps = data.camp_list || [];
@@ -369,13 +371,21 @@ registerPollHandler(function(data) {
   if (t1 && c1) {
     var name1 = c1.team_simple_name || '';
     if (name1) t1.textContent = name1.toUpperCase();
-    t1.style.color = sbIsEnduring ? '#0a0a0a' : '#fff';
+    t1.style.color = '';
   }
   if (t2 && c2) {
     var name2 = c2.team_simple_name || '';
     if (name2) t2.textContent = name2.toUpperCase();
-    t2.style.color = sbIsEnduring ? '#0a0a0a' : '#fff';
+    t2.style.color = '';
   }
+
+  /* Full team names (M8 top bar) — fall back to the tricode */
+  [[c1, 'scoreboard-name-c1', 330], [c2, 'scoreboard-name-c2', 329]].forEach(function(x) {
+    var el = document.getElementById(x[1]);
+    if (!el || !x[0]) return;
+    var nm = String(x[0].team_name || x[0].team_simple_name || '').toUpperCase();
+    if (el.textContent !== nm) { el.textContent = nm; sbFitText(el, x[2], 25); }
+  });
 
   /* Team logos — only reload when team name changes */
   var li1 = document.getElementById('sb-logo-c1');
@@ -536,12 +546,12 @@ function sbFitText(el, maxWidth, maxPx) {
 /* Playoffs match-title line (#sb-mi-week): one line up to 38px; if it won't
    fit the 168px room, wrap to at most 2 lines and shrink to fit. */
 function sbFitStage(el) {
-  var W = 168;
+  var W = 150;
   el.style.whiteSpace = 'nowrap';
-  el.style.fontSize = '38px';
+  el.style.fontSize = '17px';
   if (el.scrollWidth <= W) return;
   el.style.whiteSpace = 'normal';
-  for (var size = 32; size >= 12; size--) {
+  for (var size = 16; size >= 9; size--) {
     el.style.fontSize = size + 'px';
     if (el.scrollWidth <= W && el.scrollHeight <= size * 2.2) return;
   }
@@ -559,10 +569,10 @@ function sbFitStage(el) {
    strings instead of overflowing. The width offsets below (20/38px)
    reproduce the original hardcoded 113/241 maxWidth values exactly at the
    default 133/279 box widths, then scale proportionally from there. */
-var SB_MI_WIDTH_OFFSET = { patch: 20, casters: 38 };
+var SB_MI_WIDTH_OFFSET = { patch: 10, casters: 12 };
 var SB_MI_FIT_CONFIG = {
-  patch:   { maxWidth: 113, maxPx: 13 },
-  casters: { maxWidth: 241, maxPx: 13 },
+  patch:   { maxWidth: 98,  maxPx: 11 },
+  casters: { maxWidth: 170, maxPx: 11 },
 };
 function sbMiTextBudget(which, containerWidth) {
   return Math.max(10, containerWidth - (SB_MI_WIDTH_OFFSET[which] || 0));
@@ -588,10 +598,16 @@ window.sbSetMiFit = function(which, opts) {
 function sbRenderBars(container, total, scored, fromRight) {
   container.innerHTML = '';
   for (var i = 0; i < total; i++) {
-    var bar = document.createElement('div');
+    var bar = document.createElement('img');
     bar.className = 'sb-score-bar';
-    var filled = fromRight ? (i >= total - scored) : (i < scored);
+    bar.alt = '';
+    /* M8 art fills from the OUTER edge inwards (empty pill nearest the logo-less centre) */
+    var filled = fromRight ? (i < scored) : (i >= total - scored);
+    if (sbIsMct()) filled = !fromRight ? (i < scored) : (i >= total - scored);   /* MCT fills from the centre outwards */
     if (filled) bar.classList.add('filled');
+    bar.src = sbIsMct()
+      ? '/assets/overlay/M8/Ingame/mct_score' + (filled ? 'YES' : 'NO') + '.png'
+      : '/assets/overlay/M8/Ingame/m8_score' + (filled ? 'YES' : 'EMPTY') + '.png';
     container.appendChild(bar);
   }
 }
@@ -620,22 +636,20 @@ function sbPollMatchState() {
       var miLabelEl = document.getElementById('sb-mi-label');
       var miWeek  = document.getElementById('sb-mi-week');
       var miMatch = document.getElementById('sb-mi-match');
-      if (document.documentElement.getAttribute('data-theme') === 'playoffs') {
-        /* Playoffs: "MPL PH SEASON 18" / the current match's title from the
-           Match Board (PLAY-INS, LOWER BRACKET FINALS...) as the big line /
-           "MATCH n - GAME n". */
-        var poMatch = (s.todayMatches || [])[(s.match || 1) - 1];
-        if (miLabelEl) miLabelEl.textContent = 'MPL PH SEASON 18';
-        if (miWeek) {
-          miWeek.textContent = String((poMatch && poMatch.stageLabel) || 'THE PLAYOFFS').replace(/\|/g, ' ').trim().toUpperCase();
+      /* Title line: the current match's stage from the Match Board. "Wild Card" has its
+         own art (m8_wildcardtitle.png); any other stage is set as gold text. */
+      var stage  = String(s.stage || 'Wild Card').toUpperCase();
+      var isWild = /WILD\s*CARD/.test(stage);
+      var miTitleEl = document.getElementById('sb-mi-title');
+      if (miTitleEl) miTitleEl.classList.toggle('on', isWild);
+      if (miWeek) {
+        miWeek.classList.toggle('hide', isWild);
+        if (!isWild) {
+          miWeek.textContent = stage || ('WEEK ' + (s.week != null ? s.week : 1) + ' - DAY ' + (s.day != null ? s.day : 1));
           sbFitStage(miWeek);
         }
-      } else {
-        if (miLabelEl) miLabelEl.textContent = 'REGULAR SEASON';
-        if (miWeek) { miWeek.style.fontSize = ''; miWeek.style.whiteSpace = ''; }
-        if (miWeek)  miWeek.textContent  = 'WEEK '  + (s.week  != null ? s.week  : 1) + ' - DAY '  + (s.day   != null ? s.day   : 1);
       }
-      if (miMatch) miMatch.textContent = matchLabelFor(s.match != null ? s.match : 1, s) + ' - GAME ' + (s.game  != null ? s.game  : 1);
+      if (miMatch) miMatch.textContent = matchLabelFor(s.match != null ? s.match : 1, s) + ' GAME ' + (s.game  != null ? s.game  : 1);
 
       /* maxWidth/maxPx come from SB_MI_FIT_CONFIG (see sbFitText above) —
          driven by the saved Patch Box/Caster Box width+fontSize, not
@@ -666,7 +680,7 @@ function sbPollMatchState() {
         var mapLogoImg = document.getElementById('sb-map-logo-img');
         if (mapNameTxt) {
           mapNameTxt.textContent = mapVal.toUpperCase();
-          sbFitText(mapNameTxt, 169, 26);
+          sbFitText(mapNameTxt, 92, 11);
         }
         if (mapLogoImg && mapLogoImg.dataset.map !== mapVal) {
           mapLogoImg.dataset.map = mapVal;
@@ -685,10 +699,9 @@ function sbPollMatchState() {
       var isEnduring  = curMatch && curMatch.matchType === 'enduring';
       var isAnniv     = document.documentElement.getAttribute('data-theme') === '10th_anniversary';
       var isPlayoffs  = document.documentElement.getAttribute('data-theme') === 'playoffs';
-      var ingameBase  = 'assets/overlay/ingame/' + (isAnniv ? 'anniversary/' : isPlayoffs ? 'playoffs/' : '');
-      var ingamePlain = ingameBase + 'ingamepng2.png';
+      var ingamePlain = sbTopbarSrc();   /* one top bar per theme (M8 / MCT), same for every match type */
       var starSuffix  = curMatch && sbStarSuffixFor(curMatch.matchType);
-      var ingameStar  = starSuffix ? ingameBase + 'ingamepng2_' + starSuffix + '.png' : ingamePlain;
+      var ingameStar  = ingamePlain;
       sbSetImgWithFallback(document.getElementById('scoreboard-bg'), ingameStar, ingamePlain);
 
       /* #scoreboard-tricode-c1/c2 sit directly on that background's gold
@@ -701,8 +714,8 @@ function sbPollMatchState() {
       sbIsEnduring = isEnduring;
       var triC1 = document.getElementById('scoreboard-tricode-c1');
       var triC2 = document.getElementById('scoreboard-tricode-c2');
-      if (triC1) triC1.style.color = sbIsEnduring ? '#0a0a0a' : '#fff';
-      if (triC2) triC2.style.color = sbIsEnduring ? '#0a0a0a' : '#fff';
+      if (triC1) triC1.style.color = '';
+      if (triC2) triC2.style.color = '';
     })
     .catch(function() {});
 }

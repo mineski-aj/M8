@@ -2945,151 +2945,71 @@
      class on that one inner span — kills/assists/slashes stay black). */
   .skdc-stat-kda-value .skdc-death-nonzero { color: #fe2626; }
 
-  /* ── [FEATURE: player-ui] ──────────────────────────────────────
-     Per-player card, 1:1 render of assets/overlay/ingame/ui/uiblue.png /
-     uired.png (180×89 each) — coordinates measured directly off
-     those assets (see uiguide.png). 5 cards per side, stacked
-     downward with no gap (card height 89px). Away side is the same
-     180-wide local layout mirrored (mirror(x) = 180 - x - width),
-     matching uired.png's pre-mirrored background art. The portrait
-     circle is a real cutout baked into uiblue.png/uired.png (5,53
-     19×19 home / 156,53 19×19 away) — .pui-emblem renders the
-     player's main rune there, behind .pui-bg so the art's cutout
-     edge frames it; the thin bar beneath it is still intentionally
-     left empty/transparent. */
+  /* ── [FEATURE: player-ui] — M8 card, 168x90. Art: assets/overlay/M8/Ingame/m8_uiblue_main.png
+     (home; the away card is the same art mirrored). Coordinates measured off m8_uiblue_reference.png.
+     Every positioned child uses --x: home = left:--x, away = right:--x, so the away card is an exact mirror.
+     Layer order: bg art < hero portrait < ultimate dot < text < icon fills < outline rings < HP bar. */
   #player-ui-overlay {
-    position: absolute;
-    left: 0; top: 0;
-    width: 100%; height: 1080px;
-    pointer-events: none;
-    z-index: 30;
+    position: absolute; left: 0; top: 0; width: 100%; height: 1080px;
+    pointer-events: none; z-index: 30;
   }
-  /* Slide in/out from the outside — home cards from the left, away
-     cards from the right (reversed to hide). Base rule (no modifier
-     class) is the SHOWN position with no transform, so a page load
-     renders shown immediately with no flash while puiSetShown's fetch
-     is still in flight (matches every other feature's default-on
-     behavior); .pui-hidden — toggled via overlay-playerui.js's
-     puiSetShown — moves cards off-canvas only once we're told to. */
   .pui-card {
-    position: absolute;
-    width: 180px; height: 89px;
+    position: absolute; width: 168px; height: 90px;
     transform: translateX(0);
     transition: transform 450ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   .pui-card.pui-home { left: 0; }
   .pui-card.pui-away { right: 0; }
-  #player-ui-overlay.pui-hidden .pui-card.pui-home {
-    transform: translateX(-180px);
-    transition: transform 350ms ease-in;
-  }
-  #player-ui-overlay.pui-hidden .pui-card.pui-away {
-    transform: translateX(180px);
-    transition: transform 350ms ease-in;
-  }
-  .pui-bg {
-    position: absolute; left: 0; top: 0;
-    width: 180px; height: 89px;
-  }
-  .pui-emblem {
-    position: absolute;
-    top: 53px; width: 19px; height: 19px;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-  .pui-card.pui-home .pui-emblem { left: 5px; }
-  .pui-card.pui-away .pui-emblem { left: 156px; }
-  .pui-level {
-    position: absolute;
-    top: 0; width: 32px; height: 19px;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'General Sans', sans-serif;
-    font-weight: 700;
-    font-size: 15px;
-    color: #fff;
-  }
-  .pui-card.pui-home .pui-level { left: 2px; }
-  .pui-card.pui-away .pui-level { left: 146px; }
-  .pui-name {
-    position: absolute;
-    top: 0; width: 130px; height: 19px;
-    display: flex; align-items: center;
-    font-family: 'General Sans', sans-serif;
-    font-weight: 700;
-    font-size: 15px;
-    color: #fff;
-    text-transform: uppercase;
-    white-space: nowrap;
-    overflow: hidden;
-  }
-  .pui-card.pui-home .pui-name { left: 44px; justify-content: flex-start; padding-left: 4px; }
-  .pui-card.pui-away .pui-name { left: 6px;  justify-content: flex-end;   padding-right: 4px; }
-  /* 10th Anniversary — white-on-yellow (the new uiblue/uired.png) has
-     poor contrast, same problem the countdown timer glow was solving,
-     just plain solid text here (no background-clip:text), so a normal
-     text-shadow works directly — no need for that fix's split-layer
-     workaround. Same two-layer soft-glow + crisp-shadow shape, scaled way
-     down for 15px text instead of a 130px countdown digit, and dialed
-     back further since this needs to read as a subtle lift, not a glow.
-     Also used as-is by the ingame match board's white text (scoreboard
-     tower/lord/turtle/gold + match info) — see that rule further down —
-     so any further toning down here should happen in both places. */
-  [data-theme="10th_anniversary"] .pui-name {
-    text-shadow: 0 0 5px rgba(0, 0, 0, 0.35), 1px 1px 1.5px rgba(0, 0, 0, 0.4);
-  }
-  .pui-kda {
-    position: absolute;
-    top: 33px; width: 90px; height: 18px;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'General Sans', sans-serif;
-    font-weight: 700;
-    font-size: 20px;
-    color: #141414;
-    white-space: nowrap;
-  }
-  .pui-card.pui-home .pui-kda { left: 90px; }
-  .pui-card.pui-away .pui-kda { left: 0; }
-  .pui-gold {
-    position: absolute;
-    top: 57px; width: 90px; height: 16px;
-    display: flex; align-items: center; justify-content: center; gap: 4px;
-    font-family: 'General Sans', sans-serif;
-    font-weight: 700;
-    font-size: 18px;
-    color: #141414;
-    white-space: nowrap;
-  }
-  .pui-card.pui-home .pui-gold { left: 90px; }
-  .pui-card.pui-away .pui-gold { left: 0; }
-  .pui-gold-icon { width: 17px; height: 16px; flex-shrink: 0; }
+  #player-ui-overlay.pui-hidden .pui-card.pui-home { transform: translateX(-168px); transition: transform 350ms ease-in; }
+  #player-ui-overlay.pui-hidden .pui-card.pui-away { transform: translateX(168px);  transition: transform 350ms ease-in; }
+  .pui-e { position: absolute; }
+  .pui-home .pui-e { left: var(--x); }
+  .pui-away .pui-e { right: var(--x); }
+  .pui-bg { position: absolute; left: 0; top: 0; width: 168px; height: 90px; }
+  .pui-away .pui-bg { transform: scaleX(-1); }
 
-  /* ── Ultimate cooldown indicator (Ellipse_1) — behind .pui-bg, shows
-     through the transparent circular cutout baked into uiblue.png/
-     uired.png at this same spot (alpha 0 inside the guide outline,
-     confirmed same as the .pui-emblem cutout). Three stacked circles
-     crossfade via opacity instead of animating `background` directly,
-     since browsers won't smoothly transition a conic-gradient:
-       - locked: solid dark grey, level < 4 (ultimate not unlocked)
-       - pie:    conic-gradient wipe (camp color over grey) that fills
-                 as major_left_time counts down from its cooldown max
-       - ready:  solid green, major_left_time === 0 (off cooldown) —
-                 crossfades in from the pie the instant it completes */
-  .pui-ulti {
-    position: absolute;
-    top: 21px;
-    width: 18px; height: 18px;
-  }
-  .pui-card.pui-home .pui-ulti { left: 5px; }
-  .pui-card.pui-away .pui-ulti { left: 157px; }
-  .pui-ulti > div {
-    position: absolute; inset: 0;
-    border-radius: 50%;
-    opacity: 0;
-    transition: opacity 0.5s ease;
-  }
-  .pui-ulti-locked { background: #4a4a4a; }
-  .pui-ulti-ready  { background: rgb(0, 239, 79); }
+  .pui-hero { --x: 5.5px; top: 7.5px; width: 71px; height: 71px; border-radius: 50%; object-fit: cover; }
+  .pui-ulti { --x: 3.5px; top: 6px; width: 21px; height: 21px; }
+  .pui-ulti > div { position: absolute; inset: 0; border-radius: 50%; opacity: 0; transition: opacity 0.4s ease; }
+  .pui-ulti > img.pui-ulti-ring { position: absolute; left: -1px; top: -1px; width: 23px; height: 23px; }  /* outline above the cooldown */
+  .pui-ulti-locked { background: #3d3d3d; }
+  .pui-ulti-ready  { background: linear-gradient(90deg, #4cb848, #68d453); }   /* slight left->right gradient, per the reference */
   .pui-ulti-locked.on, .pui-ulti-pie.on, .pui-ulti-ready.on { opacity: 1; }
+
+  .pui-name {
+    --x: 86px; top: 0; width: 76px; height: 18px; display: flex; align-items: center;
+    font-family: 'Spline Sans', sans-serif; font-weight: 600; font-size: 12px; color: #606060;
+    white-space: nowrap; overflow: hidden;
+  }
+  .pui-home .pui-name { justify-content: flex-start; }
+  .pui-away .pui-name { justify-content: flex-end; }
+  .pui-kda {
+    --x: 86px; top: 24px; width: 76px; height: 18px; display: flex; align-items: center;
+    font-family: 'Spline Sans', sans-serif; font-weight: 600; font-size: 16.8px; color: #b3b3b3; white-space: nowrap;
+  }
+  .pui-home .pui-kda { justify-content: flex-start; }
+  .pui-away .pui-kda { justify-content: flex-end; }
+
+  /* three 24px circles (emblem, spell, level) on y=61, each with the 25px outline ring on top */
+  .pui-ic { top: 48.5px; width: 25px; height: 25px; }
+  .pui-ic-emblem { --x: 80.5px; }
+  .pui-ic-spell  { --x: 108.5px; }
+  .pui-ic-level  { --x: 136.5px; }
+  .pui-ic > .pui-ic-fill { position: absolute; left: 1px; top: 1px; width: 23px; height: 23px; border-radius: 50%; object-fit: cover; }
+  .pui-ic-level .pui-ic-fill {
+    background: radial-gradient(circle at 50% 35%, #f6e6c2, #d9b273 70%, #b88c4a);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Spline Sans', sans-serif; font-weight: 600; font-size: 16.8px; color: #2b1d0a; line-height: 1;
+  }
+  .pui-ic > .pui-ic-ring { position: absolute; left: 0; top: 0; width: 25px; height: 25px; }
+
+  /* health bar: dark track, damage "ghost" (red) lags behind the live fill (green). scaleX = cheap on vMix. */
+  .pui-hp { --x: 0px; top: 83px; width: 168px; height: 7px; overflow: hidden; }
+  .pui-hp-ghost, .pui-hp-fill { position: absolute; left: 0; top: 0; width: 168px; height: 7px; will-change: transform; }
+  .pui-hp-ghost { background: linear-gradient(to right, #8a0d1c, #e0243a); }
+  .pui-hp-fill  { background: linear-gradient(to right, #2aa84a, #3fd062); }
+  .pui-home .pui-hp-ghost, .pui-home .pui-hp-fill { transform-origin: left center; }
+  .pui-away .pui-hp-ghost, .pui-away .pui-hp-fill { transform-origin: right center; }
 
   /* ── [FEATURE: objective-spawn] ── full-canvas video, plays once the
      Lord or Turtle timer counts down to spawn. Highest layer in the
@@ -3330,3 +3250,358 @@
   .trn-p2-notime { gap: 6px; }
   .trn-p2-notime .trn-p2-arrow { font-size: 15px; }
   .trn-p2-notime .trn-p2-text  { font-size: 17px; }
+
+/* ═══ M8 SCOREBOARD — art: assets/overlay/M8/Ingame/m8_topbar.png (1582x126 at x=338).
+   Coordinates measured off m8_ingameguide.png. Prefixed with #scoreboard-overlay so
+   these beat the older per-theme rules above; the Edit tab's !important overrides
+   (plain #id) still win over these. Text elements are CENTRED on their left/top. ═══ */
+@font-face { font-family: 'Panchang'; font-weight: 600; font-display: block; src: url('/assets/fonts/Panchang/Panchang-Semibold.otf') format('opentype'); }
+@font-face { font-family: 'Panchang'; font-weight: 700; font-display: block; src: url('/assets/fonts/Panchang/Panchang-Bold.otf') format('opentype'); }
+@font-face { font-family: 'Panchang'; font-weight: 800; font-display: block; src: url('/assets/fonts/Panchang/Panchang-Extrabold.otf') format('opentype'); }
+@font-face { font-family: 'Spline Sans'; font-weight: 500; font-display: block; src: url('/assets/fonts/SplineSans/SplineSans-Medium.otf') format('opentype'); }
+@font-face { font-family: 'Spline Sans'; font-weight: 600; font-display: block; src: url('/assets/fonts/SplineSans/SplineSans-SemiBold.otf') format('opentype'); }
+@font-face { font-family: 'Spline Sans'; font-weight: 700; font-display: block; src: url('/assets/fonts/SplineSans/SplineSans-Bold.otf') format('opentype'); }
+
+#scoreboard-overlay { --m8-gold: #e2bd7c; --m8-grey: #5e5e5e; }
+#scoreboard-overlay #scoreboard-bg { left: 338px; top: 0; width: 1582px; height: 126px; }
+
+#scoreboard-overlay #scoreboard-gametime {
+  left: 960px; right: auto; top: 112px; width: 140px; transform: translate(-50%, -50%);
+  font-family: 'Panchang', sans-serif; font-weight: 700; font-size: 17px; line-height: 1;
+  color: var(--m8-gold); text-shadow: none;
+}
+#scoreboard-overlay #scoreboard-kills-c1,
+#scoreboard-overlay #scoreboard-kills-c2 {
+  top: 7px; height: 52px; font-family: 'Panchang', sans-serif; font-weight: 800; font-size: 36px;
+  color: var(--m8-gold); text-shadow: none;
+}
+#scoreboard-overlay #scoreboard-kills-c1 { left: 835px; }
+#scoreboard-overlay #scoreboard-kills-c2 { left: 1085px; }
+#scoreboard-overlay .sb-kval { height: 52px; line-height: 52px; }
+
+/* turtle / lord / tower / gold: number centred on the baked-in icon slots */
+#scoreboard-overlay #scoreboard-turtle-c1, #scoreboard-overlay #scoreboard-lord-c1,
+#scoreboard-overlay #scoreboard-tower-c1,  #scoreboard-overlay #scoreboard-gold-c1,
+#scoreboard-overlay #scoreboard-turtle-c2, #scoreboard-overlay #scoreboard-lord-c2,
+#scoreboard-overlay #scoreboard-tower-c2,  #scoreboard-overlay #scoreboard-gold-c2 {
+  top: 85px; transform: translate(-50%, -50%); text-align: center;
+  font-family: 'Panchang', sans-serif; font-weight: 700; font-size: 17px;
+  color: var(--m8-gold); text-shadow: none;
+}
+#scoreboard-overlay #scoreboard-gold-c1,
+#scoreboard-overlay #scoreboard-gold-c2   { font-size: 15px; }   /* 5-char totals (42.7K) must clear the next icon */
+#scoreboard-overlay #scoreboard-gold-c1   { left: 499px; transform: translateY(-50%); text-align: left; }   /* icon is baked in on the left; grows rightwards */
+#scoreboard-overlay #scoreboard-turtle-c1 { left: 617px; }
+#scoreboard-overlay #scoreboard-lord-c1   { left: 697px; }
+#scoreboard-overlay #scoreboard-tower-c1  { left: 771px; }
+#scoreboard-overlay #scoreboard-tower-c2  { left: 1146px; }
+#scoreboard-overlay #scoreboard-lord-c2   { left: 1221px; }
+#scoreboard-overlay #scoreboard-turtle-c2 { left: 1302px; }
+#scoreboard-overlay #scoreboard-gold-c2   { left: 1418px; transform: translate(-100%, -50%); text-align: right; }   /* icon baked in on the right; grows leftwards */
+
+/* gold lead under each team's gold figure — no icon in the M8 art */
+#scoreboard-overlay #sb-goldlead-c1, #scoreboard-overlay #sb-goldlead-c2 {
+  top: 115px; transform: translate(-50%, -50%); justify-content: center;
+  font-family: 'Panchang', sans-serif; font-weight: 600; font-size: 13px; color: var(--m8-gold);
+}
+#scoreboard-overlay #sb-goldlead-c1 { left: 516px; }
+#scoreboard-overlay #sb-goldlead-c2 { left: 1400px; }
+#scoreboard-overlay .sb-goldlead-icon { display: none; }
+@keyframes sb-gl-out-c1 { from { transform: translate(-50%, -50%); opacity: 1; } to { transform: translate(-50%, calc(-50% + 24px)); opacity: 0; } }
+@keyframes sb-gl-in-c1  { from { transform: translate(-50%, calc(-50% - 24px)); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
+@keyframes sb-gl-out-c2 { from { transform: translate(-50%, -50%); opacity: 1; } to { transform: translate(-50%, calc(-50% + 24px)); opacity: 0; } }
+@keyframes sb-gl-in-c2  { from { transform: translate(-50%, calc(-50% - 24px)); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
+
+/* tricode (grey, in the curved corner) + full team name (new) */
+#scoreboard-overlay #scoreboard-tricode-c1, #scoreboard-overlay #scoreboard-tricode-c2 {
+  top: 111px; font-family: 'Panchang', sans-serif; font-weight: 700; font-size: 15px;
+  color: var(--m8-grey); text-shadow: none;
+}
+#scoreboard-overlay #scoreboard-tricode-c1 { left: 383px; }
+#scoreboard-overlay #scoreboard-tricode-c2 { left: 1537px; }
+#scoreboard-overlay #scoreboard-name-c1, #scoreboard-overlay #scoreboard-name-c2 {
+  position: absolute; top: 33px; font-family: 'Panchang', sans-serif; font-weight: 800; font-size: 28px;
+  line-height: 1; color: var(--m8-grey); text-transform: uppercase; white-space: nowrap; pointer-events: none;
+}
+#scoreboard-overlay #scoreboard-name-c1 { left: 458px;  transform: translateY(-50%); }
+#scoreboard-overlay #scoreboard-name-c2 { left: 1459px; transform: translate(-100%, -50%); }
+
+/* team logos */
+#scoreboard-overlay #sb-logo-c1 { left: 349px;  top: 16px; width: 72px; height: 72px; }
+#scoreboard-overlay #sb-logo-c2 { left: 1500px; top: 18px; width: 72px; height: 72px; }
+#scoreboard-overlay .sb-logo-img { width: 72px; height: 72px; }
+
+/* series score pills (m8_scoreYES / m8_scoreEMPTY, 10x24) — c2 is the mirror image */
+#scoreboard-overlay #sb-score-c1, #scoreboard-overlay #sb-score-c2 { top: 73px; width: 52px; height: 24px; gap: 4px; }
+#scoreboard-overlay #sb-score-c1 { left: 825px; }
+#scoreboard-overlay #sb-score-c2 { left: 1040px; }
+#scoreboard-overlay .sb-score-bar { width: 10px; height: 24px; background: none !important; display: block; }
+#scoreboard-overlay #sb-score-c2 .sb-score-bar { transform: scaleX(-1); }
+
+/* right panel: sponsor | match info, casters + patch strip */
+#scoreboard-overlay #sb-sponsor-loop { left: 1590px; top: 6px; width: 152px; height: 88px; }
+#scoreboard-overlay #sb-sponsor-img  { width: 152px; height: 88px; }
+#scoreboard-overlay #sb-matchinfo { left: 1756px; top: 0; width: 164px; height: 100px; gap: 12px; justify-content: center; }
+#scoreboard-overlay #sb-mi-label { display: none; }
+#scoreboard-overlay #sb-mi-title { height: 22px; width: auto; display: none; }
+#scoreboard-overlay #sb-mi-title.on { display: block; }
+#scoreboard-overlay #sb-mi-week {
+  font-family: 'Panchang', sans-serif; font-weight: 800; font-size: 17px; color: var(--m8-gold);
+  text-align: center; text-shadow: none; width: 150px; line-height: 1; letter-spacing: 0;
+}
+#scoreboard-overlay #sb-mi-week.hide { display: none; }
+#scoreboard-overlay #sb-mi-match {
+  font-family: 'Spline Sans', sans-serif; font-weight: 600; font-size: 15px; color: #d4d0c8;
+  text-shadow: none; text-transform: uppercase;
+}
+#scoreboard-overlay #sb-mi-casters { left: 1603px; top: 101px; width: 182px; height: 24px; padding: 0; gap: 0; font-family: 'Spline Sans', sans-serif; font-weight: 600; font-size: 11px; color: #fff; text-shadow: none; }
+#scoreboard-overlay #sb-mi-patch   { left: 1808px; top: 101px; width: 108px; height: 24px; padding: 0; font-family: 'Spline Sans', sans-serif; font-weight: 600; font-size: 11px; color: #fff; text-shadow: none; }
+#scoreboard-overlay .sb-mi-mic { display: none; }   /* mic is baked into m8_topbar.png */
+/* the M8 reference has no map box */
+#scoreboard-overlay #sb-map { display: none; }
+
+/* M8 type pass: counts / gold / gold lead = Spline Sans Bold; match line = Panchang Bold;
+   kill numbers = Panchang Bold with a gold gradient fill */
+#scoreboard-overlay #scoreboard-turtle-c1, #scoreboard-overlay #scoreboard-lord-c1,
+#scoreboard-overlay #scoreboard-tower-c1,  #scoreboard-overlay #scoreboard-gold-c1,
+#scoreboard-overlay #scoreboard-turtle-c2, #scoreboard-overlay #scoreboard-lord-c2,
+#scoreboard-overlay #scoreboard-tower-c2,  #scoreboard-overlay #scoreboard-gold-c2 {
+  font-family: 'Spline Sans', sans-serif; font-weight: 700; font-size: 19px;
+}
+#scoreboard-overlay #sb-goldlead-c1, #scoreboard-overlay #sb-goldlead-c2 {
+  font-family: 'Spline Sans', sans-serif; font-weight: 700; font-size: 15px;
+}
+#scoreboard-overlay #sb-mi-match { font-family: 'Panchang', sans-serif; font-weight: 700; font-size: 12px; color: #cfcfcf; }
+#scoreboard-overlay #scoreboard-kills-c1, #scoreboard-overlay #scoreboard-kills-c2 { font-weight: 700; color: transparent; }
+#scoreboard-overlay .sb-kval {
+  background: linear-gradient(115deg, #f6e3b4 25%, #c79d58 48%, #f2dca8 60%, #b88b49 80%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+
+/* game time: same gold gradient as the kill numbers */
+#scoreboard-overlay #scoreboard-gametime {
+  background: linear-gradient(115deg, #f6e3b4 25%, #c79d58 48%, #f2dca8 60%, #b88b49 80%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+
+/* M8 sizes measured off the guide (Panchang Bold throughout) */
+#scoreboard-overlay #scoreboard-name-c1, #scoreboard-overlay #scoreboard-name-c2 { font-weight: 700; font-size: 25px; }
+#scoreboard-overlay #scoreboard-kills-c1, #scoreboard-overlay #scoreboard-kills-c2 { font-size: 34px; }
+#scoreboard-overlay #scoreboard-gametime { font-size: 15px; }
+#scoreboard-overlay #sb-mi-match { font-size: 10.6px; }
+
+/* map = icon + name in the bottom-right strip (replaces the patch box, which the guide doesn't show) */
+#scoreboard-overlay #sb-mi-patch { display: none; }
+#scoreboard-overlay #sb-map {
+  display: block; left: 1786px; top: 101px; width: 134px; height: 24px; background: none; z-index: 5;
+}
+#scoreboard-overlay #sb-map-logo { left: 8px; top: 3px; width: 18px; height: 18px; }
+#scoreboard-overlay #sb-map-name { left: 32px; top: 0; width: 98px; height: 24px; padding: 0; justify-content: flex-start; }
+#scoreboard-overlay .sb-map-name-text {
+  font-family: 'Spline Sans', sans-serif; font-weight: 700; font-size: 11px; color: #e6e6e6; text-align: left;
+}
+
+/* map name: centred in the space right of the icon cell */
+#scoreboard-overlay #sb-map-name { left: 30px; width: 102px; justify-content: center; }
+#scoreboard-overlay .sb-map-name-text { text-align: center; }
+
+@font-face { font-family: 'Source Han Sans SC'; font-weight: 700; font-display: block; src: url('/assets/fonts/MCT/SourceHanSans/SourceHanSansCN-Bold.otf') format('opentype'); }
+@font-face { font-family: 'Monument Extended'; font-weight: 800; font-display: block; src: url('/assets/fonts/MCT/MonumentExtended-Ultrabold.otf') format('opentype'); }
+@font-face { font-family: 'Monument Extended'; font-weight: 400; font-display: block; src: url('/assets/fonts/MCT/MonumentExtended-Regular.ttf') format('truetype'); }
+/* ═══ MCT SCOREBOARD — art: assets/overlay/M8/Ingame/mct_topbar.png (1584x115 at x=336, native size).
+   Coordinates measured off the MCT reference (mct_ingamereference.png, 1920x1080). Scoped to data-theme-name="mct"
+   (the theme renders as data-theme="playoffs", so these sit on top of the M8 rules above). Edit-tab overrides still win. ═══ */
+html[data-theme-name="mct"] #scoreboard-overlay { --mct-teal: #3dffe6; --mct-yellow: #ffd81a; --mct-navy: #0e2468; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-bg { left: 336px; top: 0; width: 1584px; height: 115px; }
+
+/* clock + kills */
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-gametime {
+  left: 959px; top: 16px; width: 140px; font-family: 'Source Han Sans SC', 'Spline Sans', sans-serif; font-weight: 700; font-size: 20px;
+  background: none; -webkit-text-fill-color: var(--mct-teal); color: var(--mct-teal); text-align: center;
+}
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-kills-c1, html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-kills-c2 { top: 18px; height: 52px; font-family: 'Monument Extended', 'Panchang', sans-serif; font-weight: 800; font-size: 40px; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-kills-c1 { left: 857px; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-kills-c2 { left: 1060px; }
+html[data-theme-name="mct"] #scoreboard-overlay .sb-kval { background: none; -webkit-text-fill-color: #fff; color: #fff; }
+
+/* objective counts sit under the baked icons; gold total is centred under its baked coin */
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-turtle-c1, html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-lord-c1, html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-tower-c1, html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-gold-c1,
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-turtle-c2, html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-lord-c2, html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-tower-c2, html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-gold-c2 {
+  top: 61px; transform: translate(-50%, -50%); text-align: center; font-family: 'Source Han Sans SC', 'Spline Sans', sans-serif; font-weight: 700; font-size: 19.4px; color: #fff;
+}
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-gold-c1, html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-gold-c2 { color: var(--mct-yellow); font-size: 19.4px; text-transform: lowercase; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-turtle-c1 { left: 558px; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-lord-c1   { left: 615px; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-tower-c1  { left: 671px; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-gold-c1   { left: 741px; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-gold-c2   { left: 1173px; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-tower-c2  { left: 1245px; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-lord-c2   { left: 1300px; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-turtle-c2 { left: 1358px; }
+
+/* series score chevrons under the kill numbers */
+html[data-theme-name="mct"] #scoreboard-overlay #sb-score-c1, html[data-theme-name="mct"] #scoreboard-overlay #sb-score-c2 { top: 70px; width: 61px; height: 16px; gap: -16px; }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-score-c1 { left: 829px; }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-score-c2 { left: 1033px; }
+html[data-theme-name="mct"] #scoreboard-overlay .sb-score-bar { width: 31px; height: 16px; margin-right: -16px; }
+html[data-theme-name="mct"] #scoreboard-overlay .sb-score-bar:last-child { margin-right: 0; }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-score-c1 .sb-score-bar { transform: scaleX(-1); }   /* art is "/"; the left side reads "\\" */
+html[data-theme-name="mct"] #scoreboard-overlay #sb-score-c2 .sb-score-bar { transform: none; }
+
+/* team logos + bottom-strip tricodes (no full team name in this design) */
+html[data-theme-name="mct"] #scoreboard-overlay #sb-logo-c1 { left: 442px;  top: 8px; width: 72px; height: 72px; }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-logo-c2 { left: 1406px; top: 8px; width: 72px; height: 72px; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-name-c1, html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-name-c2 { display: none; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-tricode-c1, html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-tricode-c2 {
+  top: 102px; font-family: 'Monument Extended', 'Panchang', sans-serif; font-weight: 800; font-size: 18px; color: var(--mct-navy);
+}
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-tricode-c1 { left: 492px; }
+html[data-theme-name="mct"] #scoreboard-overlay #scoreboard-tricode-c2 { left: 1424px; }
+
+/* gold lead: coin + amount over the grey fade (mct_shadowadvantage, 109x25; c2 is mirrored) */
+html[data-theme-name="mct"] #scoreboard-overlay #sb-goldlead-c1, html[data-theme-name="mct"] #scoreboard-overlay #sb-goldlead-c2 {
+  top: 102.5px; width: 109px; height: 25px; box-sizing: border-box; gap: 6px; isolation: isolate;
+  font-size: 16px; color: #fff; justify-content: flex-start; text-transform: lowercase; text-shadow: none;
+}
+html[data-theme-name="mct"] #scoreboard-overlay #sb-goldlead-c1 { left: 595.5px; padding-left: 8px; }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-goldlead-c2 { left: 1324.5px; padding-right: 8px; flex-direction: row-reverse; }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-goldlead-c1::before, html[data-theme-name="mct"] #scoreboard-overlay #sb-goldlead-c2::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; background: url('/assets/overlay/M8/Ingame/mct_shadowadvantage.png') no-repeat 0 0 / 100% 100%;
+}
+html[data-theme-name="mct"] #scoreboard-overlay #sb-goldlead-c2::before { transform: scaleX(-1); }
+html[data-theme-name="mct"] #scoreboard-overlay .sb-goldlead-icon { display: block; height: 18px; width: 16px; }
+
+/* right panel: sponsor | SEA Championship Tour mark, casters + map strip */
+html[data-theme-name="mct"] #scoreboard-overlay #sb-sponsor-loop { left: 1536px; top: 0; width: 152px; height: 88px; }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-sponsor-img  { width: 152px; height: 88px; }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-matchinfo { left: 1724px; top: 0; width: 182px; height: 88px; gap: 0; }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-mi-title { display: block; width: 182px; height: 59px; }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-mi-week, html[data-theme-name="mct"] #scoreboard-overlay #sb-mi-match { display: none; }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-mi-casters { left: 1532px; top: 90px; width: 243px; height: 23px; font-family: 'Source Han Sans SC', 'Spline Sans', sans-serif; font-weight: 700; font-size: 13px; color: var(--mct-navy); }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-map { left: 1775px; top: 90px; width: 145px; height: 23px; }
+html[data-theme-name="mct"] #scoreboard-overlay #sb-map-name { left: 30px; width: 104px; }
+html[data-theme-name="mct"] #scoreboard-overlay .sb-map-name-text { font-size: 11px; color: #fff; }
+
+/* ═══ MCT PLAYER UI — art: assets/overlay/M8/Ingame/mct_uibacker.png (168x90; away = mirror, like the M8 card).
+   Measured off mct_uireference.png. No hero portrait, no ultimate ring, no death timer: the backer has two circles —
+   big (x50 y21 d32) = battle spell, small (x10 y54.5 d20) = emblem. Level = "LV.nn" top-right (re-using the level element),
+   KDA + a gold row (coin + total gold) on the right. --x is distance from the card's outer edge (home: left, away: right). ═══ */
+html[data-theme-name="mct"] .pui-hero, html[data-theme-name="mct"] .pui-rv, html[data-theme-name="mct"] .pui-ulti, html[data-theme-name="mct"] .pui-ic-ring { display: none; }
+.pui-gold { display: none; }
+html[data-theme-name="mct"] .pui-gold { --x: 78px; top: 52px; width: 80px; height: 20px; display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  font-family: 'Source Han Sans SC', 'Spline Sans', sans-serif; font-weight: 700; font-size: 16px; line-height: 1; color: #ffd81a; white-space: nowrap; }
+html[data-theme-name="mct"] .pui-away .pui-gold { flex-direction: row-reverse; }
+html[data-theme-name="mct"] .pui-gold-icon { width: 16px; height: 18px; flex: none; }
+
+html[data-theme-name="mct"] .pui-name { --x: 9px; width: 96px; height: 18px; font-family: 'Source Han Sans SC', 'Spline Sans', sans-serif; font-weight: 700; font-size: 12px; color: #fff; }
+html[data-theme-name="mct"] .pui-kda  { --x: 78px; top: 28px; width: 80px; height: 20px; font-family: 'Source Han Sans SC', 'Spline Sans', sans-serif; font-weight: 700; font-size: 16px; color: #fff; }
+html[data-theme-name="mct"] .pui-home .pui-kda { justify-content: flex-end; }
+html[data-theme-name="mct"] .pui-away .pui-kda { justify-content: flex-start; }
+
+html[data-theme-name="mct"] .pui-ic { width: 32px; height: 32px; }
+html[data-theme-name="mct"] .pui-ic-spell   { --x: 50px; top: 21px; }
+html[data-theme-name="mct"] .pui-ic-emblem  { --x: 10px; top: 54.5px; width: 20px; height: 20px; }
+html[data-theme-name="mct"] .pui-ic > .pui-ic-fill { left: 0; top: 0; width: 100%; height: 100%; }
+html[data-theme-name="mct"] .pui-ic .pui-cd { left: 0; top: 0; width: 100%; height: 100%; }
+html[data-theme-name="mct"] .pui-ic .pui-cd > span { font-family: 'Source Han Sans SC', 'Spline Sans', sans-serif; font-size: 15px; }
+
+/* level: the 'level' icon element becomes the "LV.nn" label */
+html[data-theme-name="mct"] .pui-ic.pui-ic-level { --x: 108px; top: 0; width: 50px; height: 18px; }
+html[data-theme-name="mct"] .pui-ic-level > .pui-ic-fill { inset: 0; width: 100%; height: 100%; border-radius: 0; background: none; display: flex; align-items: center;
+  font-family: 'Monument Extended', 'Panchang', sans-serif; font-weight: 400; font-size: 12px; color: #3dffe6; white-space: nowrap; }
+html[data-theme-name="mct"] .pui-home .pui-ic-level > .pui-ic-fill { justify-content: flex-end; }
+html[data-theme-name="mct"] .pui-away .pui-ic-level > .pui-ic-fill { justify-content: flex-start; }
+html[data-theme-name="mct"] .pui-ic-level > .pui-ic-fill::before { content: 'LV.'; }
+
+/* health: dark green -> bright green, stretched with the fill (dark at the card's outer edge) */
+html[data-theme-name="mct"] .pui-home .pui-hp-fill { background: linear-gradient(to right, #043c23 0%, #2ee090 71%); }
+html[data-theme-name="mct"] .pui-away .pui-hp-fill { background: linear-gradient(to left,  #043c23 0%, #2ee090 71%); }
+
+/* ── [FEATURE: lvl4] Level 4 eventer — covers the player card, slides in from the outer edge, gold shine ── */
+.lv4-clip { position: absolute; width: 168px; height: 94px; overflow: hidden; display: none; pointer-events: none; z-index: 475; }
+.lv4-card { position: absolute; left: 0; top: 0; width: 168px; height: 94px; isolation: isolate;
+  transform: translateX(-168px); transition: transform 350ms ease-in; }
+.lv4-clip.away .lv4-card { transform: translateX(168px); }
+.lv4-clip.lv4-in .lv4-card { transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1); transform: translateX(0); }
+.lv4-bg { position: absolute; left: 0; top: 0; width: 168px; height: 94px; }
+.lv4-gold-fill { background: linear-gradient(100deg, #fbeabd 0%, #e4bf7c 28%, #b98a45 55%, #f1d79c 78%, #c99a52 100%); }
+.lv4-role { position: absolute; left: 9px; top: 4px; width: 21px; height: 21px;
+  background: linear-gradient(135deg, #fbeabd 0%, #d9ae68 55%, #b98a45 100%);
+  -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center; }
+.lv4-name { position: absolute; left: 36px; top: 0; width: 124px; height: 28px; display: flex; align-items: center; overflow: hidden; }
+.lv4-name > span { display: inline-block; white-space: nowrap; line-height: 1.25;
+  font-family: 'Panchang', sans-serif; font-weight: 700; font-size: 15px;
+  background: linear-gradient(100deg, #fbeabd 0%, #e4bf7c 28%, #b98a45 55%, #f1d79c 78%, #c99a52 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+/* shine: a white skewed bar blended with `overlay` — brightens the gold, leaves the black parts black */
+.lv4-sheen { position: absolute; top: -10%; left: -45%; width: 38%; height: 120%;
+  background: linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 50%, rgba(255,255,255,0) 100%);
+  transform: skewX(-18deg); mix-blend-mode: overlay; opacity: 0; }
+.lv4-sheen.sweep { animation: lv4Sheen 0.9s ease-in-out forwards; }
+@keyframes lv4Sheen { 0% { left: -45%; opacity: 1; } 85% { opacity: 1; } 100% { left: 115%; opacity: 0; } }
+
+/* ═══ MCT LEVEL 4 — art mct_level4left.png / mct_level4right.png (168x90, one per side, never mirrored). Just the player name,
+   centred on the top band: Source Han Sans SC Bold 9.75pt (x2 = 19.5px), white. No role icon, no gold shine. ═══
+*/
+html[data-theme-name="mct"] .lv4-clip, html[data-theme-name="mct"] .lv4-card, html[data-theme-name="mct"] .lv4-bg { height: 90px; }
+html[data-theme-name="mct"] .lv4-role, html[data-theme-name="mct"] .lv4-sheen { display: none; }
+html[data-theme-name="mct"] .lv4-name { left: 0; top: 0; width: 168px; height: 29px; justify-content: center; }
+html[data-theme-name="mct"] .lv4-name > span { font-family: 'Source Han Sans SC', 'Spline Sans', sans-serif; font-weight: 700; font-size: 19.5px; line-height: 1.25;
+  background: none; -webkit-text-fill-color: #fff; color: #fff; }
+
+/* ── [FEATURE: first-item-priority] M8 art (377x106). Covers the player card, slides in from the outer screen edge. ── */
+.fip2-clip { position: absolute; width: 377px; height: 106px; overflow: hidden; display: none; pointer-events: none; z-index: 475; }
+.fip2-card { position: absolute; left: 0; top: 0; width: 377px; height: 106px; transform: translateX(-377px); transition: transform 350ms ease-in; }
+.fip2-clip.away .fip2-card { transform: translateX(377px); }
+.fip2-clip.fip2-in .fip2-card { transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1); transform: translateX(0); }
+.fip2-bg { position: absolute; left: 0; top: 0; width: 377px; height: 106px; }
+.fip2-item { position: absolute; width: 68px; height: 68px; border-radius: 50%; overflow: hidden; }
+.fip2-icon { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ── [FEATURE: trinity] M8 art (387x106). Covers the player card, slides in from the outer screen edge. ── */
+.trn2-clip { position: absolute; width: 387px; height: 106px; overflow: hidden; display: none; pointer-events: none; z-index: 475; }
+.trn2-card { position: absolute; left: 0; top: 0; width: 387px; height: 106px; transform: translateX(-387px); transition: transform 350ms ease-in; }
+.trn2-clip.away .trn2-card { transform: translateX(387px); }
+.trn2-clip.trn2-in .trn2-card { transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1); transform: translateX(0); }
+.trn2-bg { position: absolute; left: 0; top: 0; width: 387px; height: 106px; }
+.trn2-bg.flip { transform: scaleX(-1); }
+.trn2-title-img { position: absolute; }
+.trn2-title-ph { position: absolute; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.trn2-title-ph span { font-family: 'Panchang', sans-serif; font-weight: 800; line-height: 1.05; text-transform: uppercase; white-space: nowrap;
+  background: linear-gradient(100deg, #fbeabd 0%, #e4bf7c 30%, #b98a45 60%, #f1d79c 85%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+.trn2-ph-kind { font-size: 23px; }
+.trn2-ph-sub  { font-size: 17px; }
+.trn2-item { position: absolute; width: 60px; height: 60px; border-radius: 50%; overflow: hidden; }
+.trn2-icon { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ═══ MCT TRINITY — mct_trinitybacker.png (388x90; home art, away flipped). Title = two lines (kind / TRINITY), Tandelle Bold 22.24pt (x2 = 44.5px), cream. ═══ */
+@font-face { font-family: 'Tandelle'; font-weight: 700; font-display: block; src: url('/assets/fonts/MCT/TandelleRg-Bold.otf') format('opentype'); }
+html[data-theme-name="mct"] .trn2-clip { width: 388px; height: 90px; }
+html[data-theme-name="mct"] .trn2-card { width: 388px; height: 90px; transform: translateX(-388px); }
+html[data-theme-name="mct"] .trn2-clip.away .trn2-card { transform: translateX(388px); }
+html[data-theme-name="mct"] .trn2-clip.trn2-in .trn2-card { transform: translateX(0); }
+html[data-theme-name="mct"] .trn2-bg { width: 388px; height: 90px; }
+html[data-theme-name="mct"] .trn2-title-ph { gap: 0; justify-content: flex-start; }
+html[data-theme-name="mct"] .trn2-title-ph span { font-family: 'Tandelle', 'Panchang', sans-serif; font-weight: 700; font-size: 44.5px; line-height: 43px; text-transform: uppercase;
+  background: none; -webkit-text-fill-color: #f5edeb; color: #f5edeb; }
+html[data-theme-name="mct"] .trn2-ph-kind, html[data-theme-name="mct"] .trn2-ph-sub { font-size: 44.5px; }
+
+/* battle-spell cooldown: dark shade over the icon + seconds left (shown while skill_left_time > 0) */
+.pui-ic .pui-cd { position: absolute; left: 1px; top: 1px; width: 23px; height: 23px; border-radius: 50%;
+  background: rgba(8, 8, 8, 0.72); display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.25s ease; }
+.pui-ic .pui-cd.on { opacity: 1; }
+.pui-ic .pui-cd > span { font-family: 'Spline Sans', sans-serif; font-weight: 700; font-size: 12px; line-height: 1; color: #fff;
+  text-shadow: 0 0 3px rgba(0,0,0,0.9); }
+
+/* dead hero: darkened + greyscale photo, red respawn countdown on top */
+.pui-hero { transition: filter .25s; }
+.pui-hero.pui-dead { filter: grayscale(1) brightness(.4); }
+.pui-rv { --x: 5.5px; top: 7.5px; width: 71px; height: 71px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .2s; pointer-events: none; }
+.pui-rv.on { opacity: 1; }
+.pui-rv > span { font-family: 'Spline Sans', sans-serif; font-weight: 700; font-size: 28px; line-height: 1; color: #ff2d2d; text-shadow: 0 0 6px rgba(0,0,0,.9); }

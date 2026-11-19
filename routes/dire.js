@@ -30,6 +30,6 @@ router.post('/dire/api/judge', (req, res) => {
 });
 router.get('/dire/api/status', (req, res) => noStore(res).json(dire.status()));
 router.get('/dire/api/refresh', async (req, res) => { try { noStore(res).json({ success: true, data: await dire.refresh() }); } catch (e) { fail(res, e); } });
-router.get('/dire/api/debug',   async (req, res) => { if (getApiMode() !== 'debug') return noStore(res).status(403).json({ success: false, error: 'Debug loader is only available in API Mode DEBUG' }); try { noStore(res).json({ success: true, data: await dire.debug() }); }   catch (e) { fail(res, e); } });
+router.get('/dire/api/debug',   async (req, res) => { if (getApiMode() !== 'debug') return noStore(res).status(403).json({ success: false, error: 'Debug loader is only available in API Mode DEBUG' }); try { noStore(res).json({ success: true, data: await dire.debug(req.query.stage) }); }   catch (e) { fail(res, e); } });
 
 module.exports = router;

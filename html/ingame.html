@@ -216,6 +216,7 @@
 
     <div id="debug-tabs">
       <button class="tab-btn active" data-tab="lvl15">LEVEL 15</button>
+      <button class="tab-btn"        data-tab="lvl4">LEVEL 4</button>
       <button class="tab-btn"        data-tab="items">ITEM PICKUP</button>
       <button class="tab-btn"        data-tab="skypiercer">SKY PIERCER</button>
       <button class="tab-btn"        data-tab="conceal">CONCEAL</button>
@@ -232,6 +233,13 @@
       <div class="debug-team" id="team-left"></div>
       <div class="debug-team" id="team-right"></div>
       <span id="debug-hint-lvl">game time pulled live from API on each trigger</span>
+    </div>
+
+    <!-- Level 4 tab [FEATURE: lvl4] -->
+    <div id="tab-lvl4" class="tab-content">
+      <div class="debug-team" id="lvl4-team-left"></div>
+      <div class="debug-team" id="lvl4-team-right"></div>
+      <span class="section-note">Level 4 slider — covers the player card, slides in, gold shine, slides out</span>
     </div>
 
     <!-- Item pickup tab -->
@@ -261,14 +269,9 @@
 
     <!-- Trinity tab [FEATURE: trinity] -->
     <div id="tab-trinity" class="tab-content">
-      <span class="section-note">TRIGGERS WHEN PLAYER REACHES 3 TIER 3 ITEMS — DEBUG USES 3 DEFAULT T3 ITEMS</span>
-      <div style="margin:6px 0;"><label class="section-note">PHASE 2 (core_item timing)
-        <select id="trinity-dbg-p2">
-          <option value="live">live data (from feed)</option>
-          <option value="faster">fake: 8:20 · 33s FASTER</option>
-          <option value="slower">fake: 8:59 · 12s SLOWER</option>
-          <option value="none">fake: no data</option>
-        </select></label></div>
+      <span class="section-note">FIRES WHEN A PLAYER'S TIER-3 ITEMS NEWLY CONTAIN ALL THREE ITEMS OF A TRINITY KIND — OTHER COMBOS DON'T TRIGGER. PICK A KIND, THEN PRESS A PLAYER BUTTON.</span>
+      <div style="margin:6px 0;"><label class="section-note">KIND
+        <select id="trinity-dbg-kind"></select></label></div>
       <div class="debug-team" id="trinity-team-left"></div>
       <div class="debug-team" id="trinity-team-right"></div>
     </div>
@@ -329,6 +332,7 @@
 <script src="html/js/overlay-core.js"></script>
 <script src="html/js/overlay-scoreboard.js"></script>
 <script src="html/js/overlay-lvl15.js"></script>
+<script src="html/js/overlay-lvl4.js"></script>
 <script src="html/js/overlay-items.js"></script>
 <script src="html/js/overlay-skypiercer.js"></script>
 <script src="html/js/overlay-trinity.js"></script>

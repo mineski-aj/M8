@@ -17,6 +17,21 @@ for (let i = 1; i <= 10; i++) {
   document.getElementById(i <= 5 ? 'team-left' : 'team-right').appendChild(btn);
 }
 
+/* ── Level 4 debug buttons ── */
+for (let i = 1; i <= 10; i++) {
+  buildLvl4Overlay(i);
+  const btn = document.createElement('button');
+  btn.className = 'debug-btn'; btn.dataset.lvl4 = i; btn.textContent = `▶ P${i}`;
+  btn.addEventListener('click', async () => {
+    try {
+      const data = lastData || await fetchData();
+      const r = getPlayerArranged(data, i);
+      triggerLvl4(i, r?.player?.name || 'PLAYER');
+    } catch { triggerLvl4(i, 'PLAYER'); }
+  });
+  document.getElementById(i <= 5 ? 'lvl4-team-left' : 'lvl4-team-right').appendChild(btn);
+}
+
 /* ── T3 item browser ── */
 var t3BrowserBuilt = false;
 function buildT3Browser() {
@@ -75,44 +90,30 @@ for (let i = 1; i <= 10; i++) {
   document.getElementById(i <= 5 ? 'item-team-left' : 'item-team-right').appendChild(btn);
 }
 
-/* ── Trinity debug buttons ── */
-const MARKSMAN_TRINITY_IDS = new Set(['2006', '2008', '2009']);
-function isMarksmanTrinity(t3ItemIds) {
-  const s = new Set(t3ItemIds);
-  return MARKSMAN_TRINITY_IDS.size === s.size && [...MARKSMAN_TRINITY_IDS].every(id => s.has(id));
+/* ── Trinity debug buttons — pick a trinity kind in the TRINITY tab, then press ▶ Pn ── */
+function trinityDebugKind() { return (document.getElementById('trinity-dbg-kind') || {}).value || 'swift'; }
+function detectTrinityKind(ownedT3) {   /* first kind whose three items are all owned, else null */
+  const owned = new Set(ownedT3);
+  return TRINITY_KIND_ORDER.find(k => TRINITY_KINDS[k].items.every(id => owned.has(id))) || null;
 }
-function trinityLabel(seatNum, t3ItemIds) {
-  return (seatNum === 5 && isMarksmanTrinity(t3ItemIds)) ? 'MARKSMAN TRINITY' : 'CORE ITEMS ACHIEVED';
-}
-
-const TRINITY_DEBUG_ITEMS = ['3001', '3101', '3201'];
+(function () {
+  const sel = document.getElementById('trinity-dbg-kind');
+  if (sel) TRINITY_KIND_ORDER.forEach(k => {
+    const o = document.createElement('option');
+    o.value = k; o.textContent = TRINITY_KINDS[k].name + ' TRINITY  (' + TRINITY_KINDS[k].items.join(' · ') + ')' + (TRINITY_KINDS[k].art ? '' : '  — placeholder art');
+    sel.appendChild(o);
+  });
+})();
 for (let i = 1; i <= 10; i++) {
   buildTrinityOverlay(i);
   const btn = document.createElement('button');
   btn.className = 'debug-btn trinity-debug-btn';
   btn.dataset.player = i;
   btn.textContent = `▶ P${i}`;
-  (function(pi) {
-    btn.addEventListener('click', async () => {
-      const seatNum = pi <= 5 ? pi : pi - 5;
-      let items = [...TRINITY_DEBUG_ITEMS];
-      try {
-        const data = lastData || await fetchData();
-        const r    = getPlayerArranged(data, pi);
-        if (r) {
-          const actualT3 = r.equipIds.filter(id => TIER3_IDS.has(id));
-          if (actualT3.length > 0) items = [...actualT3, ...TRINITY_DEBUG_ITEMS].slice(0, 3);
-        }
-      } catch(e) {}
-      const mode = (document.getElementById('trinity-dbg-p2') || {}).value || 'live';
-      const fake = {
-        faster: { status: 'early', time: 500, fastestTime: 533, difference: 33 },
-        slower: { status: 'late',  time: 539, fastestTime: 527, difference: 12 },
-        none:   null,
-      };
-      triggerTrinity(pi, items, trinityLabel(seatNum, items), mode === 'live' ? undefined : fake[mode]);
-    });
-  })(i);
+  btn.addEventListener('click', () => {
+    const kind = trinityDebugKind();
+    triggerTrinity(i, TRINITY_KINDS[kind].items, kind);
+  });
   document.getElementById(i <= 5 ? 'trinity-team-left' : 'trinity-team-right').appendChild(btn);
 }
 
@@ -183,7 +184,9 @@ window.iframeTest = async function(playerIdx, feature) {
     const seatNum = playerIdx <= 5 ? playerIdx : playerIdx - 5;
     const t3s     = equipIds.filter(id => TIER3_IDS.has(id));
 
-    if (feature === 'lvl15') {
+    if (feature === 'lvl4') {
+      triggerLvl4(playerIdx, player.name || 'PLAYER');
+    } else if (feature === 'lvl15') {
       triggerLvl15(playerIdx, formatTime(data.game_time || 0), player.heroid);
     } else if (feature === 'item') {
       const itemId = t3s.length > 0 ? t3s[0] : Object.keys(T3_RECIPES)[0];
@@ -191,8 +194,7 @@ window.iframeTest = async function(playerIdx, feature) {
     } else if (feature === 'skypiercer') {
       triggerSkyPiercer(playerIdx, getSkyPiercerStack(player) || 3);
     } else if (feature === 'trinity') {
-      const items = t3s.length >= 3 ? t3s.slice(0, 3) : [...TRINITY_DEBUG_ITEMS];
-      triggerTrinity(playerIdx, items, trinityLabel(seatNum, items));
+      triggerTrinity(playerIdx, TRINITY_KINDS.swift.items, 'swift');
     } else if (feature === 'swap') {
       const soldId = t3s.length > 0 ? t3s[0] : '3001';
       triggerSwap(playerIdx, soldId, SWAP_DEBUG_BOUGHT);
@@ -228,27 +230,29 @@ registerPollHandler(function(data) {
       const currentT3 = equipIds.filter(id => TIER3_IDS.has(id));
       const prevT3    = prev.filter(id => TIER3_IDS.has(id));
 
-      if (featureEnabled.trinity && !trinityFired[pidx]) {
-        if (currentT3.length === 3 && prevT3.length === 2) {
-          trinityFired[pidx] = true;
-          const lbl = trinityLabel(seatNum, currentT3);
-          if (isAnyPlaying(pidx)) {
-            trinityQueue[pidx] = { t3ItemIds: currentT3, label: lbl };
-          } else {
-            triggerTrinity(pidx, currentT3, lbl);
-          }
-        } else if (featureEnabled.items && currentT3.length === 1 && prevT3.length === 0) {
-          for (let j = 0; j < 6; j++) {
-            if (equipIds[j] !== prev[j] && TIER3_IDS.has(equipIds[j])) {
-              const newItemId = equipIds[j];
-              const timeStr   = formatTime(data.game_time || 0);
-              if (isAnyPlaying(pidx)) {
-                itemQueue[pidx] = { itemId: newItemId, timeStr };
-              } else {
-                triggerItem(pidx, newItemId, timeStr);
-              }
-              break;
+      /* Trinity: fires when the owned T3 items newly contain all three items of a kind (TRINITY_KINDS) — once per kind per player. */
+      if (featureEnabled.trinity) {
+        const fired = (trinityFired[pidx] && typeof trinityFired[pidx] === 'object') ? trinityFired[pidx] : (trinityFired[pidx] = {});
+        const ownedNow = new Set(currentT3), ownedPrev = new Set(prevT3);
+        TRINITY_KIND_ORDER.forEach(kind => {
+          const ids = TRINITY_KINDS[kind].items;
+          if (fired[kind] || !ids.every(id => ownedNow.has(id)) || ids.every(id => ownedPrev.has(id))) return;
+          fired[kind] = true;
+          if (isAnyPlaying(pidx)) trinityQueue[pidx] = { t3ItemIds: ids, label: kind };
+          else triggerTrinity(pidx, ids, kind);
+        });
+      }
+      if (featureEnabled.items && currentT3.length === 1 && prevT3.length === 0) {
+        for (let j = 0; j < 6; j++) {
+          if (equipIds[j] !== prev[j] && TIER3_IDS.has(equipIds[j])) {
+            const newItemId = equipIds[j];
+            const timeStr   = formatTime(data.game_time || 0);
+            if (isAnyPlaying(pidx)) {
+              itemQueue[pidx] = { itemId: newItemId, timeStr };
+            } else {
+              triggerItem(pidx, newItemId, timeStr);
             }
+            break;
           }
         }
       }
@@ -282,6 +286,13 @@ registerPollHandler(function(data) {
         lvl15Queue[pidx] = { timeStr, heroId: player.heroid };
       } else {
         triggerLvl15(pidx, timeStr, player.heroid);
+      }
+    }
+    if (featureEnabled.lvl4 && prev !== undefined && prev < 4 && lvl >= 4) {
+      if (isAnyPlaying(pidx)) {
+        lvl4Queue[pidx] = { name: player.name };
+      } else {
+        triggerLvl4(pidx, player.name);
       }
     }
     prevLevel[pidx] = lvl;

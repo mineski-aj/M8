@@ -240,7 +240,7 @@ function setAllSlotTriggers(disabled) {
 
 function isAnyPlaying(i) {
   const side = i === 4 ? 'left' : i === 9 ? 'right' : null;
-  return !!(isPlayingTrinity[i] || isPlayingSwap[i] || isPlayingItem[i] || (typeof isPlayingSkyPiercer !== 'undefined' && isPlayingSkyPiercer[i]) || isPlayingLvl[i] || (side && isPlayingConceal[side]));
+  return !!(isPlayingTrinity[i] || isPlayingSwap[i] || isPlayingItem[i] || (typeof isPlayingSkyPiercer !== 'undefined' && isPlayingSkyPiercer[i]) || isPlayingLvl[i] || (typeof isPlayingLvl4 !== 'undefined' && isPlayingLvl4[i]) || (side && isPlayingConceal[side]));
 }
 
 function playNextQueued(i) {
@@ -260,6 +260,9 @@ function playNextQueued(i) {
   } else if (lvl15Queue[i] && !isPlayingLvl[i]) {
     const q = lvl15Queue[i]; lvl15Queue[i] = null;
     setTimeout(() => triggerLvl15(i, q.timeStr, q.heroId), 300);
+  } else if (typeof lvl4Queue !== 'undefined' && lvl4Queue[i] && !isPlayingLvl4[i]) {
+    const q = lvl4Queue[i]; lvl4Queue[i] = null;
+    setTimeout(() => triggerLvl4(i, q.name), 300);
   } else if (side && concealQueue[side] && !isPlayingConceal[side]) {
     const q = concealQueue[side]; concealQueue[side] = null;
     setTimeout(() => triggerConceal(q.cat, side, q.timeStr), 300);
@@ -284,6 +287,7 @@ const featureEnabled = {
   trinity:    true,
   swap:       true,
   lvl15:      true,
+  lvl4:       true,
   conceal:    true,
   fights:     true,
   objectivespawn: true,
@@ -313,6 +317,7 @@ function resetGameState() {
     if (typeof skyPiercerQueue !== 'undefined') { delete skyPiercerQueue[i]; delete prevSkyPiercerMilestone[i]; }
     delete trinityQueue[i];
     delete lvl15Queue[i];
+    if (typeof lvl4Queue !== 'undefined') delete lvl4Queue[i];
     delete swapQueue[i];
     delete prevTotalDamage[i];
     if (combatHistory[i]) combatHistory[i] = [];
