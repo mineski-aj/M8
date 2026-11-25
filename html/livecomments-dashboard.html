@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<base href="/">
+<script src="html/js/cache-bust.js"></script>
+<script src="html/js/event-log-client.js"></script>
+<script src="html/js/overlay-sse-shim.js"></script>
+<link rel="stylesheet" href="html/livecomments.css">
+<title>Live Comments</title>
+<style>
+  /* Live Comments tab — controller for the YouTube chat feed (ported from the standalone ytcomments app). The output page is html/livecomments.html. */
+  :root {
+    --bg: var(--yc-bg); --panel: var(--yc-panel); --panel-2: var(--yc-panel-2); --line: var(--yc-line);
+    --text: var(--yc-text); --muted: var(--yc-muted); --mod: var(--yc-mod); --owner: var(--yc-owner); --member: var(--yc-member); --danger: var(--yc-danger);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 500 15px/1.45 var(--yc-font);
+    display: grid; grid-template-rows: auto 1fr; overflow: hidden;
+  }
+  /* top bar */
+  header {
+    display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;
+    padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  .status { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.live { background: var(--danger); box-shadow: 0 0 0 0 rgba(255,107,122,.6); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 70% { box-shadow: 0 0 0 9px rgba(255,107,122,0); } 100% { box-shadow: 0 0 0 0 rgba(255,107,122,0); } }
+  .title { font: 700 18px/1.2 var(--yc-font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .spacer { flex: 1; }
+  form.src { display: flex; gap: 8px; flex-wrap: wrap; }
+  input, button, select {
+    font: inherit; color: var(--text); background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px;
+  }
+  input::placeholder { color: var(--muted); }
+  input:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--mod); outline-offset: 1px; }
+  button { cursor: pointer; }
+  button:hover { background: #342b45; }
+  button.primary { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+  button.primary:hover { background: #fff; }
+  #url { width: min(360px, 60vw); }
+
+  /* main layout */
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; min-height: 0; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; grid-template-rows: 1fr auto; } aside { max-height: 34vh; border-left: 0 !important; border-top: 1px solid var(--line); } }
+
+  /* chat feed (message styling is in livecomments.css) */
+  .feed-wrap { position: relative; min-height: 0; display: flex; flex-direction: column; }
+  #feed { flex: 1; min-height: 0; background: var(--bg); }
+  .jump {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg); font-weight: 600; border: 0; border-radius: 99px;
+    padding: 8px 16px; box-shadow: 0 6px 20px rgba(0,0,0,.4); display: none;
+  }
+  .jump.show { display: block; }
+
+  /* sidebar */
+  aside { border-left: 1px solid var(--line); background: var(--panel); overflow-y: auto; min-height: 0; padding: 18px 18px 24px; }
+  aside h3 { font: 700 13px var(--yc-font); color: var(--muted); margin: 22px 0 10px; letter-spacing: .02em; }
+  aside h3:first-child { margin-top: 0; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat { background: var(--panel-2); border-radius: 10px; padding: 10px 12px; }
+  .stat b { display: block; font: 700 24px/1.1 var(--yc-font); font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  #rate { display: block; width: 100%; height: 44px; margin-top: 10px; background: var(--panel-2); border-radius: 10px; }
+  .chip-list { display: flex; flex-direction: column; gap: 8px; }
+  .chip { border-radius: 10px; padding: 9px 12px; color: #17131f; font-size: 13.5px; }
+  .chip b { font-family: var(--yc-font); }
+  .chip .amt { float: right; font: 700 14px var(--yc-font); }
+  .none { color: var(--muted); font-size: 13px; }
+  .top-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .top-list li { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+  .top-list li span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* controls */
+  .ctl { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+  .ctl + .ctl { margin-top: 12px; }
+  .ctl input[type=range] { flex: 1; padding: 0; accent-color: var(--mod); }
+  .ctl output { min-width: 34px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .switch { position: relative; width: 42px; height: 24px; padding: 0; border-radius: 99px; flex: none; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+  .switch[aria-checked=true] { background: var(--mod); border-color: var(--mod); }
+  .switch[aria-checked=true]::after { transform: translateX(18px); background: var(--bg); }
+  .words { display: flex; gap: 8px; }
+  .words input { flex: 1; min-width: 0; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tags button { padding: 3px 10px; border-radius: 99px; font-size: 13px; }
+  #wordTags button::after { content: " ×"; color: var(--muted); }
+  #sizePresets { margin-bottom: 14px; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  @media (prefers-reduced-motion: reduce) { .switch::after { transition: none; } }
+
+  /* tabs */
+  [hidden] { display: none !important; }
+  .tabs { display: flex; gap: 4px; background: var(--bg); padding: 4px; border-radius: 10px; }
+  .tabs button { border: 0; background: transparent; color: var(--muted); font-weight: 600; padding: 7px 14px; border-radius: 7px; }
+  .tabs button:hover { color: var(--text); background: transparent; }
+  .tabs button[aria-selected=true] { background: var(--panel-2); color: var(--text); }
+  body.tab-replay .live-only { display: none; }
+
+  /* finished stream tab */
+  #replayView { overflow-y: auto; min-height: 0; padding: 28px 20px 48px; }
+  .rp { max-width: 760px; margin: 0 auto; }
+  .rp h2 { font: 700 24px var(--yc-font); margin: 0 0 6px; }
+  .rp > p { color: var(--muted); margin: 0 0 18px; }
+  .rp form { display: flex; gap: 8px; flex-wrap: wrap; }
+  .rp form input { flex: 1; min-width: 220px; }
+  .rp-status { margin-top: 14px; color: var(--muted); font-size: 14px; min-height: 20px; overflow-wrap: anywhere; }
+  .rp-status.bad { color: var(--danger); }
+  .rp-bar { height: 4px; border-radius: 4px; background: var(--panel-2); margin-top: 10px; overflow: hidden; }
+  .rp-bar i { display: block; height: 100%; width: 35%; background: var(--mod); border-radius: 4px; animation: slide 1.2s ease-in-out infinite; }
+  @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+  @media (prefers-reduced-motion: reduce) { .rp-bar i { animation: none; width: 100%; } }
+  .rp-result { margin-top: 22px; }
+  .rp-result h3 { font: 700 18px/1.3 var(--yc-font); margin: 0 0 12px; overflow-wrap: anywhere; }
+  .rp-result .stats { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 600px) { .rp-result .stats { grid-template-columns: 1fr 1fr; } }
+  .rp-dl { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 6px; }
+  .rp-dl a { text-decoration: none; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 16px; font-weight: 600; }
+  .rp-dl a:first-child { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .rp-dl a:hover { filter: brightness(1.12); }
+  .rp-prev { margin-top: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); max-height: 420px; overflow-y: auto; }
+  .rp-row { display: grid; grid-template-columns: 64px 1fr; gap: 10px; padding: 6px 14px; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .rp-row:last-child { border-bottom: 0; }
+  .rp-row time { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .rp-row b { font-family: var(--yc-font); margin-right: 6px; }
+  .rp-row .amt { color: var(--owner); font-weight: 600; margin-left: 6px; }
+  .rp-note { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+
+  @media (prefers-reduced-motion: reduce) { .dot.live { animation: none; } }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="tabs" role="tablist" aria-label="Mode">
+    <button type="button" role="tab" id="tabLive" aria-selected="true" aria-controls="liveView">Live</button>
+    <button type="button" role="tab" id="tabReplay" aria-selected="false" aria-controls="replayView">Finished stream</button>
+  </div>
+  <div class="status live-only">
+    <span class="dot" id="dot"></span>
+    <div style="min-width:0">
+      <div class="title" id="title">Live comments</div>
+      <div class="sub" id="state">Not connected</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <form class="src live-only" id="srcForm">
+    <input id="url" value="https://www.youtube.com/watch?v=z79JKeJz0nU" aria-label="YouTube link" spellcheck="false">
+    <button class="primary" type="submit">Connect</button>
+    <button type="button" id="discBtn">Disconnect</button>
+    <button type="button" id="demoBtn">Try demo</button>
+  </form>
+</header>
+
+<main id="replayView" role="tabpanel" aria-labelledby="tabReplay" hidden>
+  <div class="rp">
+    <h2>Download a finished stream's chat</h2>
+    <p>Paste the link of a stream that has ended. The whole chat replay, from start to finish, is saved as a file you can download. (Needs yt-dlp installed on this machine.)</p>
+    <form id="rpForm">
+      <input id="rpUrl" placeholder="https://www.youtube.com/watch?v=…" aria-label="Finished stream link" spellcheck="false" autocomplete="off">
+      <button class="primary" type="submit" id="rpGo">Get chat</button>
+      <button type="button" id="rpStop" hidden>Cancel</button>
+    </form>
+    <div class="rp-status" id="rpStatus" role="status" aria-live="polite"></div>
+    <div class="rp-bar" id="rpBar" hidden><i></i></div>
+
+    <section class="rp-result" id="rpResult" hidden>
+      <h3 id="rpTitle"></h3>
+      <div class="stats">
+        <div class="stat"><b id="rpCount">0</b><span>messages</span></div>
+        <div class="stat"><b id="rpUsers">0</b><span>chatters</span></div>
+        <div class="stat"><b id="rpPaid">0</b><span>paid and member</span></div>
+        <div class="stat"><b id="rpLen">0:00</b><span>chat length</span></div>
+      </div>
+      <div class="rp-dl" id="rpDl"></div>
+      <div class="rp-note">CSV opens in Excel or Google Sheets. TXT is one line per message. JSON has every field.</div>
+      <h3 style="margin:22px 0 8px;font-size:13px;color:var(--muted)">First messages</h3>
+      <div class="rp-prev" id="rpPrev"></div>
+    </section>
+  </div>
+</main>
+
+<main id="liveView" role="tabpanel" aria-labelledby="tabLive">
+  <section class="feed-wrap">
+    <div id="feed" aria-live="polite"></div>
+    <button class="jump" id="jump">Jump to latest</button>
+  </section>
+
+  <aside>
+    <h3>Output page</h3>
+    <div class="ctl">
+      <span class="hint" style="margin:0">/html/livecomments.html</span>
+      <span style="display:flex;gap:6px"><button type="button" id="copyUrl">Copy URL</button><a href="/html/livecomments.html" target="_blank" id="openOut"><button type="button">Open ↗</button></a></span>
+    </div>
+
+    <h3>Output canvas</h3>
+    <div class="ctl">
+      <label for="wIn">Width</label>
+      <span style="display:flex;align-items:center;gap:6px"><input type="number" id="wIn" min="120" max="3840" step="10" style="width:92px"> <span class="hint" style="margin:0">px</span></span>
+    </div>
+    <div class="ctl">
+      <label for="hIn">Height</label>
+      <span style="display:flex;align-items:center;gap:6px"><input type="number" id="hIn" min="120" max="2160" step="10" style="width:92px"> <span class="hint" style="margin:0">px</span></span>
+    </div>
+    <div class="tags" id="sizePresets">
+      <button type="button" data-w="480" data-h="900">480×900</button>
+      <button type="button" data-w="600" data-h="1000">600×1000</button>
+      <button type="button" data-w="1080" data-h="1920">1080×1920</button>
+      <button type="button" data-w="1920" data-h="300">1920×300</button>
+      <button type="button" data-w="1920" data-h="1080">1920×1080</button>
+    </div>
+    <div class="ctl">
+      <span id="bgLbl">Transparent background</span>
+      <button type="button" class="switch" id="bgSw" role="switch" aria-checked="false" aria-labelledby="bgLbl"></button>
+    </div>
+
+    <h3>Display</h3>
+    <label class="ctl" for="fsRange">Font size
+      <input type="range" id="fsRange" min="12" max="60" step="1" value="15">
+      <output id="fsOut">15px</output>
+    </label>
+    <label class="ctl" for="spRange">Update speed
+      <input type="range" id="spRange" min="1" max="10" step="1" value="5">
+      <output id="spOut">5</output>
+    </label>
+    <div class="ctl">
+      <span id="photoLbl">Commenter photos</span>
+      <button type="button" class="switch" id="photoSw" role="switch" aria-checked="true" aria-labelledby="photoLbl"></button>
+    </div>
+
+    <h3>Filter words</h3>
+    <form class="words" id="wordForm">
+      <input id="wordIn" placeholder="Word or phrase" aria-label="Word or phrase to hide" autocomplete="off" spellcheck="false">
+      <button type="submit">Add</button>
+    </form>
+    <div class="tags" id="wordTags"></div>
+    <div class="hint" id="wordHint">Messages containing these words are hidden. Not case sensitive.</div>
+
+    <h3>Right now</h3>
+    <div class="stats">
+      <div class="stat"><b id="sTotal">0</b><span>messages</span></div>
+      <div class="stat"><b id="sRate">0</b><span>per minute</span></div>
+      <div class="stat"><b id="sUsers">0</b><span>chatters</span></div>
+      <div class="stat"><b id="sPaid">0</b><span>paid messages</span></div>
+    </div>
+    <canvas id="rate" width="300" height="44"></canvas>
+
+    <h3>Paid and memberships</h3>
+    <div class="chip-list" id="paidList"><div class="none">Nothing yet.</div></div>
+
+    <h3>Most active</h3>
+    <ol class="top-list" id="topList"><li class="none">Nobody yet.</li></ol>
+  </aside>
+</main>
+
+<script src="html/js/ytchat-view.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const el = YtChat.el, nameColor = YtChat.nameColor;
+  const store = {
+    get: k => { try { return localStorage.getItem(k); } catch { return null; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); } catch {} }
+  };
+  function setState(text, live) { $('state').textContent = text; $('dot').classList.toggle('live', !!live); }
+
+  // ---------- stats (counted from the messages shown in the preview) ----------
+  const stats = { total: 0, paid: 0, users: new Map(), stamps: [] };
+  const perMin = new Array(30).fill(0);
+  let lastBucket = Math.floor(Date.now() / 10000);
+  function tierColor(v) { return '#8fc9ff'; }
+  function updateStats(m) {
+    stats.total++; stats.stamps.push(Date.now());
+    stats.users.set(m.author, (stats.users.get(m.author) || 0) + 1);
+    if (m.type === 'paid' || m.type === 'member') {
+      stats.paid++;
+      const list = $('paidList'); list.querySelector('.none')?.remove();
+      const c = el('div', 'chip');
+      c.style.background = m.type === 'paid' ? (m.color || tierColor()) : '#5fd6a0';
+      if (m.ink) c.style.color = m.ink;
+      if (m.amount) c.appendChild(el('span', 'amt', m.amount));
+      c.appendChild(el('b', null, m.author));
+      c.appendChild(document.createTextNode(' ' + (m.type === 'paid' ? (m.text ? '– ' + m.text : '') : m.kind)));
+      list.prepend(c);
+      while (list.children.length > 8) list.removeChild(list.lastChild);
+    }
+    perMin[perMin.length - 1]++;
+  }
+  function resetStats() {
+    stats.total = 0; stats.paid = 0; stats.users.clear(); stats.stamps = []; perMin.fill(0);
+    $('paidList').replaceChildren(el('div', 'none', 'Nothing yet.'));
+    $('topList').replaceChildren(el('li', 'none', 'Nobody yet.'));
+    refreshStats();
+  }
+  function refreshStats() {
+    const now = Date.now();
+    stats.stamps = stats.stamps.filter(t => now - t < 60000);
+    $('sTotal').textContent = stats.total.toLocaleString();
+    $('sRate').textContent = stats.stamps.length;
+    $('sUsers').textContent = stats.users.size.toLocaleString();
+    $('sPaid').textContent = stats.paid;
+    const top = [...stats.users.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+    if (top.length) $('topList').replaceChildren(...top.map(([n, c]) => {
+      const li = el('li'); const a = el('span', null, n); a.style.color = nameColor(n);
+      li.append(a, el('span', null, c)); return li;
+    }));
+    const b = Math.floor(now / 10000);
+    while (lastBucket < b) { perMin.shift(); perMin.push(0); lastBucket++; }
+    drawRate();
+  }
+  function drawRate() {
+    const c = $('rate'), g = c.getContext('2d');
+    const w = c.width, h = c.height, max = Math.max(3, ...perMin);
+    g.clearRect(0, 0, w, h);
+    const bw = w / perMin.length;
+    g.fillStyle = '#9d7bff';
+    perMin.forEach((v, i) => {
+      const bh = Math.max(2, (v / max) * (h - 10));
+      g.globalAlpha = i === perMin.length - 1 ? 1 : .7;
+      g.fillRect(i * bw + 2, h - bh - 4, bw - 4, bh);
+    });
+    g.globalAlpha = 1;
+  }
+  setInterval(refreshStats, 3000);
+
+  // ---------- settings (server-side: shared with the output page) ----------
+  let cur = { fs: 15, speed: 5, photos: true, words: [], width: 480, height: 900, bg: 'solid' };
+  let saveTimer = null, pending = {};
+  function savePrefs(patch) {
+    Object.assign(pending, patch);
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const body = pending; pending = {};
+      fetch('/ytchat/prefs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
+    }, 120);
+  }
+  function showPrefs(p) {
+    cur = Object.assign(cur, p);
+    const idle = e => document.activeElement !== e;
+    if (idle($('fsRange'))) $('fsRange').value = cur.fs;
+    $('fsOut').textContent = cur.fs + 'px';
+    if (idle($('spRange'))) $('spRange').value = cur.speed;
+    $('spOut').textContent = cur.speed === 10 ? 'Instant' : cur.speed;
+    $('photoSw').setAttribute('aria-checked', cur.photos);
+    $('bgSw').setAttribute('aria-checked', cur.bg === 'transparent');
+    if (idle($('wIn'))) $('wIn').value = cur.width;
+    if (idle($('hIn'))) $('hIn').value = cur.height;
+    $('wordTags').replaceChildren(...cur.words.map(w => {
+      const b = el('button', null, w); b.type = 'button'; b.title = 'Remove';
+      b.onclick = () => savePrefs({ words: cur.words.filter(x => x !== w) });
+      return b;
+    }));
+    /* the dashboard scales the Control-tab preview of the output to this canvas */
+    try { window.parent.postMessage({ type: 'ytchat-canvas', width: cur.width, height: cur.height }, location.origin); } catch (e) {}
+  }
+  $('fsRange').oninput = e => { cur.fs = +e.target.value; $('fsOut').textContent = cur.fs + 'px'; savePrefs({ fs: cur.fs }); };
+  $('spRange').oninput = e => { cur.speed = +e.target.value; $('spOut').textContent = cur.speed === 10 ? 'Instant' : cur.speed; savePrefs({ speed: cur.speed }); };
+  $('photoSw').onclick = () => savePrefs({ photos: !cur.photos });
+  $('bgSw').onclick = () => savePrefs({ bg: cur.bg === 'transparent' ? 'solid' : 'transparent' });
+  $('wIn').onchange = e => savePrefs({ width: +e.target.value });
+  $('hIn').onchange = e => savePrefs({ height: +e.target.value });
+  $('sizePresets').onclick = e => { const b = e.target.closest('button'); if (b) savePrefs({ width: +b.dataset.w, height: +b.dataset.h }); };
+  $('wordForm').onsubmit = e => {
+    e.preventDefault();
+    const w = $('wordIn').value.trim().toLowerCase();
+    if (w && !cur.words.includes(w)) savePrefs({ words: cur.words.concat(w) });
+    $('wordIn').value = '';
+  };
+  $('copyUrl').onclick = () => {
+    const url = location.origin + '/html/livecomments.html';
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).catch(() => {}).then(() => {
+      const b = $('copyUrl'); const t = b.textContent; b.textContent = 'Copied!'; setTimeout(() => { b.textContent = t; }, 1200);
+    });
+  };
+
+  // ---------- feed preview + shared state ----------
+  const view = YtChat.createView({
+    feed: $('feed'), jump: $('jump'),
+    placeholder: '<h2>Chat appears here</h2>Paste a live stream link and connect, or run the demo to preview the layout.',
+    onMessage: m => { updateStats(m); },
+    onReset: () => { resetStats(); },
+    onStatus: s => setState(s.text, s.live),
+    onInfo: t => { $('title').textContent = t || 'Live comments'; },
+    onFatal: t => setState(t, false),
+    onPrefs: showPrefs
+  });
+
+  async function post(path, body) {
+    try {
+      const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) setState(d.error || 'Request failed', false);
+    } catch (e) { setState('Cannot reach the server.', false); }
+  }
+  $('srcForm').addEventListener('submit', e => {
+    e.preventDefault();
+    store.set('yc_url', $('url').value);
+    post('/ytchat/connect', { url: $('url').value });
+  });
+  $('discBtn').onclick = () => post('/ytchat/disconnect');
+  $('demoBtn').onclick = () => post('/ytchat/demo');
+  if (store.get('yc_url')) $('url').value = store.get('yc_url');
+
+  // ---------- finished stream tab (yt-dlp, runs on the server) ----------
+  function videoId(input) {
+    input = input.trim();
+    if (/^[\w-]{11}$/.test(input)) return input;
+    try {
+      const u = new URL(input);
+      if (u.hostname.includes('youtu.be')) return u.pathname.slice(1, 12);
+      if (u.searchParams.get('v')) return u.searchParams.get('v');
+      const m = u.pathname.match(/\/(live|embed|shorts)\/([\w-]{11})/);
+      if (m) return m[2];
+    } catch {}
+    return null;
+  }
+  let rpSource = null;
+  const rpSet = (text, bad) => { $('rpStatus').textContent = text; $('rpStatus').classList.toggle('bad', !!bad); };
+  const rpBusy = on => { $('rpBar').hidden = !on; $('rpStop').hidden = !on; $('rpGo').disabled = on; };
+  const mb = n => (n / 1048576).toFixed(1) + ' MB';
+  const lenOf = ms => { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`; };
+  function rpFinish() { rpSource?.close(); rpSource = null; rpBusy(false); }
+  $('rpForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = videoId($('rpUrl').value);
+    if (!id) { rpSet('That doesn\'t look like a YouTube link', true); return; }
+    rpSource?.close();
+    $('rpResult').hidden = true; rpBusy(true); rpSet('Starting…');
+    let failed = false;
+    const es = rpSource = new EventSource('/ytchat/replay?v=' + encodeURIComponent(id));
+    const on = (ev, fn) => es.addEventListener(ev, x => { if (rpSource === es) fn(JSON.parse(x.data)); });
+    on('status', d => rpSet(d.text));
+    on('progress', d => rpSet('Downloading chat… ' + mb(d.bytes)));
+    on('fatal', d => { failed = true; rpSet(d.text, true); });
+    on('result', showReplay);
+    es.addEventListener('done', () => { if (rpSource === es) rpFinish(); });
+    es.onerror = () => { if (rpSource !== es) return; if (!failed) rpSet('Cannot reach the server.', true); rpFinish(); };
+  });
+  $('rpStop').onclick = () => { rpFinish(); rpSet('Cancelled'); };
+  function showReplay(d) {
+    $('rpTitle').textContent = d.title;
+    $('rpCount').textContent = d.count.toLocaleString();
+    $('rpUsers').textContent = d.chatters.toLocaleString();
+    $('rpPaid').textContent = d.paid.toLocaleString();
+    $('rpLen').textContent = lenOf(d.durationMs);
+    $('rpDl').replaceChildren(...[['csv', 'Download CSV'], ['txt', 'Download TXT'], ['json', 'Download JSON']].map(([f, label]) => {
+      const a = el('a', null, label);
+      a.href = `/ytchat/replay/download?v=${encodeURIComponent(d.id)}&fmt=${f}`; a.download = `chat-${d.id}.${f}`;
+      return a;
+    }));
+    $('rpPrev').replaceChildren(...d.preview.map(m => {
+      const row = el('div', 'rp-row'); row.appendChild(el('time', null, m.t));
+      const body = el('div'); const n = el('b', null, m.author); n.style.color = nameColor(m.author);
+      body.append(n, document.createTextNode(m.text));
+      if (m.amount) body.appendChild(el('span', 'amt', m.amount));
+      row.appendChild(body); return row;
+    }));
+    $('rpResult').hidden = false;
+    rpSet(d.count ? `Done. ${d.count.toLocaleString()} messages ready.` : 'The replay was found but contains no messages.');
+  }
+
+  // ---------- tabs ----------
+  function showTab(name) {
+    const replay = name === 'replay';
+    document.body.classList.toggle('tab-replay', replay);
+    $('liveView').hidden = replay; $('replayView').hidden = !replay;
+    $('tabLive').setAttribute('aria-selected', !replay); $('tabReplay').setAttribute('aria-selected', replay);
+    store.set('yc_tab', name);
+  }
+  $('tabLive').onclick = () => showTab('live');
+  $('tabReplay').onclick = () => showTab('replay');
+  if (store.get('yc_tab') === 'replay') showTab('replay');
+  drawRate();
+})();
+</script>
+</body>
+</html>

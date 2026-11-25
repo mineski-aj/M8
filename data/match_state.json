@@ -1,43 +1,9 @@
 {
   "home": {
-    "teamId": "10973",
-    "name": "Team Falcons",
-    "short": "FLCN",
-    "score": 2,
-    "lineup": [
-      {
-        "role": "EXP LANER",
-        "ign": "Flap",
-        "id": "1271650054"
-      },
-      {
-        "role": "JUNGLER",
-        "ign": "Kyle",
-        "id": "1582754321"
-      },
-      {
-        "role": "MID LANER",
-        "ign": "Hadji",
-        "id": "1271650087"
-      },
-      {
-        "role": "ROAMER",
-        "ign": "Owgwen",
-        "id": "1271650065"
-      },
-      {
-        "role": "GOLD LANER",
-        "ign": "SuperMarco",
-        "id": "1155835108"
-      }
-    ],
-    "coach": "Ducky"
-  },
-  "away": {
     "teamId": "10845",
     "name": "Aurora Gaming PH",
     "short": "RORA",
-    "score": 4,
+    "score": 0,
     "lineup": [
       {
         "role": "EXP LANER",
@@ -67,13 +33,47 @@
     ],
     "coach": "Master The Basics"
   },
-  "series": "BO7",
-  "game": 7,
+  "away": {
+    "teamId": "10764",
+    "name": "ONIC PH",
+    "short": "ONIC",
+    "score": 0,
+    "lineup": [
+      {
+        "role": "EXP LANER",
+        "ign": "Kirk",
+        "id": "1373201033"
+      },
+      {
+        "role": "JUNGLER",
+        "ign": "K1NGKONG",
+        "id": "1373201049"
+      },
+      {
+        "role": "MID LANER",
+        "ign": "SuperFrince",
+        "id": "1271650280"
+      },
+      {
+        "role": "ROAMER",
+        "ign": "Brusko",
+        "id": "1582754254"
+      },
+      {
+        "role": "GOLD LANER",
+        "ign": "Savero",
+        "id": "1722728882"
+      }
+    ],
+    "coach": "PHEWW"
+  },
+  "series": "BO1",
+  "game": 1,
   "match": 1,
-  "swapped": true,
+  "swapped": false,
   "official": true,
   "week": 8,
-  "day": 5,
+  "day": 1,
   "patch": "Starward Decade 1014",
   "map": "Golden Turret",
   "hosts": [
@@ -94,15 +94,29 @@
   "countdownLabel": "SHOW STARTS IN",
   "goodbyeLabel": "SEE YOU TOMORROW",
   "timer": {
-    "running": false,
-    "endAt": null,
-    "remaining": 0
+    "running": true,
+    "endAt": 1795238327243,
+    "remaining": 5400
   },
   "todayMatches": [
     {
-      "team1Id": "10973",
-      "team1Name": "Team Falcons",
-      "team1Short": "FLCN",
+      "team1Id": "10845",
+      "team1Name": "Aurora Gaming PH",
+      "team1Short": "RORA",
+      "team2Id": "10764",
+      "team2Name": "ONIC PH",
+      "team2Short": "ONIC",
+      "score1": 1,
+      "score2": 0,
+      "vsDisplay": "1 - 0",
+      "time": "2:30 pm",
+      "matchLabel": "MATCH 1",
+      "series": "BO1"
+    },
+    {
+      "team1Id": "10764",
+      "team1Name": "ONIC PH",
+      "team1Short": "ONIC",
       "team2Id": "10845",
       "team2Name": "Aurora Gaming PH",
       "team2Short": "RORA",
@@ -110,90 +124,177 @@
       "score2": 0,
       "vsDisplay": "VS",
       "time": "5:00 PM",
-      "star": false,
-      "matchType": "regular",
-      "openHouseTime": "4:30 PM",
-      "stageLabel": "GRAND FINALS",
-      "openHouseLabel": "PRE-SHOW",
-      "openHouseOff": false,
-      "matchLabel": "MATCH 8"
+      "matchLabel": "MATCH 2",
+      "series": "BO1"
     },
     {
-      "team1Id": "10763",
-      "team1Name": "Team Liquid PH",
-      "team1Short": "TLPH",
-      "team2Id": "10764",
-      "team2Name": "ONIC PH",
-      "team2Short": "ONIC",
+      "team1Id": "10973",
+      "team1Name": "Team Falcons",
+      "team1Short": "FLCN",
+      "team2Id": "11150",
+      "team2Name": "Smart Omega",
+      "team2Short": "OMG",
       "score1": 0,
       "score2": 0,
       "vsDisplay": "VS",
-      "time": "7:00 PM",
-      "star": true,
-      "matchType": "golden",
-      "openHouseTime": "",
-      "stageLabel": "LOWER BRACKET SEMI-FINALS",
-      "openHouseOff": false,
-      "openHouseLabel": "ALAMAT AWARDS",
+      "time": "",
+      "matchLabel": "MATCH 3",
+      "series": "BO1"
+    },
+    {
+      "team1Id": "10975",
+      "team1Name": "Twisted Minds PH",
+      "team1Short": "TWIS",
+      "team2Id": "11150",
+      "team2Name": "Smart Omega",
+      "team2Short": "OMG",
+      "score1": 0,
+      "score2": 0,
+      "vsDisplay": "VS",
+      "time": "",
+      "matchLabel": "MATCH 4"
+    },
+    {
+      "team1Id": "10845",
+      "team1Name": "Aurora Gaming PH",
+      "team1Short": "RORA",
+      "team2Id": "11150",
+      "team2Name": "Smart Omega",
+      "team2Short": "OMG",
+      "score1": 0,
+      "score2": 0,
+      "vsDisplay": "VS",
+      "time": "",
+      "matchLabel": "MATCH 5"
+    },
+    {
+      "team1Id": "10845",
+      "team1Name": "Aurora Gaming PH",
+      "team1Short": "RORA",
+      "team2Id": "10763",
+      "team2Name": "Team Liquid PH",
+      "team2Short": "TLPH",
+      "score1": 0,
+      "score2": 0,
+      "vsDisplay": "VS",
+      "time": "",
       "matchLabel": "MATCH 6"
     },
     {
-      "team1Id": "10763",
-      "team1Name": "Team Liquid PH",
-      "team1Short": "TLPH",
-      "team2Id": "10764",
-      "team2Name": "ONIC PH",
-      "team2Short": "ONIC",
+      "team1Id": "10845",
+      "team1Name": "Aurora Gaming PH",
+      "team1Short": "RORA",
+      "team2Id": "11149",
+      "team2Name": "AP.BREN",
+      "team2Short": "APBR",
       "score1": 0,
       "score2": 0,
       "vsDisplay": "VS",
-      "time": "7:30 PM",
-      "star": true,
-      "matchType": "golden"
+      "time": "",
+      "matchLabel": "MATCH 7"
+    },
+    {
+      "team1Id": "10763",
+      "team1Name": "Team Liquid PH",
+      "team1Short": "TLPH",
+      "team2Id": "10765",
+      "team2Name": "TNC Pro Team PH",
+      "team2Short": "TNC",
+      "score1": 0,
+      "score2": 0,
+      "vsDisplay": "VS",
+      "time": "",
+      "matchLabel": "MATCH 8"
     }
   ],
   "tomorrowMatches": [
     {
-      "team1Id": "10973",
-      "team1Name": "Team Falcons",
-      "team1Short": "FLCN",
-      "team2Id": "10845",
-      "team2Name": "Aurora Gaming PH",
-      "team2Short": "RORA",
+      "team1Id": "",
+      "team1Name": "",
+      "team1Short": "",
+      "team2Id": "",
+      "team2Name": "",
+      "team2Short": "",
       "vsDisplay": "VS",
-      "time": "5:00 PM",
-      "star": false,
-      "matchType": "regular",
-      "openHouseTime": "",
-      "stageLabel": "GRAND FINALS",
-      "matchLabel": "MATCH 8"
+      "time": "2:30 PM",
+      "matchLabel": "MATCH 1"
     },
     {
-      "team1Id": "10763",
-      "team1Name": "Team Liquid PH",
-      "team1Short": "TLPH",
-      "team2Id": "10764",
-      "team2Name": "ONIC PH",
-      "team2Short": "ONIC",
+      "team1Id": "",
+      "team1Name": "",
+      "team1Short": "",
+      "team2Id": "",
+      "team2Name": "",
+      "team2Short": "",
       "vsDisplay": "VS",
-      "time": "7:00 PM",
-      "star": false,
-      "matchType": "regular",
-      "stageLabel": "LB SEMI  FINALS",
-      "openHouseTime": "",
+      "time": "5:00 PM",
+      "matchLabel": "MATCH 2"
+    },
+    {
+      "team1Id": "",
+      "team1Name": "",
+      "team1Short": "",
+      "team2Id": "",
+      "team2Name": "",
+      "team2Short": "",
+      "vsDisplay": "VS",
+      "time": "",
+      "matchLabel": "MATCH 3"
+    },
+    {
+      "team1Id": "",
+      "team1Name": "",
+      "team1Short": "",
+      "team2Id": "",
+      "team2Name": "",
+      "team2Short": "",
+      "vsDisplay": "VS",
+      "time": "",
+      "matchLabel": "MATCH 4"
+    },
+    {
+      "team1Id": "",
+      "team1Name": "",
+      "team1Short": "",
+      "team2Id": "",
+      "team2Name": "",
+      "team2Short": "",
+      "vsDisplay": "VS",
+      "time": "",
+      "matchLabel": "MATCH 5"
+    },
+    {
+      "team1Id": "",
+      "team1Name": "",
+      "team1Short": "",
+      "team2Id": "",
+      "team2Name": "",
+      "team2Short": "",
+      "vsDisplay": "VS",
+      "time": "",
       "matchLabel": "MATCH 6"
     },
     {
-      "team1Id": "10973",
-      "team1Name": "Team Falcons",
-      "team1Short": "FLCN",
-      "team2Id": "10763",
-      "team2Name": "Team Liquid PH",
-      "team2Short": "TLPH",
+      "team1Id": "",
+      "team1Name": "",
+      "team1Short": "",
+      "team2Id": "",
+      "team2Name": "",
+      "team2Short": "",
       "vsDisplay": "VS",
-      "time": "7:30 PM",
-      "star": true,
-      "matchType": "clash"
+      "time": "",
+      "matchLabel": "MATCH 7"
+    },
+    {
+      "team1Id": "",
+      "team1Name": "",
+      "team1Short": "",
+      "team2Id": "",
+      "team2Name": "",
+      "team2Short": "",
+      "vsDisplay": "VS",
+      "time": "",
+      "matchLabel": "MATCH 8"
     }
   ],
   "panel": [
@@ -201,5 +302,8 @@
     "Brigida",
     "Midnight"
   ],
-  "stage": "Wild Card"
+  "stage": "Group Stage",
+  "todayMatchCount": 8,
+  "tomorrowMatchCount": 8,
+  "timezone": "GMT+8"
 }

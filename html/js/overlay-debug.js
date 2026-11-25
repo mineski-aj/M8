@@ -192,7 +192,7 @@ window.iframeTest = async function(playerIdx, feature) {
       const itemId = t3s.length > 0 ? t3s[0] : Object.keys(T3_RECIPES)[0];
       triggerItem(playerIdx, itemId, formatTime(data.game_time || 0));
     } else if (feature === 'skypiercer') {
-      triggerSkyPiercer(playerIdx, getSkyPiercerStack(player) || 3);
+      triggerSkyPiercer(playerIdx, getSkyPiercerStack(player) || (skyPiercerCalc[playerIdx] && skyPiercerCalc[playerIdx].stacks) || 3);
     } else if (feature === 'trinity') {
       triggerTrinity(playerIdx, TRINITY_KINDS.swift.items, 'swift');
     } else if (feature === 'swap') {
@@ -270,7 +270,7 @@ registerPollHandler(function(data) {
         }
       }
     }
-    checkSkyPiercer(pidx, player);
+    checkSkyPiercer(pidx, player, equipIds);
     prevEquipState[pidx] = [...equipIds];
   }
 

@@ -195,7 +195,7 @@
     .match-slots { display: flex; flex-direction: column; gap: 8px; }
     .match-card { background: #0f0f18; border: 1px solid #1e1e2e; border-radius: 8px; padding: 10px 12px; transition: opacity .2s; }
     .match-card.disabled { opacity: 0.28; pointer-events: none; }
-    .match-card.rivalry { border-color: #8a6d1a; }
+    .match-card.live { border-color: #3fae5a; background: #0f1d15; box-shadow: 0 0 0 1px #3fae5a inset; }   /* live match (the gold rivalry border was removed with the type dropdown) */
     .match-card-hdr { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     .match-type-sel { margin-left: auto; background: #0a0a14; border: 1px solid #2a2a3a; border-radius: 6px; color: #666; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 4px 6px; cursor: pointer; outline: none; transition: color .15s, border-color .15s; }
     .match-type-sel:hover { color: #888; }
@@ -203,6 +203,10 @@
     .match-num-lbl { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #555; text-transform: uppercase; }
     .match-card-hdr .match-label-inp { width: 76px; flex: 0 0 auto; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; text-align: center; }
     .match-card-hdr .match-time-inp { width: 76px; flex: 0 0 auto; font-size: 12px; text-align: center; }
+    .match-type-sel, .match-oh-row { display: none !important; }   /* removed: match-type dropdown + Show/Pre-show/time row */
+    .match-card-hdr .match-bo-sel { width: 92px; flex: 0 0 auto; font-size: 12px; text-align: center; }
+    .match-card-hdr .match-bo-sel.match-group-sel { width: 132px; padding-left: 12px; }
+    .match-live-chk { width: 18px; height: 18px; flex: 0 0 auto; cursor: pointer; accent-color: #4caf50; }
     .match-oh-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
     .match-oh-row .match-oh-inp { flex: 1 1 auto; font-size: 12px; }
     .match-card-hdr .match-stage-inp { flex: 1 1 140px; min-width: 0; font-size: 12px; }
@@ -431,15 +435,15 @@
     <!-- Row 4: Casters -->
     <div class="meta-row" style="margin-top:10px;">
       <div class="meta-field grow">
-        <div class="meta-label">Caster 1</div>
+        <div class="meta-label" id="caster-label-0">Caster 1</div>
         <input type="text" id="caster-0" list="talent-list" autocomplete="off" value="None">
       </div>
       <div class="meta-field grow">
-        <div class="meta-label">Caster 2</div>
+        <div class="meta-label" id="caster-label-1">Caster 2</div>
         <input type="text" id="caster-1" list="talent-list" autocomplete="off" value="None">
       </div>
       <div class="meta-field grow">
-        <div class="meta-label">Caster 3</div>
+        <div class="meta-label" id="caster-label-2">Caster 3</div>
         <input type="text" id="caster-2" list="talent-list" autocomplete="off" value="None">
       </div>
     </div>
@@ -743,6 +747,7 @@
     document.getElementById('series').value = s.series || 'BO5';
     document.getElementById('series-tomorrow').value = s.tomorrowSeries || 'BO7';
     document.getElementById('stage').value = s.stage || 'Wild Card';
+    applyStageOptions();
     document.getElementById('game-display').textContent = 'Game ' + computeGame();
     document.getElementById('home-score-val').textContent = s.home.score || 0;
     document.getElementById('away-score-val').textContent = s.away.score || 0;
@@ -1033,7 +1038,16 @@
       var l = poTheme && tmList[n] && (tmList[n].matchLabel || '').trim();
       o.textContent = l || ('Match ' + (n + 1));
     });
-    if (poTheme) {   // playoffs: never a 3rd match; Match 2 only on the 2-match days (1-3)
+    if (rebroadcastMode) {   // REBROADCAST: one option per match, up to the Today's Matches count (max 8)
+      var mp = document.getElementById('match-picker'), cnt = matchCountOf('todayMatchCount');
+      for (var n = 0; n < 8; n++) {
+        var o = mp.querySelector('option[value="' + n + '"]');
+        if (!o) { o = document.createElement('option'); o.value = String(n); mp.appendChild(o); }
+        var l = tmList[n] && (tmList[n].matchLabel || '').trim();
+        o.textContent = l || ('Match ' + (n + 1));
+        o.style.display = n < cnt ? '' : 'none';
+      }
+    } else if (poTheme) {   // playoffs: never a 3rd match; Match 2 only on the 2-match days (1-3)
       if (opt3) opt3.style.display = 'none';
       if (opt2) opt2.style.display = poMatchCount(localState.day) >= 2 ? '' : 'none';
     } else {
@@ -1049,6 +1063,8 @@
     localState.match = matchNum;
     push({ match: matchNum });
     updateShowLabel();
+    syncLiveChecks();
+    applyLiveSeries();
     var tm = (localState.todayMatches || [])[tmIdx];
     if (!tm || (!tm.team1Id && !tm.team2Id)) return;
     var homeSel = document.getElementById('home-sel');
@@ -1268,9 +1284,18 @@
   /* Playoffs also runs up to Day 5 (regular season: 3) and has no weeks — the Week counter is hidden, the preview line
      drops "W#", and "See you next week" never applies. The theme is re-checked every few seconds (plain fetch, no
      connection held open) because this iframe stays mounted while the Settings page switches the theme. */
-  function dayMax() { return poTheme ? 5 : 3; }
+  var rebroadcastMode = false;
+  function dayMax() { return rebroadcastMode ? 15 : (poTheme ? 5 : 3); }
   /* Playoffs only: Days 1-3 run 2 matches, Days 4-5 run 1 (Today's AND Tomorrow's lists; Tomorrow's looks at tomorrow's day). */
-  function poMatchCount(day) { return (day || 1) >= 4 ? 1 : 2; }
+  function tzValue() { return (typeof localState.timezone === 'string') ? localState.timezone : 'GMT+8'; }
+  function syncTz() {
+    ['tz-today', 'tz-tomorrow'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && document.activeElement !== el) el.value = tzValue();
+    });
+  }
+  function matchCountOf(key) { var n = parseInt(localState[key], 10); return (n >= 1 && n <= 8) ? n : 2; }
+  function poMatchCount(day) { return rebroadcastMode ? matchCountOf('todayMatchCount') : ((day || 1) >= 4 ? 1 : 2); }
   /* A Match picker / current match beyond the day's count would point at a card that is off — pull it back. */
   function clampMatchToDay() {
     if (!poTheme) return;
@@ -1282,11 +1307,29 @@
       updateShowLabel();
     }
   }
+  /* MCT theme runs only Group Stage + Knockouts; other themes keep the original four. */
+  var mctTheme = false;
+  var STAGES_DEFAULT = ['Wild Card', 'Swiss Stage', 'Knockouts', 'Grand Finals'], STAGES_MCT = ['Group Stage', 'Knockouts'];
+  function applyStageOptions() {
+    var sel = document.getElementById('stage'); if (!sel) return;
+    var list = mctTheme ? STAGES_MCT : STAGES_DEFAULT;
+    if (Array.prototype.map.call(sel.options, function (o) { return o.value; }).join('|') !== list.join('|')) {
+      sel.innerHTML = '';
+      list.forEach(function (v) { var o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
+    }
+    var want = localState.stage;
+    if (list.indexOf(want) === -1) {
+      want = list[0];
+      if (Array.isArray(localState.todayMatches)) { localState.stage = want; push({ stage: want }); }   // only once the server state has loaded
+    }
+    sel.value = want;
+  }
   function applyThemeLayout(theme) {
-    var po = theme === 'playoffs' || theme === 'mct';
-    if (po === poTheme && applyThemeLayout.done) return;
+    var po = theme === 'playoffs' || theme === 'mct', mct = theme === 'mct';
+    if (po === poTheme && mct === mctTheme && applyThemeLayout.done) return;
     applyThemeLayout.done = true;
-    poTheme = po;
+    poTheme = po; mctTheme = mct;
+    applyStageOptions();
     var wf = document.getElementById('week-field');
     if (wf) wf.style.display = po ? 'none' : '';
     renderTodayMatches(); renderTomorrowMatches(); updatePreview(); updateMatchPicker(); clampMatchToDay();
@@ -1304,10 +1347,71 @@
   setInterval(pollTheme, 4000);
   function matchTypeOf(m) { return m.matchType || (m.star ? 'clash' : 'regular'); }
 
-  function getMatches() {
-    return localState.todayMatches || DEFAULT_TIMES.map(function (t) {
-      return { team1Id: '', team1Name: '', team1Short: '', team2Id: '', team2Name: '', team2Short: '', score1: 0, score2: 0, vsDisplay: 'VS', time: t };
+  /* Auto match number: Swiss Stage runs 8 matches a day (Day 1 = 1-8, Day 2 = 9-16 ...); other stages start at 1 each day. */
+  function matchNumberFor(i, day) {
+    var st = localState.stage || (document.getElementById('stage') || {}).value || '';
+    return /swiss/i.test(st) ? ((day || 1) - 1) * 8 + i + 1 : i + 1;
+  }
+  /* Fill a blank (or earlier auto-generated "MATCH n") label with the computed number; saves once if anything changed. */
+  function autoFillLabels(list, day, saveFn, loaded) {
+    var changed = false;
+    var out = list.map(function (m, i) {
+      var cur = (m.matchLabel || '').trim(), want = 'MATCH ' + matchNumberFor(i, day);
+      if ((cur === '' || /^MATCH \d+$/i.test(cur)) && cur !== want) { changed = true; return Object.assign({}, m, { matchLabel: want }); }
+      return m;
     });
+    if (changed && loaded) saveFn(out);   // never save before the server's state has loaded (defaults would overwrite real data)
+    return out;
+  }
+  function syncLiveChecks() {
+    var cur = localState.match || 1;
+    Array.prototype.forEach.call(document.querySelectorAll('#today-matches-list .match-live-chk'), function (c) {
+      c.checked = (parseInt(c.dataset.idx, 10) + 1) === cur;
+      var card = c.closest('.match-card'); if (card) card.classList.toggle('live', c.checked);
+    });
+  }
+
+  /* Best-of spinner (BO1 / BO3 / BO5 / BO7) for one match card. */
+  var BO_STEPS = ['BO1', 'BO3', 'BO5', 'BO7'];
+  function buildSeriesSpinner(cur, disabled, onChange) {
+    var sel = document.createElement('select');
+    sel.className = 'match-bo-sel'; sel.title = 'Best of'; sel.disabled = !!disabled;
+    BO_STEPS.forEach(function (v) {
+      var o = document.createElement('option'); o.value = v; o.textContent = v.replace('BO', 'Bo');
+      if (v === String(cur || '').toUpperCase()) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener('change', function () { onChange(sel.value); });
+    return sel;
+  }
+  /* Group dropdown (GROUP A - D) for one match card. */
+  function buildGroupSelect(cur, disabled, onChange) {
+    var sel = document.createElement('select');
+    sel.className = 'match-bo-sel match-group-sel'; sel.title = 'Group'; sel.disabled = !!disabled;
+    ['A', 'B', 'C', 'D'].forEach(function (g) {
+      var o = document.createElement('option'); o.value = g; o.textContent = 'GROUP ' + g;
+      if (g === String(cur || 'A').toUpperCase()) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener('change', function () { onChange(sel.value); });
+    return sel;
+  }
+  /* Today: the live match's format drives the global Format (score caps). */
+  function applyLiveSeries() {
+    var m = (localState.todayMatches || [])[(localState.match || 1) - 1];
+    if (!m || !m.series || m.series === localState.series) return;
+    localState.series = m.series;
+    var sel = document.getElementById('series'); if (sel) sel.value = m.series;
+    push({ series: m.series });
+  }
+
+  function getMatches() {
+    var list = (localState.todayMatches || DEFAULT_TIMES.map(function (t) {
+      return { team1Id: '', team1Name: '', team1Short: '', team2Id: '', team2Name: '', team2Short: '', score1: 0, score2: 0, vsDisplay: 'VS', time: t };
+    })).slice();
+    if (rebroadcastMode) while (list.length < matchCountOf('todayMatchCount'))   // REBROADCAST: up to 8 matches
+      list.push({ team1Id: '', team1Name: '', team1Short: '', team2Id: '', team2Name: '', team2Short: '', score1: 0, score2: 0, vsDisplay: 'VS', time: '' });
+    return list;
   }
 
   function computeVsStr(m) {
@@ -1323,26 +1427,44 @@
   function renderTodayMatches() {
     var container = document.getElementById('today-matches-list');
     if (!container) return;
+    var cv = document.getElementById('today-count-val'); if (cv) cv.textContent = matchCountOf('todayMatchCount');
+    syncTz();
     container.innerHTML = '';
     var isDay2 = (localState.day || 1) === 2;
     var matches = getMatches();
+    if (rebroadcastMode) matches = matches.slice(0, matchCountOf('todayMatchCount'));
+    matches = autoFillLabels(matches, localState.day || 1, saveMatches, Array.isArray(localState.todayMatches));
 
     matches.forEach(function (m, i) {
-      var disabled = poTheme ? (i >= poMatchCount(localState.day)) : (i === 2 && !isDay2);
+      var disabled = rebroadcastMode ? (i >= matchCountOf('todayMatchCount')) : poTheme ? (i >= poMatchCount(localState.day)) : (i === 2 && !isDay2);
       var mt = matchTypeOf(m);
       var card = document.createElement('div');
-      card.className = 'match-card' + (disabled ? ' disabled' : '') + (mt !== 'regular' ? ' rivalry' : '');
+      card.className = 'match-card' + (disabled ? ' disabled' : '');
 
       /* header */
       var hdr = document.createElement('div');
       hdr.className = 'match-card-hdr';
+      /* live-match checkbox (far left): the checked match is the current one; only one at a time */
+      var liveChk = document.createElement('input');
+      liveChk.type = 'checkbox'; liveChk.className = 'match-live-chk'; liveChk.dataset.idx = String(i);
+      liveChk.title = 'Live match';
+      liveChk.disabled = disabled;
+      liveChk.addEventListener('change', function () {
+        if (liveChk.checked) {
+          var mp = document.getElementById('match-picker');
+          mp.value = String(i);
+          mp.dispatchEvent(new Event('change'));
+        }
+        syncLiveChecks();   // unchecking is a no-op: one match is always live
+      });
+      hdr.appendChild(liveChk);
       /* editable match label (blank = "MATCH n") — shown on the Waiting TVC /
          Waiting Lobby / Today's Schedule / L3 Lobby match boxes */
       var lbl;
       if (poTheme) {   // label editing is Playoffs-only; other themes keep the fixed "MATCH n"
         lbl = document.createElement('input');
         lbl.type = 'text'; lbl.className = 'match-label-inp';
-        lbl.placeholder = 'MATCH ' + (i + 1);
+        lbl.placeholder = 'MATCH ' + matchNumberFor(i, localState.day || 1);
         lbl.value = m.matchLabel || '';
         lbl.disabled = disabled;
         lbl.addEventListener('blur', (function (idx, inp) { return function () {
@@ -1355,12 +1477,12 @@
       } else {
         lbl = document.createElement('span');
         lbl.className = 'match-num-lbl';
-        lbl.textContent = disabled ? '' : 'MATCH ' + (i + 1);
+        lbl.textContent = disabled ? '' : 'MATCH ' + matchNumberFor(i, localState.day || 1);
       }
       hdr.appendChild(lbl);
       var timeInp = document.createElement('input');
       timeInp.type = 'text'; timeInp.className = 'match-time-inp';
-      timeInp.value = m.time || DEFAULT_TIMES[i];
+      timeInp.value = m.time || DEFAULT_TIMES[i] || '';
       timeInp.addEventListener('blur', (function (idx, inp) { return function () {
         var tm = getMatches().slice();
         tm[idx] = Object.assign({}, tm[idx], { time: inp.value });
@@ -1382,6 +1504,17 @@
         saveMatches(tm);
       }; })(i, stageInp));
       stageInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') stageInp.blur(); });
+      hdr.appendChild(buildSeriesSpinner(m.series || 'BO5', disabled, function (v) {
+        var tm = getMatches().slice();
+        tm[i] = Object.assign({}, tm[i], { series: v });
+        saveMatches(tm);
+        if ((localState.match || 1) === i + 1) applyLiveSeries();
+      }));
+      hdr.appendChild(buildGroupSelect(m.group, disabled, function (v) {
+        var tm = getMatches().slice();
+        tm[i] = Object.assign({}, tm[i], { group: v });
+        saveMatches(tm);
+      }));
       hdr.appendChild(stageInp);
 
       /* match type selector — picks the Waiting Screen TVC match box art */
@@ -1506,6 +1639,7 @@
 
     updateShowLabel();
     updateMatchPicker();
+    syncLiveChecks();
   }
 
   var LOGO_V = Date.now();
@@ -1593,9 +1727,12 @@
 
   /* ── TOMORROW'S MATCHES ── */
   function getTomorrowMatches() {
-    return localState.tomorrowMatches || DEFAULT_TIMES.map(function (t) {
+    var list = (localState.tomorrowMatches || DEFAULT_TIMES.map(function (t) {
       return { team1Id: '', team1Name: '', team1Short: '', team2Id: '', team2Name: '', team2Short: '', vsDisplay: 'VS', time: t };
-    });
+    })).slice();
+    if (rebroadcastMode) while (list.length < matchCountOf('tomorrowMatchCount'))
+      list.push({ team1Id: '', team1Name: '', team1Short: '', team2Id: '', team2Name: '', team2Short: '', vsDisplay: 'VS', time: '' });
+    return list;
   }
 
   function saveTomorrowMatches(tm) {
@@ -1606,18 +1743,22 @@
   function renderTomorrowMatches() {
     var container = document.getElementById('tomorrow-matches-list');
     if (!container) return;
+    var cv = document.getElementById('tomorrow-count-val'); if (cv) cv.textContent = matchCountOf('tomorrowMatchCount');
+    syncTz();
     container.innerHTML = '';
     var today = localState.day || 1;
     // Day 1→tomorrow Day 2 (3 matches), Day 2→Day 3 (2), Day 3→Day 1 next week (2)
-    var tomorrowDay = poTheme ? today + 1 : (today % 3) + 1;   // playoffs: no weekly wrap
+    var tomorrowDay = (poTheme || rebroadcastMode) ? today + 1 : (today % 3) + 1;   // playoffs: no weekly wrap
     var isThreeMatch = (tomorrowDay === 2);
     var matches = getTomorrowMatches();
+    if (rebroadcastMode) matches = matches.slice(0, matchCountOf('tomorrowMatchCount'));
+    matches = autoFillLabels(matches, tomorrowDay, saveTomorrowMatches, Array.isArray(localState.tomorrowMatches));
 
     matches.forEach(function (m, i) {
-      var disabled = poTheme ? (i >= poMatchCount(tomorrowDay)) : (i === 0 && !isThreeMatch);
+      var disabled = rebroadcastMode ? (i >= matchCountOf('tomorrowMatchCount')) : poTheme ? (i >= poMatchCount(tomorrowDay)) : (i === 0 && !isThreeMatch);
       var mt = matchTypeOf(m);
       var card = document.createElement('div');
-      card.className = 'match-card' + (disabled ? ' disabled' : '') + (mt !== 'regular' ? ' rivalry' : '');
+      card.className = 'match-card' + (disabled ? ' disabled' : '');
 
       /* header */
       var hdr = document.createElement('div');
@@ -1626,7 +1767,7 @@
       if (poTheme) {
         numLbl = document.createElement('input');
         numLbl.type = 'text'; numLbl.className = 'match-label-inp';
-        numLbl.placeholder = 'MATCH ' + (i + 1);
+        numLbl.placeholder = 'MATCH ' + matchNumberFor(i, tomorrowDay);
         numLbl.value = m.matchLabel || '';
         numLbl.addEventListener('blur', (function (idx, inp) { return function () {
           var tm = getTomorrowMatches().slice();
@@ -1642,7 +1783,7 @@
       hdr.appendChild(numLbl);
       var timeInp = document.createElement('input');
       timeInp.type = 'text'; timeInp.className = 'match-time-inp';
-      timeInp.value = m.time || DEFAULT_TIMES[i];
+      timeInp.value = m.time || DEFAULT_TIMES[i] || '';
       timeInp.addEventListener('blur', (function (idx, inp) { return function () {
         var tm = getTomorrowMatches().slice();
         tm[idx] = Object.assign({}, tm[idx], { time: inp.value });
@@ -1665,6 +1806,16 @@
         saveTomorrowMatches(tm);
       }; })(i, stageInp));
       stageInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') stageInp.blur(); });
+      hdr.appendChild(buildSeriesSpinner(m.series || 'BO7', disabled, function (v) {
+        var tm = getTomorrowMatches().slice();
+        tm[i] = Object.assign({}, tm[i], { series: v });
+        saveTomorrowMatches(tm);
+      }));
+      hdr.appendChild(buildGroupSelect(m.group, disabled, function (v) {
+        var tm = getTomorrowMatches().slice();
+        tm[i] = Object.assign({}, tm[i], { group: v });
+        saveTomorrowMatches(tm);
+      }));
       hdr.appendChild(stageInp);
 
       /* match type selector — same star/rivalry options as Today's
@@ -1805,7 +1956,80 @@
     });
   });
 
+  /* Layout changes (both server modes): Match Info row order, Day up to 15, Bo labels, match-count spinners. */
+  (function () {
+  rebroadcastMode = true;
+  /* "Number of matches" spinners at the top of Today's / Tomorrow's Matches (1-8). */
+  [['today', 'todayMatchCount', 'tab-content-today', 'Number of matches today'],
+   ['tomorrow', 'tomorrowMatchCount', 'tab-content-tomorrow', 'Number of matches tomorrow']].forEach(function (c) {
+    var wrap = document.createElement('div');
+    wrap.className = 'meta-field';
+    wrap.style.marginBottom = '12px';
+    wrap.innerHTML = '<div class="meta-label">' + c[3] + '</div><div class="spinner-row">' +
+      '<button class="btn btn-spin" id="' + c[0] + '-count-minus">\u2212</button>' +
+      '<div class="spinner-val" id="' + c[0] + '-count-val">' + matchCountOf(c[1]) + '</div>' +
+      '<button class="btn btn-spin" id="' + c[0] + '-count-plus">+</button></div>';
+    var tab = document.getElementById(c[2]);
+    /* timezone box to the right of the spinner — appended to every match time on the Fullscreen waiting screen */
+    var tzWrap = document.createElement('div');
+    tzWrap.className = 'meta-field';
+    tzWrap.innerHTML = '<div class="meta-label">Timezone</div><input type="text" class="tz-input" id="tz-' + c[0] + '" style="width:130px" autocomplete="off" spellcheck="false">';
+    var topRow = document.createElement('div');
+    topRow.style.cssText = 'display:flex;align-items:flex-end;gap:28px;margin-bottom:12px;';
+    wrap.style.marginBottom = '0';
+    topRow.appendChild(wrap); topRow.appendChild(tzWrap);
+    tab.insertBefore(topRow, tab.firstChild);
+    (function (inp) {
+      inp.value = tzValue();
+      inp.addEventListener('blur', function () {
+        var v = inp.value.trim();
+        localState.timezone = v;
+        push({ timezone: v });
+        syncTz();
+      });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') inp.blur(); });
+    })(tzWrap.querySelector('input'));
+    function step(delta) {
+      var n = Math.max(1, Math.min(8, matchCountOf(c[1]) + delta));
+      localState[c[1]] = n;
+      document.getElementById(c[0] + '-count-val').textContent = n;
+      var patch = {}; patch[c[1]] = n; push(patch);
+      if (c[0] === 'today') { clampMatchToDay(); updateMatchPicker(); renderTodayMatches(); } else renderTomorrowMatches();
+    }
+    document.getElementById(c[0] + '-count-minus').addEventListener('click', function () { step(-1); });
+    document.getElementById(c[0] + '-count-plus').addEventListener('click', function () { step(1); });
+  });
+  renderTodayMatches(); renderTomorrowMatches(); updateMatchPicker(); clampMatchToDay();
+  /* Stage / Day changes renumber the matches (Swiss Stage: Day 1 = Match 1-8, Day 2 = 9-16 ...). */
+  ['stage', 'day-minus', 'day-plus'].forEach(function (id) {
+    document.getElementById(id).addEventListener(id === 'stage' ? 'change' : 'click', function () {
+      setTimeout(function () { renderTodayMatches(); renderTomorrowMatches(); }, 0);
+    });
+  });
+  /* Row 1 order: Stage, Day (spinner, up to 15), Format (Bo1/3/5/7), Match, Game. */
+  var row1 = document.getElementById('stage').closest('.meta-row');
+  var stageF = document.getElementById('stage').closest('.meta-field');
+  var dayF = document.getElementById('day-val').closest('.meta-field');
+  var fmtF = document.getElementById('series').closest('.meta-field');
+  stageF.after(dayF); dayF.after(fmtF);
+  row1.appendChild(document.getElementById('series-tomorrow').closest('.meta-field'));  /* Tomorrow's Format after Reset */
+  fmtF.classList.remove('grow'); stageF.classList.remove('grow');
+  var wf = document.getElementById('week-field'); if (wf) wf.style.display = 'none';
+  [['series','series'],['series-tomorrow','series-tomorrow']].forEach(function(a){
+    Array.prototype.forEach.call(document.getElementById(a[0]).options, function(o){ o.textContent = o.value.replace('BO', 'Bo'); });
+  });
+  var dv = document.getElementById('day-val'); if (dv && (localState.day || 1) > 15) { localState.day = 15; dv.textContent = 15; }
+  })();
+
+  /* Server Mode REBROADCAST only: rename the caster slots (labels only — same fields/data). */
+  fetch('/api/server-mode', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+    if (!d || d.mode !== 'REBROADCAST') return;
+    var tw = document.getElementById('countdown-min'); tw = tw && tw.closest('.show-label-wrap'); if (tw) tw.style.display = '';   /* REBROADCAST: bring back the countdown control */
+    ['Panel Host', 'Caster 1', 'Caster 2'].forEach(function(n, k){ var el = document.getElementById('caster-label-' + k); if (el) el.textContent = n; });
+  }).catch(function(){});
+
 })();
+
 </script>
 </body>
 </html>

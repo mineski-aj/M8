@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <base href="/">
+  <script src="html/js/cache-bust.js"></script>
+  <script src="html/js/sponsor-set.js"></script>
+  <script src="html/js/event-log-client.js"></script>
+  <script src="html/js/overlay-sse-shim.js"></script>
+  <title>Lower Thirds</title>
+  <style>
+    @font-face { font-family: 'Tandelle'; font-weight: 700; font-display: block;
+      src: url('/assets/fonts/MCT/TandelleRg-Bold.otf') format('opentype'); }
+    @font-face { font-family: 'Monument Extended'; font-weight: 800; font-display: block;
+      src: url('/assets/fonts/MCT/MonumentExtended-Ultrabold.otf') format('opentype'); }
+    @font-face { font-family: 'Monument Extended'; font-weight: 400; font-display: block;
+      src: url('/assets/fonts/MCT/MonumentExtended-Regular.ttf') format('truetype'); }
+
+    @font-face { font-family: 'Source Han Sans'; font-weight: 500; font-display: block;
+      src: url('/assets/fonts/MCT/SourceHanSans/SourceHanSansCN-Medium.otf') format('opentype'); }
+
+    @font-face { font-family: 'Source Han Sans'; font-weight: 700; font-display: block;
+      src: url('/assets/fonts/MCT/SourceHanSans/SourceHanSansCN-Bold.otf') format('opentype'); }
+
+    html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+    /* 1920x1080 transparent stage. Every lower-third element is its own absolutely-positioned child of #stage. */
+    #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; }
+    #stage > * { position: absolute; }
+
+    /* ───────── HEADLINE ───────── */
+    #hl-backer { left: 298px; top: 896px; width: 1324px; height: 99px; opacity: 0; will-change: transform, opacity; }
+    #hl-logo   { left: 433px; top: 910px; width: 209px; height: 67px; opacity: 0; will-change: transform, opacity; }
+    #hl-text   { left: 681px; top: 911px; width: 800px; height: 70px; overflow: hidden; white-space: pre;
+      font-family: 'Tandelle', 'Impact', sans-serif; font-weight: 700; line-height: 70px; color: #fff; letter-spacing: 0; }
+    #hl-text .ch { display: inline-block; will-change: transform; transform: translateY(115%); }
+
+    /* ───────── NAME TAG (1 tag = panel host, 2 tags = caster 1 + 2, 3 tags = host + caster 1 + 2) ───────── */
+    .nt-bg { top: 896px; height: 99px; opacity: 0; will-change: transform, opacity; }
+    .nt-icon { width: 64px; height: 48px; opacity: 0; will-change: transform, opacity; }
+    .nt-name { height: 50px; overflow: hidden; white-space: pre; font-family: 'Monument Extended', sans-serif; font-weight: 800; font-size: 42px; line-height: 50px;
+      color: #fff; text-transform: uppercase; }
+    .nt-name .ch { display: inline-block; will-change: transform; transform: translateY(115%); }
+    .nt-sub { height: 28px; white-space: pre; font-family: 'Source Han Sans', 'General Sans', sans-serif; font-weight: 500; font-size: 21px; line-height: 28px;
+      color: #3ff7ee; opacity: 0; will-change: transform, opacity; }
+
+    /* ───────── AUDIENCE COMMENT (rolls through the Community Responses sheet) ───────── */
+    #ac-bg   { left: 298px; top: 896px; width: 1324px; height: 99px; opacity: 0; will-change: transform, opacity; }
+    #ac-icon { left: 448px; top: 922px; width: 64px; height: 48px; opacity: 0; will-change: transform, opacity; }
+    #ac-title { left: 549px; top: 914px; width: 230px; height: 59px; font-family: 'Monument Extended', sans-serif; font-weight: 800; font-size: 32.6px; line-height: 29.5px; }
+    #ac-title .ac-line { position: relative; height: 29.5px; overflow: hidden; white-space: pre; }   /* each line is its own mask: letters rise/fall inside their own row */
+    #ac-title .ch { display: inline-block; color: transparent; will-change: transform; transform: translateY(115%);
+      -webkit-background-clip: text; background-clip: text; }                                      /* gradient fill set per letter (continuous across the whole title) in buildTitle() */
+    #ac-name { left: 799px; top: 903px; width: 680px; height: 20px; white-space: nowrap; overflow: hidden; font-family: 'Source Han Sans', 'General Sans', sans-serif;
+      font-weight: 700; font-size: 15px; line-height: 20px; color: #8fd4ff; opacity: 0; will-change: transform, opacity; }
+    #ac-text { left: 803px; top: 926px; width: 670px; height: 60px; overflow: hidden; font-family: 'Source Han Sans', 'General Sans', sans-serif; font-weight: 500;
+      font-size: 17px; line-height: 20px; color: #fff; hyphens: auto; -webkit-hyphens: auto; overflow-wrap: anywhere; opacity: 0; will-change: transform, opacity; }
+  </style>
+</head>
+<body>
+<div id="stage" lang="en">
+  <img id="hl-backer" src="/assets/overlay/MCT/L3/mct-headline-backer.png" alt="">
+  <img id="hl-logo" src="/assets/overlay/MCT/L3/mct-headlinelogo.png" alt="">
+  <div id="hl-text"></div>
+  <img id="ac-bg" src="/assets/overlay/MCT/L3/mct_doublebg.png" alt="">
+  <img id="ac-icon" src="/assets/overlay/MCT/L3/mct_tagicon.png" alt="">
+  <div id="ac-title"></div>
+  <div id="ac-name"></div>
+  <div id="ac-text"></div>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var isPreview = /[?&]preview=1/.test(location.search);
+  var SAMPLE = 'FINAL SHOWDOWN BETWEEN MONSTER REGION!';
+  var EASE_OUT = 'cubic-bezier(.16,.84,.24,1)', EASE_IN = 'cubic-bezier(.5,0,.75,0)';
+
+  /* ═════════ HEADLINE ═════════ */
+  var Headline = (function () {
+    var backer = $('hl-backer'), logo = $('hl-logo'), box = $('hl-text');
+    var visible = false, shownText = '', busy = Promise.resolve(), MAX_W = 800, MAX_PX = 65, MIN_PX = 10;
+
+    function anim(el, frames, opts) { return el.animate(frames, Object.assign({ fill: 'both' }, opts)).finished.catch(function () {}); }
+    function fitSize(text) {
+      var c = document.createElement('canvas').getContext('2d');
+      c.font = '700 100px "Tandelle"';
+      var w = c.measureText(text).width || 1;
+      return Math.max(MIN_PX, Math.min(MAX_PX, 100 * MAX_W / w * 0.985));
+    }
+    function build(text) {                                  // one span per character (so they can stagger)
+      box.innerHTML = '';
+      box.style.fontSize = fitSize(text) + 'px';
+      var chars = [];
+      text.split('').forEach(function (ch) {
+        var s = document.createElement('span'); s.className = 'ch'; s.textContent = ch; box.appendChild(s); chars.push(s);
+      });
+      /* safety: the real laid-out width can differ a hair from the canvas estimate — shrink until nothing is clipped */
+      for (var k = 0; k < 4 && box.scrollWidth > MAX_W; k++) box.style.fontSize = (parseFloat(box.style.fontSize) * MAX_W / box.scrollWidth * 0.99) + 'px';
+      return chars;
+    }
+    function charsIn(chars, base) {
+      return Promise.all(chars.map(function (s, i) {
+        return anim(s, [{ transform: 'translateY(115%)' }, { transform: 'translateY(0)' }], { duration: 520, delay: base + i * 16, easing: EASE_OUT });
+      }));
+    }
+    function charsOut(chars, base) {
+      return Promise.all(chars.map(function (s, i) {
+        return anim(s, [{ transform: 'translateY(0)' }, { transform: 'translateY(-115%)' }], { duration: 340, delay: base + i * 9, easing: EASE_IN });
+      }));
+    }
+    function curChars() { return Array.prototype.slice.call(box.children); }
+
+    function playIn(text) {
+      shownText = text;
+      var chars = build(text);
+      backer.getAnimations().forEach(function (a) { a.cancel(); }); logo.getAnimations().forEach(function (a) { a.cancel(); });
+      var p = [
+        anim(backer, [
+          { opacity: 0, transform: 'translateY(28px)' },
+          { opacity: 1, transform: 'translateY(0)' }
+        ], { duration: 720, easing: EASE_OUT }),
+        anim(logo, [
+          { opacity: 0, transform: 'translateX(-34px) scale(.92)' },
+          { opacity: 1, transform: 'translateX(0) scale(1)' }
+        ], { duration: 560, delay: 300, easing: EASE_OUT }),
+        charsIn(chars, 420)
+      ];
+      return Promise.all(p);
+    }
+    function playOut() {
+      var chars = curChars();
+      return Promise.all([
+        charsOut(chars, 0),
+        anim(logo, [{ opacity: 1, transform: 'translateX(0) scale(1)' }, { opacity: 0, transform: 'translateX(-24px) scale(.94)' }], { duration: 340, delay: 120, easing: EASE_IN }),
+        anim(backer, [
+          { opacity: 1, transform: 'translateY(0)' },
+          { opacity: 0, transform: 'translateY(22px)' }
+        ], { duration: 520, delay: 220, easing: EASE_IN })
+      ]).then(function () { box.innerHTML = ''; shownText = ''; });
+    }
+    function swapText(text) {                                // headline changed while on air: old text rises out, new text rises in
+      if (text === shownText) return Promise.resolve();
+      return charsOut(curChars(), 0).then(function () {
+        shownText = text;
+        return charsIn(build(text), 40);
+      });
+    }
+
+    function queue(fn) { busy = busy.then(fn, fn); return busy; }
+    return {
+      show: function (text) { if (visible) return; visible = true; queue(function () { return playIn(text); }); },
+      hide: function () { if (!visible) return; visible = false; queue(playOut); },
+      setText: function (text) { if (!visible) return; queue(function () { return visible ? swapText(text) : null; }); },
+      isVisible: function () { return visible; }
+    };
+  })();
+
+
+  /* ═════════ NAME TAG ═════════ */
+  var NameTag = (function () {
+    var NAME_MAX_PX = 42, EASE_SNAP = 'cubic-bezier(.2,.9,.25,1)', EASE_POP = 'cubic-bezier(.34,1.56,.64,1)', EASE_FAST_IN = 'cubic-bezier(.55,0,.8,.3)';
+    var A = '/assets/overlay/MCT/L3/';
+    /* geometry read off the references (1920x1080) */
+    var VARIANTS = {
+      1: { bg: { src: A + 'mct_singlebg.png', left: 636, w: 648 }, icon: { left: 656, top: 923 },
+           slots: [{ box: 756, w: 520, align: 'left' }] },
+      2: { bg: { src: A + 'mct_doublebg.png', left: 298, w: 1324 }, icon: { left: 928, top: 922 },
+           slots: [{ box: 350, w: 520, align: 'right' }, { box: 1047, w: 520, align: 'left' }] },
+      3: { bg: { src: A + 'mct_triplebg.png', left: 69, w: 1782 }, icon: null,
+           slots: [{ box: 223.5, w: 480, align: 'center' }, { box: 719.5, w: 480, align: 'center' }, { box: 1216.5, w: 480, align: 'center' }] }
+    };
+    var stage = $('stage'), tags = {}, current = 0, busy = Promise.resolve(), casters = ['', '', ''];
+
+    function mk(tag, cls, id, css) { var e = document.createElement(tag); e.className = cls; e.id = id; Object.keys(css || {}).forEach(function (k) { e.style[k] = css[k]; }); stage.appendChild(e); return e; }
+    Object.keys(VARIANTS).forEach(function (n) {
+      var v = VARIANTS[n], t = tags[n] = { n: +n, slots: [] };
+      t.bg = mk('img', 'nt-bg', 'nt' + n + '-bg', { left: v.bg.left + 'px', width: v.bg.w + 'px' }); t.bg.src = v.bg.src; t.bg.alt = '';
+      if (v.icon) { t.icon = mk('img', 'nt-icon', 'nt' + n + '-icon', { left: v.icon.left + 'px', top: v.icon.top + 'px' }); t.icon.src = A + 'mct_tagicon.png'; t.icon.alt = ''; }
+      v.slots.forEach(function (sl, i) {
+        var name = mk('div', 'nt-name', 'nt' + n + '-name' + i, { left: sl.box + 'px', top: '905px', width: sl.w + 'px', textAlign: sl.align });
+        var sub  = mk('div', 'nt-sub',  'nt' + n + '-sub' + i,  { left: sl.box + 'px', top: '953px', width: sl.w + 'px', textAlign: sl.align });
+        t.slots.push({ name: name, sub: sub, align: sl.align, w: sl.w, text: '' });
+      });
+    });
+
+    function anim(el, frames, opts) { return el.animate(frames, Object.assign({ fill: 'both' }, opts)).finished.catch(function () {}); }
+    function fit(text, el, maxW) {
+      var c = document.createElement('canvas').getContext('2d'); c.font = '800 100px "Monument Extended"';
+      var w = c.measureText(text).width || 1;
+      el.style.fontSize = Math.max(14, Math.min(NAME_MAX_PX, 100 * maxW / w * 0.985)) + 'px';
+      for (var k = 0; k < 4 && el.scrollWidth > maxW; k++) el.style.fontSize = (parseFloat(el.style.fontSize) * maxW / el.scrollWidth * 0.99) + 'px';
+    }
+    function build(sl, text) {
+      sl.name.innerHTML = ''; sl.name.style.fontSize = '';
+      var chars = text.split('').map(function (ch) { var s = document.createElement('span'); s.className = 'ch'; s.textContent = ch; sl.name.appendChild(s); return s; });
+      if (text) fit(text, sl.name, sl.w);
+      sl.text = text;
+      return chars;
+    }
+    /* snappy: tiny stagger, short travel time */
+    function charsIn(chars, base) { return Promise.all(chars.map(function (s, i) { return anim(s, [{ transform: 'translateY(115%)' }, { transform: 'translateY(0)' }], { duration: 230, delay: base + i * 7, easing: EASE_SNAP }); })); }
+    function charsOut(chars, base) { return Promise.all(chars.map(function (s, i) { return anim(s, [{ transform: 'translateY(0)' }, { transform: 'translateY(-115%)' }], { duration: 160, delay: base + i * 4, easing: EASE_FAST_IN }); })); }
+    function subIn(sl, delay) { return anim(sl.sub, [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 240, delay: delay, easing: EASE_SNAP }); }
+    function subOut(sl, delay) { return anim(sl.sub, [{ opacity: 1, transform: 'translateY(0)' }, { opacity: 0, transform: 'translateY(-8px)' }], { duration: 150, delay: delay, easing: EASE_FAST_IN }); }
+
+    function roleLine(slotIdx, tagN, name) {
+      var role = (tagN === 1 || (tagN === 3 && slotIdx === 0)) ? 'PANEL HOST' : 'CASTER';
+      return name ? role + ' - @' + name : '';
+    }
+    function namesFor(n) {                          // [{name, sub}] per slot — host = casters[0], caster 1 = [1], caster 2 = [2]
+      var idx = n === 1 ? [0] : n === 2 ? [1, 2] : [0, 1, 2];
+      var SAMPLE = ['Ranger Emas', 'Pak Pulung', 'Ranger Emas'];
+      return idx.map(function (ci, si) {
+        var nm = casters[ci] || (isPreview ? SAMPLE[ci] : '');
+        return { name: nm.toUpperCase(), sub: roleLine(si, n, nm) };
+      });
+    }
+
+    function playIn(n) {
+      var t = tags[n], data = namesFor(n), ps = [];
+      t.bg.getAnimations().forEach(function (a) { a.cancel(); });
+      ps.push(anim(t.bg, [
+        { opacity: 0, transform: 'translateY(26px)' },
+        { opacity: 1, transform: 'translateY(0)' }
+      ], { duration: 560, easing: 'cubic-bezier(.16,.84,.24,1)' }));
+      if (t.icon) ps.push(anim(t.icon, [{ opacity: 0, transform: 'scale(.55)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 380, delay: 200, easing: EASE_POP }));
+      t.slots.forEach(function (sl, i) {
+        var base = 230 + i * 70;
+        sl.sub.textContent = data[i].sub;
+        ps.push(charsIn(build(sl, data[i].name), base), subIn(sl, base + 110));
+      });
+      return Promise.all(ps);
+    }
+    function playOut(n) {
+      var t = tags[n], ps = [];
+      t.slots.forEach(function (sl, i) { ps.push(charsOut(Array.prototype.slice.call(sl.name.children), i * 40), subOut(sl, i * 40)); });
+      if (t.icon) ps.push(anim(t.icon, [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.6)' }], { duration: 180, delay: 60, easing: EASE_FAST_IN }));
+      ps.push(anim(t.bg, [
+        { opacity: 1, transform: 'translateY(0)' },
+        { opacity: 0, transform: 'translateY(18px)' }
+      ], { duration: 380, delay: 110, easing: 'cubic-bezier(.5,0,.75,0)' }));
+      return Promise.all(ps).then(function () { t.slots.forEach(function (sl) { sl.name.innerHTML = ''; sl.sub.textContent = ''; sl.text = ''; }); });
+    }
+    function swapNames(n) {                         // a caster name changed while the tag is on air
+      var t = tags[n], data = namesFor(n), ps = [];
+      t.slots.forEach(function (sl, i) {
+        if (sl.text === data[i].name) return;
+        ps.push(charsOut(Array.prototype.slice.call(sl.name.children), 0).then(function () {
+          sl.sub.textContent = data[i].sub;
+          return Promise.all([charsIn(build(sl, data[i].name), 20), subIn(sl, 60)]);
+        }));
+      });
+      return Promise.all(ps);
+    }
+
+    function queue(fn) { busy = busy.then(fn, fn); return busy; }
+    return {
+      show: function (n) {                           // only one tag layout on air at a time: the old one leaves, then the new one comes in
+        queue(function () {
+          if (current === n) return swapNames(n);
+          var leaving = current; current = n;
+          return (leaving ? playOut(leaving) : Promise.resolve()).then(function () { return playIn(n); });
+        });
+      },
+      hide: function (n) { queue(function () { if (current !== n) return null; current = 0; return playOut(n); }); },
+      setCasters: function (c) { casters = c; if (current) queue(function () { return current ? swapNames(current) : null; }); },
+      current: function () { return current; }
+    };
+  })();
+
+
+  /* ═════════ AUDIENCE COMMENT ═════════ */
+  var AudienceComment = (function () {
+    var bg = $('ac-bg'), icon = $('ac-icon'), title = $('ac-title'), nameEl = $('ac-name'), textEl = $('ac-text');
+    var EASE_OUT = 'cubic-bezier(.16,.84,.24,1)', EASE_IN = 'cubic-bezier(.5,0,.75,0)', EASE_POP = 'cubic-bezier(.34,1.56,.64,1)';
+    var visible = false, row = null, shown = '', busy = Promise.resolve(), sampleOk = false, sampleTimer = null;
+    var SAMPLE = { name: 'SocialMediaNameHere', message: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Quis ipsum suspendisse ultrices gravida. Risus commodo viverra maecenas accumsan lacus vel facilisis.' };
+
+    function anim(el, frames, o) { return el.animate(frames, Object.assign({ fill: 'both' }, o)).finished.catch(function () {}); }
+    var TITLE_GRAD = 'linear-gradient(115deg, #43fff0 0%, #3ff7ee 58%, #35b4ee 86%, #2f9cf0 100%)';
+    function buildTitle() {
+      title.innerHTML = '';
+      var chars = [], lines = ['AUDIENCE', 'COMMENT'], rows = [];
+      lines.forEach(function (txt) {
+        var row = document.createElement('div'); row.className = 'ac-line'; title.appendChild(row); rows.push(row);
+        txt.split('').forEach(function (ch) { var sp = document.createElement('span'); sp.className = 'ch'; sp.textContent = ch; row.appendChild(sp); chars.push(sp); });
+      });
+      /* one gradient across the whole title: every letter paints the same box, shifted to where the letter sits in it */
+      var W = Math.max.apply(null, rows.map(function (r) { return r.scrollWidth; })), H = title.offsetHeight || 59;
+      chars.forEach(function (sp) {
+        var row = sp.parentNode;
+        sp.style.backgroundImage = TITLE_GRAD;
+        sp.style.backgroundSize = W + 'px ' + H + 'px';
+        sp.style.backgroundPosition = (-sp.offsetLeft) + 'px ' + (-(row.offsetTop + sp.offsetTop)) + 'px';
+      });
+      return chars;
+    }
+    function lineOf(r) {
+      var r2 = r || (isPreview && sampleOk ? SAMPLE : null);   // sample only if no real line arrived within a few seconds (never the lorem flash while the server is still loading the sheet)
+      if (!r2) return { name: '', msg: '' };
+      var n = String(r2.name || '').replace(/^@+/, '').trim();
+      return { name: n ? '@' + n : '', msg: String(r2.message || '').trim() };
+    }
+    /* Short comments get BIGGER type: the largest size (17-32 px) that still fits 3 lines in the box. The name scales with it
+       (15-24 px) and the name + comment block is re-centred in the bar (the 3-line / 17 px case lands exactly on the reference). */
+    var BOX_W = 670, MAX_LINES = 3, MIN_PX = 10, MAX_PX = 32, BASE_PX = 17;
+    var BLOCK_MAX = 84;                                              // name + comment must fit inside the bar (the 3-line / 17 px reference block is 83 px)
+    function nameSizeFor(px) { return Math.max(15, Math.min(24, Math.round(px * 15 / BASE_PX))); }
+    function fitLine(l) {
+      nameEl.textContent = l.name;
+      textEl.textContent = l.msg;
+      textEl.style.height = 'auto';                                  // measure the natural height first
+      var px = MAX_PX, lh;
+      for (; px > MIN_PX; px -= 0.5) {
+        lh = Math.round(px * 1.18);
+        textEl.style.fontSize = px + 'px'; textEl.style.lineHeight = lh + 'px';
+        var nh = l.name ? Math.round(nameSizeFor(px) * 1.3) + 2 : 0;
+        var h = textEl.scrollHeight;
+        if (h <= lh * MAX_LINES + 1 && h + nh <= BLOCK_MAX) break;
+      }
+      lh = Math.round(px * 1.18);
+      var textH = Math.min(textEl.scrollHeight, lh * MAX_LINES);
+      var npx = nameSizeFor(px);
+      nameEl.style.fontSize = npx + 'px';
+      for (var k = 0; k < 6 && nameEl.scrollWidth > nameEl.clientWidth && npx > 10; k++) { npx -= 1; nameEl.style.fontSize = npx + 'px'; }
+      var nameH = l.name ? Math.round(npx * 1.3) : 0, gap = l.name ? 2 : 0, total = nameH + gap + textH;
+      var top = Math.max(898, Math.round(945.5 - total / 2));
+      nameEl.style.top = top + 'px'; nameEl.style.height = nameH + 'px'; nameEl.style.lineHeight = nameH + 'px';
+      textEl.style.top = (top + nameH + gap) + 'px'; textEl.style.height = textH + 'px';
+    }
+    function setLine(l) {
+      fitLine(l);
+      shown = l.name + '\u0001' + l.msg;
+    }
+    var rise = [{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'translateY(0)' }];
+    var sink = [{ opacity: 1, transform: 'translateY(0)' }, { opacity: 0, transform: 'translateY(-12px)' }];
+
+    function playIn() {
+      var l = lineOf(row), chars = buildTitle(), ps = [];
+      [bg, icon, nameEl, textEl].forEach(function (e) { e.getAnimations().forEach(function (a) { a.cancel(); }); });
+      setLine(l);
+      ps.push(anim(bg, [{ opacity: 0, transform: 'translateY(26px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 560, easing: EASE_OUT }));
+      ps.push(anim(icon, [{ opacity: 0, transform: 'scale(.55)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 380, delay: 200, easing: EASE_POP }));
+      ps.push(Promise.all(chars.map(function (c, i) {
+        return anim(c, [{ transform: 'translateY(115%)' }, { transform: 'translateY(0)' }], { duration: 260, delay: 260 + i * 12, easing: EASE_OUT });
+      })));
+      ps.push(anim(nameEl, rise, { duration: 340, delay: 380, easing: EASE_OUT }));
+      ps.push(anim(textEl, rise, { duration: 380, delay: 440, easing: EASE_OUT }));
+      return Promise.all(ps);
+    }
+    function playOut() {
+      var chars = Array.prototype.slice.call(title.querySelectorAll('.ch')), ps = [];
+      ps.push(anim(textEl, sink, { duration: 220, easing: EASE_IN }));
+      ps.push(anim(nameEl, sink, { duration: 220, delay: 30, easing: EASE_IN }));
+      ps.push(Promise.all(chars.map(function (c, i) { return anim(c, [{ transform: 'translateY(0)' }, { transform: 'translateY(-115%)' }], { duration: 180, delay: i * 5, easing: EASE_IN }); })));
+      ps.push(anim(icon, [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.6)' }], { duration: 180, delay: 60, easing: EASE_IN }));
+      ps.push(anim(bg, [{ opacity: 1, transform: 'translateY(0)' }, { opacity: 0, transform: 'translateY(20px)' }], { duration: 360, delay: 120, easing: EASE_IN }));
+      return Promise.all(ps).then(function () { title.innerHTML = ''; nameEl.textContent = ''; textEl.textContent = ''; shown = ''; });
+    }
+    function swap() {                                         // next response: the old one rises out, the new one rises in
+      var l = lineOf(row);
+      if (l.name + '\u0001' + l.msg === shown) return Promise.resolve();
+      return Promise.all([anim(nameEl, sink, { duration: 200, easing: EASE_IN }), anim(textEl, sink, { duration: 200, delay: 30, easing: EASE_IN })]).then(function () {
+        setLine(l);
+        return Promise.all([anim(nameEl, rise, { duration: 320, easing: EASE_OUT }), anim(textEl, rise, { duration: 360, delay: 50, easing: EASE_OUT })]);
+      });
+    }
+    function queue(fn) { busy = busy.then(fn, fn); return busy; }
+    return {
+      show: function () {
+        if (visible) return; visible = true;
+        sampleOk = false; clearTimeout(sampleTimer);
+        if (isPreview) sampleTimer = setTimeout(function () { sampleOk = true; if (visible && !row) queue(function () { return visible ? swap() : null; }); }, 5000);
+        queue(playIn);
+      },
+      hide: function () { if (!visible) return; visible = false; queue(playOut); },
+      setRow: function (r) { row = r || null; if (visible) queue(function () { return visible ? swap() : null; }); }
+    };
+  })();
+
+  function parseCasters(st) {
+    var c = (st && st.casters) || [];
+    return [0, 1, 2].map(function (i) { var v = String(c[i] == null ? '' : c[i]).trim(); return /^none$/i.test(v) ? '' : v; });
+  }
+  function pollMatch() {
+    fetch('/match/state', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (st) {
+      var c = parseCasters(st);
+      if (c.join('\u0001') === pollMatch.last) return;
+      pollMatch.last = c.join('\u0001');
+      NameTag.setCasters(c);
+    }).catch(function () {});
+  }
+  pollMatch(); setInterval(pollMatch, 1000);
+
+  /* ═════════ headline text (Dashboard → Dynamic tab → PH Headline) ═════════ */
+  var headlineText = '', loaded = false, draft = null;   // draft = headline being typed in the Dynamic tab (preview only)
+  function currentText() {
+    var t = draft !== null ? draft : headlineText;
+    return (t || (isPreview && !loaded ? SAMPLE : '')).toUpperCase();   // sample only if the saved value couldn't be read
+  }
+  function pollText() {
+    fetch('/api/dynamic-content', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      var t = String((d && d.match_headline) || '').replace(/\s+/g, ' ').trim();
+      loaded = true;
+      if (t === headlineText) return;
+      headlineText = t;
+      if (draft === null) Headline.setText(currentText());                      // only does anything while the headline is on air
+    }).catch(function () {});
+  }
+  var fontsReady = (document.fonts && document.fonts.load) ? document.fonts.load('700 65px "Tandelle"') : Promise.resolve();
+  function show() { fontsReady.then(function () { Headline.show(currentText()); }); }
+  pollText(); setInterval(pollText, 1000);
+
+  /* ═════════ live control ═════════ */
+  /* Control-tab preview (?preview=1) is a MONITOR: it follows the real on-air state like any browser source (the dashboard toggles are
+     the only controls) and just fills empty names with samples + mirrors the headline being typed in the Dynamic tab. */
+  if (isPreview) {
+    window.addEventListener('message', function (e) {
+      if (e.origin !== location.origin || !e.data || e.data.type !== 'dynamic-draft') return;
+      draft = String(e.data.match_headline || '').replace(/\s+/g, ' ').trim();
+      Headline.setText(currentText());
+    });
+  }
+  var sse = createOverlaySSE();
+  sse.addEventListener('lowerthird', function (e) {
+    try {
+      var d = JSON.parse(e.data);
+      var m = /^nametag([123])$/.exec(d.name);
+      if (m) { if (d.action === 'show') NameTag.show(+m[1]); else NameTag.hide(+m[1]); return; }
+      if (d.name === 'audiencecomment') {
+        if (d.action === 'line') AudienceComment.setRow(d.row);
+        else if (d.action === 'show') AudienceComment.show(); else AudienceComment.hide();
+        return;
+      }
+      if (d.name !== 'headline') return;
+      if (d.action === 'show') show(); else Headline.hide();
+    } catch (err) {}
+  });
+  fetch('/overlay/lowerthird-state', { cache: 'no-store' }).then(function (r) { return r.json(); })
+    .then(function (s) { if (!s) return; if (s.headline) show(); [1, 2, 3].forEach(function (n) { if (s['nametag' + n]) NameTag.show(n); }); }).catch(function () {});
+  fetch('/api/audience-comment', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (a) {
+    if (a && a.active) { AudienceComment.setRow(a.row); AudienceComment.show(); }
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>

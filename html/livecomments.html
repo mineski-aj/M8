@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <base href="/">
+  <script src="html/js/cache-bust.js"></script>
+  <script src="html/js/event-log-client.js"></script>
+  <script src="html/js/overlay-sse-shim.js"></script>
+  <link rel="stylesheet" href="html/livecomments.css">
+  <title>Live Comments</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+    /* The output canvas: width x height come from the Live Comments tab (Output canvas), top-left aligned. */
+    #wall { position: absolute; left: 0; top: 0; width: 480px; height: 900px; overflow: hidden; background: var(--yc-bg); }
+    #wall.transparent { background: transparent; }
+    #feed { position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; padding-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div id="wall"><div id="feed"></div></div>
+<script src="html/js/ytchat-view.js"></script>
+<script>
+  /* Live output of the YouTube chat feed. Everything (feed, font size, speed, photos, filter words, canvas size, background) is
+     controlled from Dashboard → Live Comments; this page only displays it. */
+  var wall = document.getElementById('wall');
+  YtChat.createView({
+    feed: document.getElementById('feed'),
+    stickAlways: true,
+    placeholder: '',
+    onPrefs: function (p) {
+      wall.style.width = p.width + 'px';
+      wall.style.height = p.height + 'px';
+      wall.classList.toggle('transparent', p.bg === 'transparent');
+    }
+  });
+</script>
+</body>
+</html>

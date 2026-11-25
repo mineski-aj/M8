@@ -1,6 +1,5 @@
 /* ── overlay-core.js ── shared state, polling engine, utilities ── */
 
-const DEFAULT_URL = 'https://theapi.dpdns.org/api/sub-info/';
 
 /* Shared "eventer" badge slots (lvl15, first-item-priority, …) —
    70px box + 19px gap = 89px step, player 1..5. */

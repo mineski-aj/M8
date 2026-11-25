@@ -914,8 +914,10 @@
   <button class="tab-btn" data-page="matchboard">Match Board</button>
   <button class="tab-btn" data-page="arrangement">Arrangement</button>
   <button class="tab-btn active" data-page="control">Control</button>
+  <button class="tab-btn" data-page="dynamic">Dynamic</button>
   <button class="tab-btn" data-page="roster">Roster</button>
   <button class="tab-btn" data-page="sponsors">Sponsors</button>
+  <button class="tab-btn" data-page="livecomments">Live Comments</button>
   <button class="tab-btn" data-page="edit">Edit</button>
   <button class="tab-btn" data-page="settings">Settings</button>
   <button class="tab-btn" data-page="logs" id="logs-tab-btn">Logs<span id="logs-tab-badge"></span></button>
@@ -939,6 +941,20 @@
 <!-- Page: Roster -->
 <div id="page-roster" class="page">
   <iframe id="roster-iframe" src="/html/roster-dashboard.html" allow="autoplay"
+    style="width:100%;flex:1;border:none;min-height:0;"></iframe>
+</div>
+
+<!-- Page: Dynamic Content (headline / ticker text boxes; Lower Thirds → Headline reads the PH headline) -->
+<div id="page-dynamic" class="page">
+  <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding-bottom:10px;flex-shrink:0;">
+    <a href="/html/dynamic.html" target="_blank" class="btn btn-open" style="font-size:12px;padding:5px 14px;text-decoration:none;">Open ↗</a>
+  </div>
+  <iframe src="/html/dynamic.html" style="width:100%;flex:1;border:none;min-height:0;"></iframe>
+</div>
+
+<!-- Page: Live Comments (YouTube chat feed controller; the live output is html/livecomments.html, listed in Control) -->
+<div id="page-livecomments" class="page">
+  <iframe id="livecomments-iframe" src="/html/livecomments-dashboard.html" allow="autoplay"
     style="width:100%;flex:1;border:none;min-height:0;"></iframe>
 </div>
 
@@ -1073,18 +1089,16 @@
 <div id="settings-col-left">
 
   <div class="settings-section">
-    <div class="settings-section-hdr">Debug</div>
+    <div class="settings-section-hdr">Server Mode</div>
     <div class="settings-section-body">
       <div class="settings-row">
-        <label>Debug Mode</label>
-        <button id="btn-debug-mode" class="settings-btn">Debug Mode: …</button>
-        <span id="debug-mode-status" class="settings-status"></span>
+        <label>Mode</label>
+        <button id="btn-server-mode-main" class="settings-btn">MAIN</button>
+        <button id="btn-server-mode-rebroadcast" class="settings-btn">REBROADCAST</button>
+        <span id="server-mode-status" class="settings-status"></span>
       </div>
       <div style="font-size:11px;color:#666;">
-        Off by default so overlay debug bars (SHOW/HIDE/PREVIEW per feature,
-        plus any placeholder-data test tools) are never one keypress away
-        on a real broadcast. Turn this ON here first, then press <code>`</code>
-        on the overlay page itself to open its debug bar.
+        MAIN is the normal server. REBROADCAST changes some server features.
       </div>
     </div>
   </div>
@@ -1182,7 +1196,7 @@
     <div class="settings-section-body">
       <div class="settings-row">
         <label for="highlights-api-input">Base URL</label>
-        <input type="text" id="highlights-api-input" class="settings-input" placeholder="https://theapi.dpdns.org/api/game-mvp/view/" spellcheck="false" autocomplete="off" />
+        <input type="text" id="highlights-api-input" class="settings-input" placeholder="https://example.com/api/game-mvp/view/" spellcheck="false" autocomplete="off" />
         <button id="highlights-api-apply" class="settings-btn">Apply</button>
         <span id="highlights-api-status" class="settings-status"></span>
       </div>
@@ -1198,6 +1212,20 @@
         <button id="hrm-api-apply" class="settings-btn">Apply</button>
         <span id="hrm-api-status" class="settings-status"></span>
       </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-hdr">Community Responses</div>
+    <div class="settings-section-body">
+      <div class="settings-row">
+        <label for="community-api-input">Sheet link (CSV)</label>
+        <input type="text" id="community-api-input" class="settings-input" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv" spellcheck="false" autocomplete="off" />
+        <button id="community-api-apply" class="settings-btn">Apply</button>
+        <button id="community-api-test" class="settings-btn">Test</button>
+        <span id="community-api-status" class="settings-status"></span>
+      </div>
+      <div id="community-api-preview" style="font-size:11px;color:#777;margin-top:6px;white-space:pre-wrap;"></div>
     </div>
   </div>
 
@@ -1864,6 +1892,36 @@
 
   hrmApiApply.addEventListener('click', saveHrmApiUrl);
 
+  /* ── Community Responses sheet link (editable; default = the published CSV) ── */
+  var comInput   = document.getElementById('community-api-input');
+  var comApply   = document.getElementById('community-api-apply');
+  var comTest    = document.getElementById('community-api-test');
+  var comStatus  = document.getElementById('community-api-status');
+  var comPreview = document.getElementById('community-api-preview');
+  function comMsg(text, ok) { comStatus.textContent = text; comStatus.style.color = ok ? '#44cc88' : '#ff4455'; }
+  fetch('/api/community-url', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+    comInput.value = d.url || '';
+  }).catch(function(){});
+  function saveCommunityUrl() {
+    fetch('/api/community-url', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: comInput.value.trim() })
+    }).then(function(r){ return r.json(); }).then(function(d){
+      comInput.value = d.url || '';
+      comMsg('Saved ✓', true); setTimeout(function(){ comStatus.textContent = ''; }, 2000);
+    }).catch(function(){ comMsg('Error', false); });
+  }
+  function testCommunityUrl() {
+    comMsg('Loading…', true); comPreview.textContent = '';
+    fetch('/api/community-responses', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
+      if (d.error) { comMsg(d.error, false); return; }
+      comMsg(d.count + ' response' + (d.count === 1 ? '' : 's') + ' ✓', true);
+      comPreview.textContent = (d.header || []).join(' | ') + '\n' + d.rows.slice(-5).map(function(x){ return x.timestamp + ' | ' + x.name + ' | ' + x.message; }).join('\n');
+    }).catch(function(){ comMsg('Could not load the sheet', false); });
+  }
+  comApply.addEventListener('click', saveCommunityUrl);
+  comTest.addEventListener('click', testCommunityUrl);
+
   /* ── Draft Index (Line-Up Rate) API URL ──────────────────── */
 
 
@@ -1953,35 +2011,24 @@
 
 
 
-  /* Debug Mode — persisted server-side, gates whether any overlay page's
-     ` -toggled debug bar is even reachable (see debugModeEnabled in
-     postgame.html). Button label always reflects real server state, read on
-     load and kept live via the debugmode SSE event below — never
-     hardcoded, same rule as every other toggle in this file. */
-  var debugModeBtn    = document.getElementById('btn-debug-mode');
-  var debugModeStatus = document.getElementById('debug-mode-status');
-  function renderDebugModeBtn(enabled) {
-    debugModeBtn.textContent = 'Debug Mode: ' + (enabled ? 'ON' : 'OFF');
-    debugModeBtn.className = 'settings-btn' + (enabled ? ' settings-btn-danger' : '');
+  /* Server Mode (MAIN / REBROADCAST) — persisted server-side (data/server_mode.json). Buttons reflect
+     real server state, read on load. */
+  var smBtns = { MAIN: document.getElementById('btn-server-mode-main'), REBROADCAST: document.getElementById('btn-server-mode-rebroadcast') };
+  var smStatus = document.getElementById('server-mode-status');
+  function renderServerMode(mode) {
+    Object.keys(smBtns).forEach(function(k){ smBtns[k].className = 'settings-btn' + (k === mode ? ' settings-btn-danger' : ''); });
   }
-  fetch('/overlay/debug-mode', { cache: 'no-store' })
-    .then(function(r){ return r.json(); })
-    .then(function(d){ renderDebugModeBtn(!!(d && d.enabled)); })
-    .catch(function(){ renderDebugModeBtn(false); });
-  debugModeBtn.addEventListener('click', function() {
-    var next = debugModeBtn.textContent.indexOf('OFF') !== -1;
-    fetch('/overlay/debug-mode', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: next })
-    }).then(function(r){ return r.json(); }).then(function(d){
-      renderDebugModeBtn(!!(d && d.enabled));
-      debugModeStatus.textContent = 'Saved ✓';
-      debugModeStatus.style.color = '#44cc88';
-      setTimeout(function(){ debugModeStatus.textContent = ''; }, 2000);
-    }).catch(function(){
-      debugModeStatus.textContent = 'Error';
-      debugModeStatus.style.color = '#ff4455';
+  fetch('/api/server-mode', { cache: 'no-store' }).then(function(r){ return r.json(); })
+    .then(function(d){ renderServerMode(d && d.mode); }).catch(function(){ renderServerMode('MAIN'); });
+  Object.keys(smBtns).forEach(function(k) {
+    smBtns[k].addEventListener('click', function() {
+      fetch('/api/server-mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: k }) })
+        .then(function(r){ return r.json(); }).then(function(d){
+          renderServerMode(d && d.mode);
+          if (window.applyServerModeToSidebar) window.applyServerModeToSidebar(d && d.mode);
+          smStatus.textContent = 'Saved ✓'; smStatus.style.color = '#44cc88';
+          setTimeout(function(){ smStatus.textContent = ''; }, 2000);
+        }).catch(function(){ smStatus.textContent = 'Error'; smStatus.style.color = '#ff4455'; });
     });
   });
 
@@ -2072,11 +2119,13 @@
     Object.keys(checkOverlayStates).forEach(function(k) { applyCheckToggleBtn(k, checkOverlayStates[k]); });
   }).catch(function(){});
 
+  var checkToggleRoutes = {};   // key -> {show, hide} for toggles whose routes aren't /overlay/<key>/show|hide (Lower Thirds)
   function toggleCheckOverlay(key) {
     /* No optimistic local flip — see toggleFeature above; the SSE
        listeners below are the single source of truth for this button. */
     var shown = !checkOverlayStates[key];
-    fetch('/overlay/' + encodeURIComponent(key) + '/' + (shown ? 'show' : 'hide')).catch(function(){});
+    var r = checkToggleRoutes[key];
+    fetch(r ? (shown ? r.show : r.hide) : '/overlay/' + encodeURIComponent(key) + '/' + (shown ? 'show' : 'hide')).catch(function(){});
   }
 
   /* ── MPL Full Screen scene state ─────────────────────────────
@@ -2348,10 +2397,6 @@
   // overlay page now; see CLAUDE.md's "Dashboard architecture" section.
   var dashboardSSE = createOverlaySSE();
 
-  dashboardSSE.addEventListener('debugmode', function(e) {
-    renderDebugModeBtn(!!JSON.parse(e.data).enabled);
-  });
-
   dashboardSSE.addEventListener('featuretoggle', function (e) {
     try {
       var d = JSON.parse(e.data);
@@ -2393,6 +2438,70 @@
       draftShowState = d.action === 'show';
       applyDraftShowBtn();
     } catch (err) {}
+  });
+
+  /* Audience Comment controls (inside its Lower Thirds card): "Start from line" (1 = first response, i.e. sheet row 2) and
+     "Seconds per comment". Settings live on the server (data/audience_comment.json); the readout follows the rolling cursor over SSE. */
+  var audienceUI = null;
+  function audienceReadout(a) {
+    if (!audienceUI) return;
+    audienceUI.readout.textContent = a.active ? ('On air: line ' + a.line + ' of ' + a.total) : (a.total ? (a.total + ' responses in the sheet') : 'Not on air');
+  }
+  function buildAudienceControls() {
+    var wrap = el('div', 'feature-btns');
+    wrap.style.cssText = 'margin-top:8px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;';
+    function field(label, id, min, title) {
+      var l = el('label', '', label + ' ');
+      l.style.cssText = 'font-size:12px;color:#aab;display:flex;align-items:center;gap:6px;';
+      var inp = document.createElement('input');
+      inp.type = 'number'; inp.min = min; inp.step = 1; inp.id = id; inp.title = title;
+      inp.style.cssText = 'width:76px;padding:4px 6px;background:#0f0f18;border:1px solid #2a2a3a;border-radius:6px;color:#dde;font-size:13px;';
+      l.appendChild(inp); wrap.appendChild(l); return inp;
+    }
+    var startIn = field('Start from line', 'ac-start', 1, 'Line 1 = the first response (sheet row 2). Changing it while on air jumps there and keeps rolling.');
+    var secIn   = field('Seconds per comment', 'ac-seconds', 2, 'How long each comment stays before the next one (2–600 s).');
+    var readout = el('span', '', ''); readout.style.cssText = 'font-size:12px;color:#889;';
+    wrap.appendChild(readout);
+    audienceUI = { start: startIn, seconds: secIn, readout: readout };
+    function save() {
+      fetch('/api/audience-comment', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startLine: startIn.value, seconds: secIn.value }) })
+        .then(function (r) { return r.json(); }).then(function (a) { startIn.value = a.settings.startLine; secIn.value = a.settings.seconds; audienceReadout(a); }).catch(function () {});
+    }
+    startIn.addEventListener('change', save); secIn.addEventListener('change', save);
+    fetch('/api/audience-comment', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (a) {
+      startIn.value = a.settings.startLine; secIn.value = a.settings.seconds; audienceReadout(a);
+    }).catch(function () {});
+    return wrap;
+  }
+
+  /* Lower Thirds (REBROADCAST): one SSE event 'lowerthird' {name, action}; toggle state keys are lt_<name>. Name tags are mutually exclusive. */
+  function setLowerThird(name, shown) {
+    checkOverlayStates['lt_' + name] = shown;
+    applyCheckToggleBtn('lt_' + name, shown);
+    if (shown && /^nametag/.test(name)) ['nametag1', 'nametag2', 'nametag3'].forEach(function (k) {
+      if (k !== name) { checkOverlayStates['lt_' + k] = false; applyCheckToggleBtn('lt_' + k, false); }
+    });
+  }
+  fetch('/overlay/lowerthird-state').then(function (r) { return r.json(); }).then(function (d) {
+    Object.keys(d || {}).forEach(function (k) { setLowerThird(k, !!d[k]); });
+  }).catch(function () {});
+  dashboardSSE.addEventListener('lowerthird', function (e) {
+    try {
+      var d = JSON.parse(e.data);
+      if (d.action === 'line') { audienceReadout({ active: true, line: d.line, total: d.total }); return; }   // Audience Comment cursor moved
+      setLowerThird(d.name, d.action === 'show');
+      if (d.name === 'audiencecomment' && d.action === 'hide') audienceReadout({ active: false, total: 0 });
+    } catch (err) {}
+  });
+
+  /* Fullscreen scenes (REBROADCAST): SSE 'fullscreen' {name, action}; toggle state keys are fs_<name>. */
+  function setFullscreenScene(name, shown) { checkOverlayStates['fs_' + name] = shown; applyCheckToggleBtn('fs_' + name, shown); }
+  fetch('/overlay/fullscreen-state').then(function (r) { return r.json(); }).then(function (d) {
+    Object.keys(d || {}).forEach(function (k) { setFullscreenScene(k, !!d[k]); });
+  }).catch(function () {});
+  dashboardSSE.addEventListener('fullscreen', function (e) {
+    try { var d = JSON.parse(e.data); setFullscreenScene(d.name, d.action === 'show'); } catch (err) {}
   });
 
   dashboardSSE.addEventListener('sidecheck', function (e) {
@@ -2521,9 +2630,12 @@
   ];
 
   /* ── Overlay definitions ──────────────────────────────────── */
+  /* Live Comments output canvas [w, h] — read by OVERLAYS['livecomments'].previewSize; kept current from the Live Comments tab (postMessage) and the 'ytchat' SSE prefs. */
+  var ytCanvasSize = [480, 900];
   var OVERLAYS = [
     {
       id: 'draft',
+      mainOnly: true,   /* hidden from the Control sidebar in REBROADCAST mode */
       name: 'Draft Overlay',
       file: 'Draft.html',
       show: '/overlay/draft/show',
@@ -2541,6 +2653,7 @@
     },
     {
       id: 'mplfs',
+      mainOnly: true,   /* hidden from the Control sidebar in REBROADCAST mode */
       name: 'Postgame',
       file: 'postgame.html',
       globalHide: '/overlay/fs/hide',
@@ -2606,7 +2719,44 @@
       debugPhotosToggle: true,
     },
     {
+      id: 'fullscreen',
+      name: 'Fullscreen',
+      file: 'Fullscreen.html',
+      rebroadcastOnly: true,   /* listed in the Control sidebar only while Server Mode = REBROADCAST */
+      checkLabel: 'Fullscreen',
+      /* one card per Fullscreen scene (state key fs_<name>, synced from the 'fullscreen' SSE event); the Control preview follows the real on-air state */
+      checkToggles: [
+        { name: 'Waiting Screen', key: 'fs_waiting', show: '/overlay/fullscreen/waiting/show', hide: '/overlay/fullscreen/waiting/hide' },
+      ],
+    },
+    {
+      id: 'livecomments',
+      name: 'Live Comments',
+      file: 'livecomments.html',
+      /* the output canvas is sized from the Live Comments tab (Output canvas width x height) — the Control preview follows it */
+      get previewSize() { return ytCanvasSize; },
+      ytChatControls: true,   /* stream link + Connect / Disconnect in the Control card */
+    },
+    {
+      id: 'lowerthirds',
+      name: 'Lower Thirds',
+      file: 'LowerThirds.html',
+      rebroadcastOnly: true,
+      checkLabel: 'Lower Thirds',
+      /* each lower third = its own card with a Showing/Hidden toggle + copy buttons (state key lt_<name> synced from the 'lowerthird' SSE event).
+         The Control preview of this page follows the real on-air state, so the toggle shows up in it directly. */
+      checkToggles: [
+        { name: 'Headline',                   key: 'lt_headline', show: '/overlay/lowerthird/headline/show', hide: '/overlay/lowerthird/headline/hide' },
+        { name: 'Name Tag 1 · Panel Host',    key: 'lt_nametag1', show: '/overlay/lowerthird/nametag1/show', hide: '/overlay/lowerthird/nametag1/hide' },
+        { name: 'Name Tag 2 · Casters 1 + 2', key: 'lt_nametag2', show: '/overlay/lowerthird/nametag2/show', hide: '/overlay/lowerthird/nametag2/hide' },
+        { name: 'Name Tag 3 · Host + Casters', key: 'lt_nametag3', show: '/overlay/lowerthird/nametag3/show', hide: '/overlay/lowerthird/nametag3/hide' },
+        /* Audience Comment: rolls through the Community Responses sheet; card also carries "Start from line" + "Seconds per comment" */
+        { name: 'Audience Comment', key: 'lt_audiencecomment', show: '/overlay/lowerthird/audiencecomment/show', hide: '/overlay/lowerthird/audiencecomment/hide', audienceControls: true },
+      ],
+    },
+    {
       id: 'mploverlay7',
+      mainOnly: true,   /* hidden from the Control sidebar in REBROADCAST mode */
       name: 'Ingame',
       file: 'ingame.html',
       previewDebugTester: true,
@@ -2677,7 +2827,7 @@
 
   /* M8 V2: the Control sidebar only lists these overlays. Every other OVERLAYS entry is kept (its
      wiring/state lookups still work) but is not shown — add an id here to bring it back. */
-  var CONTROL_VISIBLE = { draft: true, mploverlay7: true, mplfs: true };
+  var CONTROL_VISIBLE = { draft: true, mploverlay7: true, mplfs: true, fullscreen: true, lowerthirds: true, livecomments: true };
 
   /* ── DOM helpers ──────────────────────────────────────────── */
   var _copyTipTimer = null;
@@ -2854,6 +3004,11 @@
   /* ── Layout refs ─────────────────────────────────────────── */
   var layout            = document.getElementById('layout');
   var previewIframe     = document.getElementById('preview-iframe');
+  /* Dynamic tab -> Control preview: forward the headline being typed so the Lower Thirds preview mirrors it live (even before Save). */
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin || !e.data || e.data.type !== 'dynamic-draft') return;
+    try { if (previewIframe.contentWindow) previewIframe.contentWindow.postMessage(e.data, location.origin); } catch (err) {}
+  });
   var previewTitle      = document.getElementById('preview-title');
   var previewLabel      = document.getElementById('preview-label');
   var previewDisabledMsg = document.getElementById('preview-disabled-msg');
@@ -2881,6 +3036,16 @@
   var lastItem          = null;
   var dots              = {};
 
+  function setYtCanvas(w, h) {
+    w = parseInt(w, 10); h = parseInt(h, 10);
+    if (!(w > 0 && h > 0) || (ytCanvasSize[0] === w && ytCanvasSize[1] === h)) return;
+    ytCanvasSize = [w, h];
+    if (lastOverlay && lastOverlay.id === 'livecomments') scalePreview();
+  }
+  fetch('/ytchat/state').then(function (r) { return r.json(); }).then(function (s) { if (s && s.prefs) setYtCanvas(s.prefs.width, s.prefs.height); }).catch(function () {});
+  dashboardSSE.addEventListener('ytchat', function (e) {
+    try { var d = JSON.parse(e.data); if (d.t === 'prefs' && d.prefs) setYtCanvas(d.prefs.width, d.prefs.height); } catch (err) {}
+  });
   function scalePreview() {
     var wrap = document.getElementById('preview-frame-wrap');
     /* Most overlays are 1920x1080; an entry can override with previewSize: [w, h]. */
@@ -3216,6 +3381,48 @@
     ['mid_laner',  'Mid Laner'],
     ['roamer',     'Roamer'],
   ];
+  function buildYtChatControls(body) {
+    var urlInput = document.createElement('input');
+    urlInput.type = 'text'; urlInput.className = 'pdebug-select';
+    urlInput.placeholder = 'YouTube live stream link';
+    urlInput.style.cssText = 'width:100%;flex:1 1 auto;box-sizing:border-box;margin-bottom:6px;';
+    try { urlInput.value = localStorage.getItem('yc_url') || ''; } catch (e) {}
+    body.appendChild(urlInput);
+
+    var row = el('div', 'pdebug-row');
+    var connBtn = el('button', 'pdebug-trigger', '▶ Connect');
+    var discBtn = el('button', 'pdebug-trigger', '■ Disconnect');
+    row.appendChild(connBtn); row.appendChild(discBtn);
+    body.appendChild(row);
+
+    var statusEl = el('div', '', 'Loading…');
+    statusEl.style.cssText = 'font-size:11px;color:#666;margin-top:4px;';
+    body.appendChild(statusEl);
+    function setSt(text, live) {
+      statusEl.textContent = text || '';
+      statusEl.style.color = live ? '#4ade80' : '#888';
+    }
+    function post(path, data) {
+      return fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data || {}) })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) setSt(d.error || 'Request failed', false); }); })
+        .catch(function () { setSt('Cannot reach the server.', false); });
+    }
+    connBtn.addEventListener('click', function () {
+      try { localStorage.setItem('yc_url', urlInput.value); } catch (e) {}
+      post('/ytchat/connect', { url: urlInput.value });
+    });
+    discBtn.addEventListener('click', function () { post('/ytchat/disconnect'); });
+
+    fetch('/ytchat/state', { cache: 'no-store' }).then(function (r) { return r.json(); })
+      .then(function (d) { if (d && d.status) setSt(d.status.text, d.status.live); }).catch(function () { setSt('', false); });
+    /* the status echo comes from the shared SSE; the listener is replaced on each rebuild */
+    if (window.__ytStatusListener) dashboardSSE.removeEventListener('ytchat', window.__ytStatusListener);
+    window.__ytStatusListener = function (e) {
+      try { var d = JSON.parse(e.data); if (d.t === 'status' && statusEl.isConnected) setSt(d.text, d.live); } catch (err) {}
+    };
+    dashboardSSE.addEventListener('ytchat', window.__ytStatusListener);
+  }
+
   function buildStolenGoldControls(body) {
     if (body.children.length) body.appendChild(el('div', 'divider'));
     body.appendChild(el('div', 'features-label', 'Stolen Gold Auto Pop-up Duration'));
@@ -3765,7 +3972,7 @@
        that fire these directly instead of through this dashboard). */
     if (ov.checkToggles && ov.checkToggles.length) {
       if (body.children.length) body.appendChild(el('div', 'divider'));
-      body.appendChild(el('div', 'features-label', 'Check Overlays'));
+      body.appendChild(el('div', 'features-label', ov.checkLabel || 'Check Overlays'));
       ov.checkToggles.forEach(function (ct) {
         var fr = el('div', 'feature-row');
         fr.appendChild(el('div', 'feature-name', ct.name));
@@ -3774,6 +3981,7 @@
         var tb = el('button', 'btn btn-toggle btn-toggle-off', '○ Hidden');
         tb.addEventListener('click', (function (k) { return function () { toggleCheckOverlay(k); }; })(ct.key));
         checkToggleBtns[ct.key] = tb;
+        if (ct.show) checkToggleRoutes[ct.key] = { show: ct.show, hide: ct.hide };
         applyCheckToggleBtn(ct.key, !!checkOverlayStates[ct.key]);
         btnGroup.appendChild(tb);
 
@@ -3818,7 +4026,7 @@
         }
 
         [['show', 'Show'], ['hide', 'Hide']].forEach(function (pair) {
-          var path  = '/overlay/' + ct.key + '/' + pair[0];
+          var path  = ct[pair[0]] || ('/overlay/' + ct.key + '/' + pair[0]);
           var label = ct.name + ' ' + pair[1];
           var cb = document.createElement('button');
           cb.className = 'btn btn-copy';
@@ -3831,6 +4039,7 @@
         });
 
         fr.appendChild(btnGroup);
+        if (ct.audienceControls) fr.appendChild(buildAudienceControls());
         body.appendChild(fr);
       });
     }
@@ -4113,6 +4322,11 @@
       buildDebugPhotosControl(body);
     }
 
+    /* Live Comments: stream link + Connect / Disconnect (same server session as the Live Comments tab) */
+    if (ov.ytChatControls) {
+      buildYtChatControls(body);
+    }
+
     /* Placeholder if no controls */
     if (!body.children.length) {
       var ph = el('div', '', 'No controls available');
@@ -4123,7 +4337,8 @@
   }
 
   /* sidebar order: Draft, Ingame, Postgame (OVERLAYS array order is unrelated) */
-  var CONTROL_ORDER = ['draft', 'mploverlay7', 'mplfs'];
+  var rebroadcastItems = [], mainItems = [];
+  var CONTROL_ORDER = ['draft', 'mploverlay7', 'mplfs', 'fullscreen', 'lowerthirds', 'livecomments'];
   OVERLAYS.slice().sort(function (x, y) {
     var ix = CONTROL_ORDER.indexOf(x.id), iy = CONTROL_ORDER.indexOf(y.id);
     return (ix < 0 ? 99 : ix) - (iy < 0 ? 99 : iy);
@@ -4135,9 +4350,24 @@
     item.addEventListener('click', function () { selectOverlay(ov, item); });
     item.appendChild(dot);
     item.appendChild(name);
+    if (ov.rebroadcastOnly) { item.style.display = 'none'; rebroadcastItems.push(item); }
+    if (ov.mainOnly) mainItems.push({ item: item, ov: ov });
     sidebar.appendChild(item);
     dots[ov.id] = dot;
   });
+  /* Server Mode gating: show REBROADCAST-only overlays only in that mode (also called live from the Settings toggle). */
+  window.applyServerModeToSidebar = applyServerModeToSidebar;
+  function applyServerModeToSidebar(mode) {
+    rebroadcastItems.forEach(function (it) { it.style.display = mode === 'REBROADCAST' ? '' : 'none'; });
+    mainItems.forEach(function (m) { m.item.style.display = mode === 'REBROADCAST' ? 'none' : ''; });
+    /* if the overlay being viewed just got hidden, move to the first one that's still listed */
+    if (activeItem && activeItem.style.display === 'none') {
+      var first = Array.prototype.find.call(document.querySelectorAll('#sidebar .ov-item'), function (n) { return n.style.display !== 'none'; });
+      if (first) first.click();
+    }
+  }
+  fetch('/api/server-mode', { cache: 'no-store' }).then(function (r) { return r.json(); })
+    .then(function (d) { applyServerModeToSidebar(d && d.mode); }).catch(function () {});
 
   /* ── Status polling ───────────────────────────────────────── */
   function pollStatus() {

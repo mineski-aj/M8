@@ -67,6 +67,45 @@ router.get('/overlay/draft-state', (req, res) => {
   res.set({ 'Cache-Control': 'no-store' }).json({ active: state.draftActive });
 });
 
+// Fullscreen.html scenes (REBROADCAST) — currently just 'waiting' (Waiting Screen). SSE event 'fullscreen' {name, action}.
+const FULLSCREENS = ['waiting'];
+router.get('/overlay/fullscreen-state', (req, res) => {
+  res.set({ 'Cache-Control': 'no-store' }).json(state.fullscreens || {});
+});
+['show', 'hide'].forEach(action => {
+  router.get('/overlay/fullscreen/:name/' + action, (req, res) => {
+    const name = req.params.name;
+    if (!FULLSCREENS.includes(name)) return res.status(404).json({ ok: false, error: 'unknown fullscreen scene' });
+    state.fullscreens[name] = action === 'show';
+    state.overlayClients.forEach(c => { try { c.write('event: fullscreen\ndata: ' + JSON.stringify({ name, action }) + '\n\n'); } catch {} });
+    res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, name, action });
+  });
+});
+
+// Lower Thirds — one named lower third at a time per key (currently just 'headline'). SSE event 'lowerthird' {name, action}.
+const audienceComment = require('../lib/audienceComment');   // Audience Comment lower third: rolls through the Community Responses sheet
+const LOWER_THIRDS = ['headline', 'nametag1', 'nametag2', 'nametag3', 'audiencecomment'];   // nametag1 = panel host, 2 = casters 1+2, 3 = host + casters 1+2 (one tag layout on air at a time)
+router.get('/overlay/lowerthird-state', (req, res) => {
+  res.set({ 'Cache-Control': 'no-store' }).json(state.lowerThirds || {});
+});
+['show', 'hide'].forEach(action => {
+  router.get('/overlay/lowerthird/:name/' + action, (req, res) => {
+    const name = req.params.name;
+    if (!LOWER_THIRDS.includes(name)) return res.status(404).json({ ok: false, error: 'unknown lower third' });
+    state.lowerThirds[name] = action === 'show';
+    if (action === 'show' && name.startsWith('nametag')) ['nametag1', 'nametag2', 'nametag3'].forEach(k => { if (k !== name) state.lowerThirds[k] = false; });
+    state.overlayClients.forEach(c => { try { c.write('event: lowerthird\ndata: ' + JSON.stringify({ name, action }) + '\n\n'); } catch {} });
+    if (name === 'audiencecomment') { if (action === 'show') audienceComment.start(); else audienceComment.stop(); }   // owns the rolling cursor while on air
+    res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, name, action });
+  });
+});
+// Audience Comment settings (start line, seconds per comment) + the current line — GET to read, POST { startLine, seconds } to update.
+router.get('/api/audience-comment', (req, res) => res.set({ 'Cache-Control': 'no-store' }).json(audienceComment.snapshot()));
+router.post('/api/audience-comment', (req, res) => {
+  audienceComment.setSettings(req.body || {});
+  res.set({ 'Cache-Control': 'no-store' }).json(audienceComment.snapshot());
+});
+
 // GET /overlay/draft/show
 router.get('/overlay/draft/show', (req, res) => {
   state.draftActive = true;
@@ -907,35 +946,15 @@ router.get('/overlay/debugoff', (req, res) => {
   res.set({ 'Cache-Control': 'no-store' }).json({ ok: true });
 });
 
-// Persisted Debug Mode flag — gates whether postgame.html's on-page debug bar
-// (the ` -toggled panel with SHOW/HIDE/PREVIEW buttons per feature, plus
-// any placeholder-data test tools like Final Team's) is reachable at all.
-// Defaults OFF so it's never silently live on a real broadcast machine.
-const DEBUG_MODE_FILE = path.join(__dirname, '..', 'data', 'debug_mode.json');
-function readDebugMode() {
-  try { return !!JSON.parse(fs.readFileSync(DEBUG_MODE_FILE, 'utf8')).enabled; }
-  catch { return false; }
-}
-function writeDebugMode(enabled) {
-  fs.writeFileSync(DEBUG_MODE_FILE, JSON.stringify({ enabled: !!enabled }));
-}
-
-// GET /overlay/debug-mode — current persisted state; every overlay page
-// fetches this once on load to decide whether to wire up its debug bar's
-// ` keydown listener at all.
-router.get('/overlay/debug-mode', (req, res) => {
-  res.set({ 'Cache-Control': 'no-store' }).json({ enabled: readDebugMode() });
+// Server mode (MAIN / REBROADCAST) — persisted by lib/serverMode.js.
+const serverMode = require('../lib/serverMode');
+router.get('/api/server-mode', (req, res) => {
+  res.set({ 'Cache-Control': 'no-store' }).json({ mode: serverMode.getMode(), modes: serverMode.MODES });
 });
-
-// POST /overlay/debug-mode { enabled } — persists the flag AND broadcasts
-// it live to every already-open overlay page over SSE, so a page that's
-// been open since before the change reacts immediately instead of needing
-// a reload (same round-trip requirement as every other live toggle here).
-router.post('/overlay/debug-mode', (req, res) => {
-  const enabled = !!(req.body || {}).enabled;
-  writeDebugMode(enabled);
-  state.overlayClients.forEach(c => { try { c.write('event: debugmode\ndata: ' + JSON.stringify({ enabled }) + '\n\n'); } catch {} });
-  res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, enabled });
+router.post('/api/server-mode', (req, res) => {
+  const mode = serverMode.setMode((req.body || {}).mode);
+  if (!mode) return res.status(400).json({ ok: false, error: 'mode must be MAIN or REBROADCAST' });
+  res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, mode });
 });
 
 // GET /overlay/features — return current feature toggle states

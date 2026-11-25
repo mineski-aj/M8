@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <base href="/">
+  <script src="html/js/cache-bust.js"></script>
+  <script src="html/js/sponsor-set.js"></script>
+  <script src="html/js/sponsor-cursor.js"></script>
+  <script src="html/js/event-log-client.js"></script>
+  <script src="html/js/overlay-sse-shim.js"></script>
+  <title>Fullscreen Overlay</title>
+  <style>
+    @font-face { font-family: 'Monument Extended'; font-weight: 800; font-display: block;
+      src: url('/assets/fonts/MCT/MonumentExtended-Ultrabold.otf') format('opentype'); }
+    @font-face { font-family: 'Monument Extended'; font-weight: 400; font-display: block;
+      src: url('/assets/fonts/MCT/MonumentExtended-Regular.ttf') format('truetype'); }
+    @font-face { font-family: 'Source Han Sans'; font-weight: 500; font-display: block;
+      src: url('/assets/fonts/MCT/SourceHanSans/SourceHanSansCN-Medium.otf') format('opentype'); }
+    @font-face { font-family: 'General Sans'; font-weight: 500; font-display: block;
+      src: url('/assets/fonts/GeneralSans-Medium.otf') format('opentype'); }
+
+    :root {
+      --cyan: #3ff7ee;
+      --blue: #2f9cf0;
+      --grad-text: linear-gradient(180deg, #2f9cf0 0%, #3bd6f0 55%, #43fff0 100%);   /* timer fill: blue -> cyan, same ramp as the tile art */
+    }
+    html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+    #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; }
+    #stage > *, #waiting > *, #wm-current > *, #wm-next > * { position: absolute; }
+
+    /* ───────── WAITING SCREEN ───────── */
+    #waiting { left: 0; top: 0; width: 1920px; height: 1080px; }
+    #waiting.off { visibility: hidden; pointer-events: none; }
+
+    /* Timer — every character sits in a fixed-width cell so digits never shift as it ticks */
+    #wt-timer { left: 70px; top: 832px; height: 140px; display: flex; align-items: center;
+      font-family: 'Monument Extended', 'Panchang', sans-serif; font-weight: 800; font-size: 146px; line-height: 1;
+      white-space: nowrap; }
+    /* the gradient lives on every character cell (not the parent): background-clip:text on a parent ignores transformed/animated children, so the digits couldn't animate */
+    #wt-timer .d, #wt-timer .c { display: inline-block; text-align: center; color: transparent; background: var(--grad-text); -webkit-background-clip: text; background-clip: text; }
+    #wt-timer .d { width: var(--digit-w, 0.86em); }
+    #wt-timer .c { width: var(--colon-w, 0.42em); }
+
+    /* Match slots */
+    .wm-tile { width: 101px; height: 101px; background: center / 100% 100% no-repeat; }
+    .wm-tile img { position: absolute; left: 10px; top: 10px; width: 81px; height: 81px; object-fit: contain; }
+    .wm-label, .wm-bo { width: 140px; text-align: center; font-family: 'Monument Extended', sans-serif; font-weight: 400; font-size: 12px; letter-spacing: 0;
+      color: var(--cyan); text-transform: uppercase; white-space: nowrap; }
+    .wm-score { width: 140px; text-align: center; font-family: 'Monument Extended', sans-serif; font-weight: 800; font-size: 54.74px; line-height: 1; color: #fff; white-space: nowrap; }
+    .wm-tri { width: 101px; text-align: center; font-family: 'Monument Extended', sans-serif; font-weight: 800; font-size: 23.46px; color: #fff; white-space: nowrap; }
+
+    /* current match — cycles through every match */
+    #wm-current { left: 0; top: 0; width: 1920px; height: 1080px; transition: opacity 450ms, transform 450ms; }
+    #wm-current.out { opacity: 0; transform: translateY(-14px); }
+    #wm-current.pre { opacity: 0; transform: translateY(14px); transition: none; }
+    #wm-current .wm-tile { background-image: url('/assets/overlay/MCT/Waiting Screen/mct_waiting_matchcontainer.png'); top: 851px; }
+    #wm-c-tl { left: 994px; } #wm-c-tr { left: 1244px; }
+    #wm-c-label { left: 1100px; top: 849px; } #wm-c-score { left: 1100px; top: 876px; } #wm-c-bo { left: 1100px; top: 935px; }
+    #wm-c-nl { left: 994px; top: 960px; } #wm-c-nr { left: 1244px; top: 960px; }
+
+    /* upcoming match — steady */
+    #wm-next { left: 0; top: 0; width: 1920px; height: 1080px; }
+    #wm-next .wm-tile { background-image: url('/assets/overlay/MCT/Waiting Screen/mct_waiting_nextmatch.png'); top: 851px; }
+    #wm-n-tl { left: 1460px; } #wm-n-tr { left: 1710px; }
+    #wm-n-label { left: 1566px; top: 849px; } #wm-n-vs { left: 1566px; top: 876px; } #wm-n-bo { left: 1566px; top: 935px; }
+    .wm-dash { display: inline-block; width: 20px; height: 8px; margin: 0 7px; background: #fff; vertical-align: middle; position: relative; top: -2px; }   /* short hyphen (the font's own is far too long) */
+    .wm-win { color: #fff; } .wm-lost { color: #8c8c8c; }   /* white by default; a defeated team's tricode / score goes darker */
+    .wm-time { width: 140px; text-align: center; font-family: 'Source Han Sans', 'General Sans', sans-serif; font-weight: 500; font-size: 17px; line-height: 24px; color: #fff; white-space: nowrap; text-transform: uppercase; }
+    #wm-n-nl { left: 1460px; top: 960px; } #wm-n-nr { left: 1710px; top: 960px; } #wm-n-time { left: 1566px; top: 962px; }
+    #wm-c-time { left: 1100px; top: 962px; }
+    #wm-next.empty { display: none; }
+
+    #wm-divider { left: 1401px; top: 843px; width: 2px; height: 118px; background: linear-gradient(180deg, #c3e84a 0%, #3fc9d8 55%, #2f7cf0 100%); }
+
+    /* HUD art (top logo + line, left "THAILAND BANGKOK", right "#BREAKINTOTHEWORLD", bottom line, 2026 emblem, corners).
+       The two vertical texts are cut out of the base layer and re-drawn as glitch layers (see the script). */
+    #wf-hud { left: 0; top: 0; width: 1920px; height: 1080px; display: block;
+      clip-path: polygon(evenodd, 0 0, 1920px 0, 1920px 1080px, 0 1080px, 0 0,
+        36px 224px, 36px 514px, 76px 514px, 76px 224px, 36px 224px, 0 0,
+        1844px 242px, 1844px 486px, 1880px 486px, 1880px 242px, 1844px 242px, 0 0); }
+    .gl { overflow: visible; }
+    .gl > div { position: absolute; left: 0; width: 100%; background-repeat: no-repeat; will-change: transform; }
+
+    /* sponsors — top right, beside the HUD's top line */
+    #sp-cat { left: 1696px; top: 26px; width: 174px; height: 34px; display: flex; align-items: flex-end; justify-content: center; text-align: center;
+      font-family: 'Monument Extended', sans-serif; font-weight: 400; font-size: 12px; line-height: 15px; color: #fff;
+      text-transform: uppercase; white-space: nowrap; opacity: 0; transition: opacity 400ms; }
+    #sp-logo { left: 1696px; top: 66px; width: 174px; height: 58px; object-fit: contain; object-position: center center; opacity: 0; transition: opacity 400ms; }
+    #sp-cat.on, #sp-logo.on { opacity: 1; }
+
+    /* stage - day, under the timer */
+    #wt-stage, #wt-comingup { left: 72px; font-family: 'Monument Extended', sans-serif; font-weight: 400; font-size: 24px; line-height: 1; color: #fff;
+      letter-spacing: 0; text-transform: uppercase; white-space: nowrap; }
+    #wt-comingup { top: 798px; }
+    #wt-stage { top: 962px; }
+  </style>
+</head>
+<body>
+<div id="stage">
+  <div id="waiting" class="off">
+    <div id="wt-timer"></div>
+
+    <div id="wm-current">
+      <div id="wm-c-tl" class="wm-tile"><img id="wm-c-il" alt=""></div>
+      <div id="wm-c-tr" class="wm-tile"><img id="wm-c-ir" alt=""></div>
+      <div id="wm-c-label" class="wm-label"></div>
+      <div id="wm-c-score" class="wm-score"></div>
+      <div id="wm-c-bo" class="wm-bo"></div>
+      <div id="wm-c-nl" class="wm-tri"></div>
+      <div id="wm-c-nr" class="wm-tri"></div>
+      <div id="wm-c-time" class="wm-time"></div>
+    </div>
+
+    <div id="wm-divider"></div>
+
+    <div id="wm-next">
+      <div id="wm-n-tl" class="wm-tile"><img id="wm-n-il" alt=""></div>
+      <div id="wm-n-tr" class="wm-tile"><img id="wm-n-ir" alt=""></div>
+      <div id="wm-n-label" class="wm-label">UPCOMING</div>
+      <div id="wm-n-vs" class="wm-score">VS</div>
+      <div id="wm-n-bo" class="wm-bo"></div>
+      <div id="wm-n-nl" class="wm-tri"></div>
+      <div id="wm-n-nr" class="wm-tri"></div>
+      <div id="wm-n-time" class="wm-time"></div>
+    </div>
+
+    <img id="wf-hud" src="/assets/overlay/MCT/Waiting Screen/mtct_waiting_hud.png" alt="">
+    <div id="gl-left" class="gl"></div>
+    <div id="gl-right" class="gl"></div>
+    <div id="sp-cat"></div>
+    <img id="sp-logo" alt="">
+    <div id="wt-comingup">Coming up</div>
+    <div id="wt-stage"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var CYCLE_MS = 6000;
+  var state = null, clockOffset = 0, timer = { running: false, endAt: null, remaining: 0 };
+
+  /* ── timer: fixed-width cells ── */
+  var timerEl = document.getElementById('wt-timer');
+  var cells = [];
+  '00:00:00'.split('').forEach(function (ch) {
+    var s = document.createElement('span');
+    s.className = ch === ':' ? 'c' : 'd'; s.textContent = ch; timerEl.appendChild(s); cells.push(s);
+  });
+  function fmt(sec) {
+    var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return p(Math.min(h, 99)) + ':' + p(m) + ':' + p(s);
+  }
+  function remaining() {
+    if (timer.running && timer.endAt) return Math.max(0, Math.round((timer.endAt - (Date.now() + clockOffset)) / 1000));
+    return Math.max(0, timer.remaining || 0);
+  }
+  var lastTxt = '';
+  function renderTimer() {
+    var txt = fmt(remaining());
+    if (txt === lastTxt) return;
+    lastTxt = txt;
+    for (var i = 0; i < 8; i++) cells[i].textContent = txt.charAt(i);
+  }
+  /* widest digit advance in the loaded font -> every digit cell is that wide */
+  function measureDigits() {
+    var cv = document.createElement('canvas').getContext('2d');
+    cv.font = '800 146px "Monument Extended"';
+    var w = 0; '0123456789'.split('').forEach(function (d) { w = Math.max(w, cv.measureText(d).width); });
+    if (w > 0) {
+      timerEl.style.setProperty('--digit-w', (w / 146 + 0.02) + 'em');
+      timerEl.style.setProperty('--colon-w', (cv.measureText(':').width / 146 + 0.04) + 'em');
+    }
+  }
+  if (document.fonts && document.fonts.load) document.fonts.load('800 146px "Monument Extended"').then(measureDigits, measureDigits);
+  setInterval(renderTimer, 100);
+
+  /* ── matches ── */
+  function teamsOf(s) {
+    var n = parseInt(s.todayMatchCount, 10); n = (n >= 1 && n <= 8) ? n : 2;
+    return (s.todayMatches || []).slice(0, n);
+  }
+  function hasTeams(m) { return !!(m && (m.team1Short || m.team2Short)); }
+  function boText(m, s) { var v = String((m && m.series) || s.series || 'BO3').toUpperCase(); return 'BEST OF ' + v.replace('BO', ''); }
+  /* match time + the Match Board's timezone box (default GMT+8), e.g. "2:30 PM GMT+8" */
+  function timeText(m) {
+    var t = String((m && m.time) || '').trim();
+    if (!t) return '';
+    var tz = (typeof state.timezone === 'string') ? state.timezone.trim() : 'GMT+8';
+    return (tz && !/GMT|UTC/i.test(t)) ? t + ' ' + tz : t;
+  }
+  function logo(img, tag) {
+    if (!tag) { img.style.display = 'none'; img.removeAttribute('data-tag'); return; }
+    if (img.dataset.tag !== tag) { img.dataset.tag = tag; img.src = '/assets/team/logos/' + encodeURIComponent(tag) + '.png'; }
+    img.style.display = '';
+  }
+  function $(id) { return document.getElementById(id); }
+
+  var cur = -1, curEl = $('wm-current'), busy = false;
+  function paintCurrent(i, list, s) {
+    var m = list[i] || {};
+    logo($('wm-c-il'), m.team1Short); logo($('wm-c-ir'), m.team2Short);
+    $('wm-c-label').textContent = ((m.matchLabel || '').trim() || ('MATCH ' + (i + 1)));
+    var a = m.score1 || 0, b = m.score2 || 0, cs = $('wm-c-score');
+    var need = Math.ceil((parseInt(String((m && m.series) || s.series || 'BO3').replace(/\D/g, ''), 10) || 3) / 2);   // wins that decide the series
+    var lost1 = b >= need && b > a, lost2 = a >= need && a > b;                                                         // defeated team = the other side reached the winning score
+    var cls = function (lost) { return lost ? 'wm-lost' : 'wm-win'; };
+    if (a + b > 0) cs.innerHTML = '<span class="' + cls(lost1) + '">' + a + '</span><span class="wm-dash"></span><span class="' + cls(lost2) + '">' + b + '</span>';
+    else cs.textContent = 'VS';
+    $('wm-c-nl').className = 'wm-tri ' + cls(lost1); $('wm-c-nr').className = 'wm-tri ' + cls(lost2);
+    $('wm-c-time').textContent = timeText(m);
+    $('wm-c-bo').textContent = boText(m, s);
+    $('wm-c-nl').textContent = m.team1Short || ''; $('wm-c-nr').textContent = m.team2Short || '';
+  }
+  function showCurrent(i) {
+    if (busy) return;
+    var list = teamsOf(state);
+    if (cur === -1) { cur = i; paintCurrent(i, list, state); return; }
+    busy = true;
+    curEl.classList.add('out');
+    setTimeout(function () {
+      cur = i; paintCurrent(i, teamsOf(state), state);
+      curEl.classList.add('pre'); curEl.classList.remove('out');
+      void curEl.offsetWidth;
+      curEl.classList.remove('pre');
+      setTimeout(function () { busy = false; }, 460);
+    }, 460);
+  }
+  function nextIndex() {
+    var list = teamsOf(state), n = list.length;
+    for (var k = 1; k <= n; k++) { var j = (cur + k) % n; if (hasTeams(list[j])) return j; }
+    return cur;
+  }
+  function paintNext() {
+    var list = teamsOf(state), m = list[(parseInt(state.match, 10) || 1)];   // the match after the live one
+    var el = $('wm-next');
+    if (!hasTeams(m)) { el.classList.add('empty'); return; }
+    el.classList.remove('empty');
+    logo($('wm-n-il'), m.team1Short); logo($('wm-n-ir'), m.team2Short);
+    $('wm-n-bo').textContent = boText(m, state);
+    $('wm-n-nl').textContent = m.team1Short || ''; $('wm-n-nr').textContent = m.team2Short || '';
+    $('wm-n-time').textContent = timeText(m);
+  }
+
+  /* ── state poll ── */
+  function apply(s) {
+    state = s;
+    if (typeof s.serverNow === 'number') clockOffset = s.serverNow - Date.now();
+    if (s.timer) timer = s.timer;
+    renderTimer();
+    $('wt-stage').textContent = (s.stage || '') + (s.day ? ' - Day ' + s.day : '');
+    var list = teamsOf(s);
+    if (cur === -1 || cur >= list.length) { cur = -1; showCurrent(Math.max(0, list.findIndex(hasTeams))); }
+    else if (!busy) paintCurrent(cur, list, s);   // live edits (score, teams) show on the match currently displayed
+    paintNext();
+  }
+  function poll() {
+    fetch('/match/state', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(apply).catch(function () {});
+  }
+  poll(); setInterval(poll, 1000);
+  setInterval(function () { if (state && !busy && teamsOf(state).filter(hasTeams).length > 1) showCurrent(nextIndex()); }, CYCLE_MS);
+
+  /* ── sponsors (top right): the Sponsors-tab list for this page's ?set=, white logos, category above, cross-fade ── */
+  (function () {
+    var cat = $('sp-cat'), logo = $('sp-logo'), list = [], idx = 0, timer = null;
+    /* category on at most 2 lines, split at the word gap that balances the two lines (PARTNER / IN ESPORTS, OFFICIAL / SPONSOR) */
+    function twoLines(t) {
+      var w = String(t).trim().split(/\s+/).filter(Boolean);
+      if (w.length < 2) return w.join('');
+      var best = 1, bestScore = 1e9;
+      for (var i = 1; i < w.length; i++) {
+        var a = w.slice(0, i).join(' ').length, b = w.slice(i).join(' ').length, sc = Math.max(a, b);
+        if (sc < bestScore) { bestScore = sc; best = i; }
+      }
+      return w.slice(0, best).join(' ') + '<br>' + w.slice(best).join(' ');
+    }
+    function whiteUrl(src) { return src.replace(/\/([^\/]+)$/, '/white/$1'); }
+    function show(i) {
+      var it = list[i]; if (!it) return;
+      cat.classList.remove('on'); logo.classList.remove('on');
+      setTimeout(function () {
+        cat.innerHTML = twoLines(it.category || '');
+        logo.onerror = function () { logo.onerror = null; logo.src = it.src; };
+        logo.src = whiteUrl(it.src);
+        cat.classList.add('on'); logo.classList.add('on');
+        SponsorCursor.aired(i);
+      }, 420);
+    }
+    function next() {
+      if (!list.length) return;
+      show(idx);
+      var dur = Math.max(1500, parseInt(list[idx].dur, 10) || 4000);
+      idx = (idx + 1) % list.length;
+      timer = setTimeout(next, dur + 420);
+    }
+    function load() {
+      fetch('/api/sponsors' + SponsorSet.qs(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (l) {
+        if (!Array.isArray(l) || !l.length) { list = []; clearTimeout(timer); cat.classList.remove('on'); logo.classList.remove('on'); return; }
+        var first = !list.length;
+        list = l;
+        if (first) { idx = SponsorCursor.start(list.length); clearTimeout(timer); next(); }
+      }).catch(function () {});
+    }
+    load(); setInterval(load, 300000);
+  })();
+
+  /* ── HUD text motion (Valorant-style tracking): each letter of the baked left / right texts is its own layer. A sweep runs
+        along the text and the letter spacing opens up, one letter pushing the next, holds, then closes back the same way. ── */
+  (function () {
+    var HUD = '/assets/overlay/MCT/Waiting Screen/mtct_waiting_hud.png';
+    /* letter row-ranges (px from the region top), measured from the HUD art's alpha channel */
+    var REGIONS = [
+      { id: 'gl-left',  x: 36,   y: 224, w: 40, h: 290, dir: -1, offset: 0,
+        segs: [[10,26],[27,42],[44,60],[61,76],[78,93],[94,111],[112,127],[137,151],[153,168],[169,186],[187,200],[202,222],[224,240],[241,256],[269,279]] },   // reads bottom -> top
+      { id: 'gl-right', x: 1844, y: 242, w: 36, h: 244, dir: 1,  offset: 450,
+        segs: [[10,20],[22,33],[35,46],[48,70],[72,83],[84,94],[97,107],[108,120],[121,145],[146,156],[160,195],[196,207],[209,219],[221,232]] }               // reads top -> bottom
+    ];
+    var CYCLE = 7500, STAG = 55, DUR = 520, OPEN_AT = 300, CLOSE_AT = 2700, SPREAD = 1.2;   // SPREAD = extra px between neighbouring letters at full open
+    function ease(p) { p = Math.max(0, Math.min(1, p)); return p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; }
+    REGIONS.forEach(function (r) {
+      var box = $(r.id);
+      box.style.left = r.x + 'px'; box.style.top = r.y + 'px'; box.style.width = r.w + 'px'; box.style.height = r.h + 'px';
+      var order = r.segs.map(function (sg, i) { return i; });
+      if (r.dir < 0) order.reverse();            // order[k] = segment index of the k-th letter in reading order
+      r.letters = [];
+      r.segs.forEach(function (sg, i) {
+        var top = sg[0] - 1, h = sg[1] - sg[0] + 2;
+        var d = document.createElement('div');
+        d.style.top = top + 'px'; d.style.height = h + 'px';
+        d.style.backgroundImage = 'url("' + HUD + '")'; d.style.backgroundSize = '1920px 1080px';
+        d.style.backgroundPosition = (-r.x) + 'px ' + (-(r.y + top)) + 'px';
+        box.appendChild(d);
+        r.letters[i] = { el: d, k: order.indexOf(i) };
+      });
+      r.n = r.segs.length;
+    });
+    var t0 = performance.now();
+    function frame(now) {
+      REGIONS.forEach(function (r) {
+        var c = (now - t0 + r.offset) % CYCLE;
+        for (var i = 0; i < r.n; i++) {
+          var L = r.letters[i];
+          var open = ease((c - OPEN_AT - L.k * STAG) / DUR), close = ease((c - CLOSE_AT - L.k * STAG) / DUR);
+          var s = open - close;                                         // 0 closed -> 1 open -> 0 closed
+          var disp = (L.k - (r.n - 1) / 2) * SPREAD * s * r.dir;       // along the reading direction, centred so the text stays put
+          L.el.style.transform = s > 0.001 ? 'translateY(' + disp.toFixed(2) + 'px)' : '';
+        }
+      });
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+
+  /* ── on-air control: Dashboard → Control → Fullscreen → Waiting Screen toggle (SSE 'fullscreen' {name, action}) ──
+        Staged animation: HUD + vertical texts ease in, the timer digits roll up one by one, COMING UP / stage slide in, the divider
+        draws down, the current match builds out from the centre and the upcoming match sweeps in from the right. Out plays it backwards, faster. */
+  var Waiting = (function () {
+    var scene = $('waiting'), live = [], visible = false, seq = 0;
+    var OUT = 'cubic-bezier(.16,.84,.24,1)', IN_BACK = 'cubic-bezier(.34,1.4,.64,1)', EXIT = 'cubic-bezier(.5,0,.75,0)';
+    function q(sel) { return Array.prototype.slice.call(scene.querySelectorAll(sel)); }
+    function A(el, frames, o) {
+      if (!el) return null;
+      var a = el.animate(frames, Object.assign({ fill: 'both' }, o)); live.push(a); return a.finished.catch(function () {});
+    }
+    function cancelAll() { live.forEach(function (a) { try { a.cancel(); } catch (e) {} }); live = []; }
+    var fadeUp = function (d, y) { return [{ opacity: 0, transform: 'translateY(' + y + 'px)' }, { opacity: 1, transform: 'translateY(0)' }]; };
+
+    function build(dirIn) {
+      var P = [], d = dirIn ? 1 : -1;
+      if (dirIn) {
+        P.push(A($('wf-hud'), [{ opacity: 0, transform: 'scale(1.025)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 700, easing: OUT }));
+        P.push(A($('gl-left'),  [{ opacity: 0, transform: 'translateX(-34px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 600, delay: 260, easing: OUT }));
+        P.push(A($('gl-right'), [{ opacity: 0, transform: 'translateX(34px)' },  { opacity: 1, transform: 'translateX(0)' }], { duration: 600, delay: 260, easing: OUT }));
+        P.push(A($('sp-cat'),  [{ transform: 'translateY(-22px)' }, { transform: 'translateY(0)' }], { duration: 520, delay: 200, easing: OUT }));
+        P.push(A($('sp-logo'), [{ transform: 'translateY(-22px)' }, { transform: 'translateY(0)' }], { duration: 520, delay: 260, easing: OUT }));
+        /* timer: digits roll up one by one with a little overshoot */
+        q('#wt-timer span').forEach(function (c, i) {
+          P.push(A(c, [{ opacity: 0, transform: 'translateY(46%) scale(.86)' }, { opacity: 1, transform: 'translateY(0) scale(1)' }], { duration: 560, delay: 160 + i * 55, easing: IN_BACK }));
+        });
+        P.push(A($('wt-comingup'), [{ opacity: 0, transform: 'translateX(-46px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 560, delay: 120, easing: OUT }));
+        P.push(A($('wt-stage'),    [{ opacity: 0, transform: 'translateX(-46px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 560, delay: 520, easing: OUT }));
+        /* divider draws down from the top */
+        var dv = $('wm-divider'); dv.style.transformOrigin = '50% 0';
+        P.push(A(dv, [{ opacity: 0, transform: 'scaleY(0)' }, { opacity: 1, transform: 'scaleY(1)' }], { duration: 560, delay: 440, easing: OUT }));
+        /* current match: tiles pop out from the centre, texts rise */
+        P.push(A($('wm-c-tl'), [{ opacity: 0, transform: 'translateX(46px) scale(.82)' }, { opacity: 1, transform: 'translateX(0) scale(1)' }], { duration: 560, delay: 420, easing: IN_BACK }));
+        P.push(A($('wm-c-tr'), [{ opacity: 0, transform: 'translateX(-46px) scale(.82)' }, { opacity: 1, transform: 'translateX(0) scale(1)' }], { duration: 560, delay: 420, easing: IN_BACK }));
+        ['wm-c-label', 'wm-c-score', 'wm-c-bo'].forEach(function (id, i) { P.push(A($(id), fadeUp(1, 16), { duration: 480, delay: 560 + i * 70, easing: OUT })); });
+        ['wm-c-nl', 'wm-c-nr', 'wm-c-time'].forEach(function (id, i) { P.push(A($(id), fadeUp(1, 14), { duration: 460, delay: 680 + i * 60, easing: OUT })); });
+        /* upcoming match sweeps in from the right */
+        P.push(A($('wm-n-tl'), [{ opacity: 0, transform: 'translateX(90px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 600, delay: 560, easing: OUT }));
+        P.push(A($('wm-n-tr'), [{ opacity: 0, transform: 'translateX(90px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 600, delay: 620, easing: OUT }));
+        ['wm-n-label', 'wm-n-vs', 'wm-n-bo'].forEach(function (id, i) { P.push(A($(id), [{ opacity: 0, transform: 'translateX(60px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 520, delay: 680 + i * 70, easing: OUT })); });
+        ['wm-n-nl', 'wm-n-nr', 'wm-n-time'].forEach(function (id, i) { P.push(A($(id), [{ opacity: 0, transform: 'translateX(60px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 480, delay: 760 + i * 60, easing: OUT })); });
+      } else {
+        ['wm-n-time', 'wm-n-nr', 'wm-n-nl', 'wm-n-bo', 'wm-n-vs', 'wm-n-label'].forEach(function (id, i) { P.push(A($(id), [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: 'translateX(46px)' }], { duration: 300, delay: i * 25, easing: EXIT })); });
+        P.push(A($('wm-n-tr'), [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: 'translateX(70px)' }], { duration: 340, delay: 60, easing: EXIT }));
+        P.push(A($('wm-n-tl'), [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: 'translateX(70px)' }], { duration: 340, delay: 90, easing: EXIT }));
+        ['wm-c-time', 'wm-c-nr', 'wm-c-nl', 'wm-c-bo', 'wm-c-score', 'wm-c-label'].forEach(function (id, i) { P.push(A($(id), [{ opacity: 1, transform: 'translateY(0)' }, { opacity: 0, transform: 'translateY(12px)' }], { duration: 260, delay: 40 + i * 22, easing: EXIT })); });
+        P.push(A($('wm-c-tl'), [{ opacity: 1, transform: 'translateX(0) scale(1)' }, { opacity: 0, transform: 'translateX(30px) scale(.86)' }], { duration: 320, delay: 150, easing: EXIT }));
+        P.push(A($('wm-c-tr'), [{ opacity: 1, transform: 'translateX(0) scale(1)' }, { opacity: 0, transform: 'translateX(-30px) scale(.86)' }], { duration: 320, delay: 150, easing: EXIT }));
+        P.push(A($('wm-divider'), [{ opacity: 1, transform: 'scaleY(1)' }, { opacity: 0, transform: 'scaleY(0)' }], { duration: 320, delay: 180, easing: EXIT }));
+        P.push(A($('wt-stage'),    [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: 'translateX(-40px)' }], { duration: 320, delay: 80, easing: EXIT }));
+        P.push(A($('wt-comingup'), [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: 'translateX(-40px)' }], { duration: 320, delay: 140, easing: EXIT }));
+        var cells = q('#wt-timer span');
+        cells.forEach(function (c, i) { P.push(A(c, [{ opacity: 1, transform: 'translateY(0)' }, { opacity: 0, transform: 'translateY(-40%) scale(.9)' }], { duration: 300, delay: 60 + (cells.length - 1 - i) * 22, easing: EXIT })); });
+        P.push(A($('sp-cat'),  [{ transform: 'translateY(0)' }, { transform: 'translateY(-20px)' }], { duration: 300, delay: 120, easing: EXIT }));
+        P.push(A($('sp-logo'), [{ transform: 'translateY(0)' }, { transform: 'translateY(-20px)' }], { duration: 300, delay: 120, easing: EXIT }));
+        P.push(A($('gl-left'),  [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: 'translateX(-30px)' }], { duration: 340, delay: 200, easing: EXIT }));
+        P.push(A($('gl-right'), [{ opacity: 1, transform: 'translateX(0)' }, { opacity: 0, transform: 'translateX(30px)' }], { duration: 340, delay: 200, easing: EXIT }));
+        P.push(A($('wf-hud'), [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.02)' }], { duration: 420, delay: 300, easing: EXIT }));
+      }
+      return Promise.all(P);
+    }
+    function go(show) {
+      if (show === visible && !live.length) return;
+      visible = show; var my = ++seq;
+      cancelAll();
+      if (show) scene.classList.remove('off');
+      build(show).then(function () {
+        if (my !== seq) return;                         // superseded by a newer toggle
+        if (show) cancelAll();                           // end state == natural state, so release the animations
+        else { scene.classList.add('off'); cancelAll(); }
+      });
+    }
+    var api = { show: function () { go(true); }, hide: function () { go(false); } };
+    window.__waiting = api;   // handy for testing from the console
+    return api;
+  })();
+  (function () {
+    var sse = createOverlaySSE();
+    sse.addEventListener('fullscreen', function (e) {
+      try { var d = JSON.parse(e.data); if (d.name === 'waiting') { if (d.action === 'show') Waiting.show(); else Waiting.hide(); } } catch (err) {}
+    });
+    fetch('/overlay/fullscreen-state', { cache: 'no-store' }).then(function (r) { return r.json(); })
+      .then(function (st) { if (st && st.waiting) Waiting.show(); }).catch(function () {});
+  })();
+})();
+</script>
+</body>
+</html>

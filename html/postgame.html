@@ -6125,18 +6125,6 @@
         const bar = document.getElementById('config-bar');
         if (bar) bar.classList.remove('debug-open');
       });
-      /* Live round-trip for the Debug Mode setting (see debugModeEnabled
-         above) — a page that's been open since before someone flipped it
-         in the dashboard picks up the change immediately, and gets its
-         bar force-closed if it was open when Debug Mode turned off. */
-      sseSource.addEventListener('debugmode', (e) => {
-        const d = JSON.parse(e.data);
-        debugModeEnabled = !!d.enabled;
-        if (!debugModeEnabled) {
-          const bar = document.getElementById('config-bar');
-          if (bar) bar.classList.remove('debug-open');
-        }
-      });
       sseSource.addEventListener('featuretoggle', (e) => {
         try {
           const d = JSON.parse(e.data);
@@ -7313,6 +7301,7 @@
        schedule (see match-dashboard.html's renderTomorrowMatches). */
     /* Playoffs: how many matches Tomorrow's Schedule shows — day 4/5 = 1, day 2/3 = 2 (a GRAND FINALS label on match 1 still forces 1). */
     function poTomorrowCount(state) {
+      if (state && state.tomorrowMatchCount >= 1 && state.tomorrowMatchCount <= 8) return state.tomorrowMatchCount;   // REBROADCAST: set by the Match Board spinner
       const first = (state && state.tomorrowMatches && state.tomorrowMatches[0]) || {};
       return (computeTomorrowWeekDay(state).day >= 4 || /grand\s*finals?/i.test(first.stageLabel || '')) ? 1 : 2;
     }
@@ -7330,7 +7319,7 @@
         stage: m.stageLabel || '',
         openHouse: m.openHouseTime || '',
         time:  m.time || '',
-        bo,
+        bo: ((m.series || '').toUpperCase()) || bo,   // per-match Best-of from the Match Board spinner
         matchType: m.matchType || (m.star ? 'clash' : 'regular'),
         left:  { tri: m.team1Short || '', logo: m.team1Short ? '/assets/team/logos/' + encodeURIComponent(m.team1Short) + '.png' : null },
         right: { tri: m.team2Short || '', logo: m.team2Short ? '/assets/team/logos/' + encodeURIComponent(m.team2Short) + '.png' : null },
@@ -13792,24 +13781,7 @@
     }
     restoreScene();
 
-    /* Debug Mode — gates the ` -toggled debug bar (SHOW/HIDE/PREVIEW per
-       feature, plus placeholder-data test tools like Final Team's) behind
-       a persisted, dashboard-controlled setting instead of it always
-       being one keypress away. Defaults OFF (fail-safe if the fetch is
-       slow/fails) — enable it from the dashboard's Settings > Debug
-       section, then press ` here to open the bar. */
-    let debugModeEnabled = false;
-    fetch('/overlay/debug-mode', { cache: 'no-store' })
-      .then(r => r.json()).then(d => { debugModeEnabled = !!(d && d.enabled); })
-      .catch(() => {});
-
-    document.addEventListener('keydown', e => {
-      if (e.key === '`' && debugModeEnabled) {
-        document.getElementById('config-bar').classList.toggle('debug-open');
-      }
-    });
-
-    function toggleLocalPreview(feature, btn) {
+        function toggleLocalPreview(feature, btn) {
       const wasActive = btn.classList.contains('active');
       document.querySelectorAll('.dbg-btn.preview').forEach(b => b.classList.remove('active'));
       if (wasActive) {

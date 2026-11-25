@@ -271,6 +271,23 @@
   var dragFile = null; /* filename currently being dragged, or null */
   var SETS = ['MAIN', 'ID', 'MY', 'PH'];
   var currentSet = (function () { var v = sessionStorage.getItem('sponsor_set'); return SETS.indexOf(v) !== -1 ? v : 'MAIN'; })();
+  var configLoaded = false;
+  var ALL_SETS = ['MAIN', 'ID', 'MY', 'PH'], rebroadcastMode = false;
+  /* REBROADCAST server mode: PH is the only set — hide MAIN / ID / MY. Re-checked every 3 s so a Settings switch applies live. */
+  function applyServerMode() {
+    fetch('/api/server-mode', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      var rb = !!(d && String(d.mode).toUpperCase() === 'REBROADCAST');
+      if (rb === rebroadcastMode) return;
+      rebroadcastMode = rb;
+      SETS = rb ? ['PH'] : ALL_SETS;
+      document.querySelectorAll('.set-tab').forEach(function (b) { b.style.display = SETS.indexOf(b.dataset.set) === -1 ? 'none' : ''; });
+      if (SETS.indexOf(currentSet) === -1) {
+        currentSet = 'PH';
+        try { sessionStorage.setItem('sponsor_set', currentSet); } catch (e) {}
+        if (configLoaded) loadConfig();
+      } else if (configLoaded) renderSetTabs();
+    }).catch(function () {});
+  }
   var setStats = {};   /* set -> { logos: n in folder, assigned: n in categories } for the tab badges */
 
   /* ── AUTH ── */
@@ -292,12 +309,14 @@
           token = pw;
           sessionStorage.setItem('match_token', token);
           document.getElementById('login-err').textContent = '';
-          loadConfig().then(function () { showApp(); loadSetStats(); });
+          loadConfig().then(function () { configLoaded = true; showApp(); loadSetStats(); });
         } else {
           document.getElementById('login-err').textContent = 'Incorrect password.';
         }
       }).catch(function () { document.getElementById('login-err').textContent = 'Cannot reach server.'; });
   }
+
+  applyServerMode(); setInterval(applyServerMode, 3000);
 
   /* ── LOAD ── */
   function loadConfig() {

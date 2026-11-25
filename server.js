@@ -153,7 +153,8 @@ app.use(require('./routes/postgame'));
 app.use(require('./routes/dashboard'));
 app.use(require('./routes/overlayStyles'));
 app.use(require('./routes/devapi'));
-app.use(require('./routes/dire'));   // built-in DiredudeAPI at /dire/api/* (DEBUG API mode)
+app.use(require('./routes/dire'));
+app.use(require('./routes/ytchat'));   // Live Comments (YouTube chat) at /ytchat/*   // built-in DiredudeAPI at /dire/api/* (DEBUG API mode)
 
 // Debug: log unmatched routes
 app.use(function (req, res, next) {

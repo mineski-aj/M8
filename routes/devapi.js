@@ -410,6 +410,27 @@ router.post('/api/seat-arrangement', (req, res) => {
   res.json({ ok: true, ...saved });
 });
 
+// Dynamic content (the Dashboard's Dynamic tab) — GET to read, POST { ph_ticker, en_ticker, ph_headline, en_headline, match_headline, superfan_text, superfan_title } to update.
+// Lower Thirds → Headline reads match_headline (Universal Match Headline). The Dynamic tab only edits ph_ticker, ph_headline, match_headline; the other keys are kept for old saved data.
+const DYNAMIC_FILE = path.join(__dirname, '..', 'data', 'dynamic_content.json');
+const DYNAMIC_DEFAULTS = { ph_ticker: '', en_ticker: '', ph_headline: '', en_headline: '', match_headline: '', superfan_text: '', superfan_title: '' };
+
+router.get('/api/dynamic-content', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store').json(Object.assign({}, DYNAMIC_DEFAULTS, JSON.parse(fs.readFileSync(DYNAMIC_FILE, 'utf8'))));
+  } catch {
+    res.set('Cache-Control', 'no-store').json(DYNAMIC_DEFAULTS);
+  }
+});
+
+router.post('/api/dynamic-content', (req, res) => {
+  const b = req.body || {};
+  const data = {};
+  Object.keys(DYNAMIC_DEFAULTS).forEach(k => { data[k] = String(b[k] || ''); });
+  fs.writeFileSync(DYNAMIC_FILE, JSON.stringify(data, null, 2));
+  res.set('Cache-Control', 'no-store').json({ ok: true, data });
+});
+
 // Game API base URL — GET to read, POST { url } to update
 const GAME_URL_FILE = path.join(__dirname, '..', 'data', 'game_api_url.json');
 
@@ -710,6 +731,26 @@ router.post('/api/hrm-url', (req, res) => {
 
 
 
+// Community Responses — published Google Sheet (CSV) of viewer messages (logic in lib/community.js).
+// GET /api/community-url to read, POST { url } to update. GET /api/community-responses fetches + parses the sheet server-side (no browser CORS).
+const community = require('../lib/community');
+router.get('/api/community-url', (req, res) => {
+  res.set('Cache-Control', 'no-store').json({ url: community.getUrl() });
+});
+router.post('/api/community-url', (req, res) => {
+  const url = String((req.body || {}).url || '').trim();
+  fs.writeFileSync(community.COMMUNITY_URL_FILE, JSON.stringify({ url }, null, 2));
+  res.json({ ok: true, url: url || community.COMMUNITY_URL_DEFAULT });
+});
+router.get('/api/community-responses', async (req, res) => {
+  try {
+    const { header, rows } = await community.fetchRows();
+    res.set('Cache-Control', 'no-store').json({ count: rows.length, header, rows });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
 // Server-side proxy — fetches the Gold vs Gold Sector API and returns JSON, avoids browser CORS issues
 router.get('/api/golddistri-data', (req, res) => {
   // Built from the raw battle feed (lib/feedDerived.js) — no external Gold Distribution API.
@@ -741,7 +782,7 @@ router.get('/api/kdadistri-data', (req, res) => {
 
 // MVP Highlights (game-mvp/view) API base URL — GET to read, POST { url } to update
 const HIGHLIGHTS_URL_FILE    = path.join(__dirname, '..', 'data', 'highlights_api_url.json');
-const HIGHLIGHTS_URL_DEFAULT = 'https://theapi.dpdns.org/api/game-mvp/view/';
+const HIGHLIGHTS_URL_DEFAULT = '';
 
 router.get('/api/highlights-url', (req, res) => {
   res.json({ url: readUrlForMode(HIGHLIGHTS_URL_FILE, HIGHLIGHTS_URL_DEFAULT) });

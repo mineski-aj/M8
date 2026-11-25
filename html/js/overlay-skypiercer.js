@@ -2,8 +2,7 @@
    Same shell as Item Pickup (overlay-items.js): label SKY PIERCER, the
    Sky Piercer icon (assets/game/items/2014.png), and "<N> STACKS" where the time sits.
    Fires per player whenever the stack value changes (shown 3s; each further change updates the number and adds 1s). The stack
-   count comes from the game feed: player.extra_param.sky_piercer_stack.stack
-   (falls back to player.sky_piercer_stack.stack). */
+   count is computed from kill_num/dead_num (see calcSkyPiercerStack). */
 const SKYPIERCER_ITEM_ID = '2014';
 const skyPiercerRefs     = {};
 const isPlayingSkyPiercer = {};
@@ -131,12 +130,33 @@ function triggerSkyPiercer(i, stacks) {
 
 /* Live detection — called from overlay-debug.js's poll handler for each player.
    Fires whenever player.extra_param.sky_piercer_stack.stack changes to a value > 0. */
-function checkSkyPiercer(pidx, player) {
-  const stack = getSkyPiercerStack(player);
+const SKYPIERCER_MAX_STACKS = 80;
+const skyPiercerCalc = {};   // per player: { stacks, kills, deaths } — baseline while the item is owned
+
+/* Stacks are computed from the feed's kill/death counters (the feed carries no real stack value):
+   each kill +10 (cap 80), each death -30% (stacks = round(stacks * 0.7)). Counting starts when the
+   player first owns Sky Piercer; selling it resets to 0. Execute threshold = 4% + 0.1% * stacks. */
+function calcSkyPiercerStack(pidx, player, equipIds) {
+  const owns = Array.isArray(equipIds) && equipIds.some(id => String(id) === SKYPIERCER_ITEM_ID);
+  if (!owns) { delete skyPiercerCalc[pidx]; return 0; }
+  const k = parseInt(player && player.kill_num) || 0;
+  const d = parseInt(player && player.dead_num) || 0;
+  let c = skyPiercerCalc[pidx];
+  if (!c) { c = skyPiercerCalc[pidx] = { stacks: 0, kills: k, deaths: d }; return 0; }
+  if (k > c.kills) c.stacks = Math.min(SKYPIERCER_MAX_STACKS, c.stacks + (k - c.kills) * 10);
+  for (let n = d - c.deaths; n > 0; n--) c.stacks = Math.round(c.stacks * 0.7);
+  c.kills = k; c.deaths = d;
+  return c.stacks;
+}
+
+/* Live detection — called from overlay-debug.js's poll handler for each player.
+   Fires whenever the computed stack count changes to a value > 0. */
+function checkSkyPiercer(pidx, player, equipIds) {
+  const stack = calcSkyPiercerStack(pidx, player, equipIds);
   const prev = prevSkyPiercerMilestone[pidx];
   prevSkyPiercerMilestone[pidx] = stack;
   if (prev === undefined) return;          // first poll: baseline only
-  if (stack === prev || stack <= 0) return; // unchanged, or reset to 0 (death / item sold)
+  if (stack === prev || stack <= 0) return; // unchanged, or reset to 0 (item sold)
   if (!featureEnabled.skypiercer) return;
   if (isPlayingSkyPiercer[pidx]) triggerSkyPiercer(pidx, stack);          // already up: update + extend
   else if (isAnyPlaying(pidx)) skyPiercerQueue[pidx] = { stacks: stack };
