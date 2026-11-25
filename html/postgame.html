@@ -1572,22 +1572,32 @@
     #mvm-page.mvm-visible { opacity: 1; }
     #mvm-page > * { position: absolute; }
     #mvm-hud { z-index: 100; left: 47px; top: 50px; width: 1826px; height: 1017px; pointer-events: none; }
-    #mvm-hud .mvm-hs { position: absolute; background-image: url('/assets/overlay/MCT/postgame/mvp/mvp_hud.png'); background-size: 1826px 1017px; background-repeat: no-repeat; }
+    #mvm-hud .mvm-hs, #hmm-hud .mvm-hs, #mch-hud .mvm-hs { position: absolute; background-image: url('/assets/overlay/MCT/postgame/mvp/mvp_hud.png'); background-size: 1826px 1017px; background-repeat: no-repeat; }
     /* HUD build (same language as the Waiting screen): corner emblems spin/pop in, the footer lines draw outward from the "2026 SEA" text,
        the end swooshes slide in from the edges, and the text rises letter-slice by letter-slice. */
-    #mvm-page.mvm-visible .mvm-hs-emb { animation: mvmHsEmb 700ms cubic-bezier(.34,1.56,.64,1) 300ms both, mvmHsEmbIdle 7s cubic-bezier(.65,0,.35,1) 2s infinite; }
-    #mvm-page.mvm-visible .mvm-hs-line-l { transform-origin: 100% 50%; animation: mvmHsLine 800ms cubic-bezier(.16,.84,.24,1) 600ms both, mvmHsGlow 3.6s ease-in-out 1.6s infinite; }
-    #mvm-page.mvm-visible .mvm-hs-line-r { transform-origin: 0% 50%; animation: mvmHsLine 800ms cubic-bezier(.16,.84,.24,1) 600ms both, mvmHsGlow 3.6s ease-in-out 1.6s infinite; }
-    #mvm-page.mvm-visible .mvm-hs-sw-l { animation: mvmHsSwL 600ms cubic-bezier(.16,.84,.24,1) 900ms both, mvmHsSwIdleL 5s ease-in-out 1.6s infinite; }
-    #mvm-page.mvm-visible .mvm-hs-sw-r { animation: mvmHsSwR 600ms cubic-bezier(.16,.84,.24,1) 900ms both, mvmHsSwIdleR 5s ease-in-out 1.6s infinite; }
-    #mvm-page.mvm-visible .mvm-hs-txt { animation: mvmHsTxt 520ms cubic-bezier(.16,.84,.24,1) calc(450ms + var(--i) * 40ms) both, mvmHsTrack 7.5s cubic-bezier(.45,0,.25,1) 2.4s infinite; }
+    #mvm-page.mvm-visible .mvm-hs-emb, #hmm-page.hmm-visible .mvm-hs-emb, #mct-hdr.mch-visible .mvm-hs-emb { animation: mvmHsEmb 700ms cubic-bezier(.34,1.56,.64,1) 300ms both, mvmHsEmbIdle 7s cubic-bezier(.65,0,.35,1) 2s infinite; }
+    #mvm-page.mvm-visible .mvm-hs-line-l, #hmm-page.hmm-visible .mvm-hs-line-l, #mct-hdr.mch-visible .mvm-hs-line-l { transform-origin: 100% 50%; animation: mvmHsLine 800ms cubic-bezier(.16,.84,.24,1) 600ms both, mvmHsGlow 3.6s ease-in-out 1.6s infinite; }
+    #mvm-page.mvm-visible .mvm-hs-line-r, #hmm-page.hmm-visible .mvm-hs-line-r, #mct-hdr.mch-visible .mvm-hs-line-r { transform-origin: 0% 50%; animation: mvmHsLine 800ms cubic-bezier(.16,.84,.24,1) 600ms both, mvmHsGlow 3.6s ease-in-out 1.6s infinite; }
+    #mvm-page.mvm-visible .mvm-hs-sw-l, #hmm-page.hmm-visible .mvm-hs-sw-l, #mct-hdr.mch-visible .mvm-hs-sw-l { animation: mvmHsSwL 600ms cubic-bezier(.16,.84,.24,1) 900ms both, mvmHsSwIdleL 5s ease-in-out 1.6s infinite; }
+    #mvm-page.mvm-visible .mvm-hs-sw-r, #hmm-page.hmm-visible .mvm-hs-sw-r, #mct-hdr.mch-visible .mvm-hs-sw-r { animation: mvmHsSwR 600ms cubic-bezier(.16,.84,.24,1) 900ms both, mvmHsSwIdleR 5s ease-in-out 1.6s infinite; }
+    /* "2026 SEA": ONE strip in a clip box (#…-hud .mvm-hs-tbox) — rises in once, then every 7.5 s a fresh copy drops in from above and pushes
+       the current one down and out (two copies, -ta / -tb, alternating). The old version cut the text into 16 px slices and spread them
+       apart, which split letters in half. */
+    .mvm-hs-tbox { position: absolute; overflow: hidden; }
+    #mvm-page.mvm-visible .mvm-hs-tbox, #hmm-page.hmm-visible .mvm-hs-tbox, #mct-hdr.mch-visible .mvm-hs-tbox { animation: mvmHsTxt 520ms cubic-bezier(.16,.84,.24,1) 450ms both; }
+    .mvm-hs-tb { transform: translateY(-100%); }
+    #mvm-page.mvm-visible .mvm-hs-ta, #hmm-page.hmm-visible .mvm-hs-ta, #mct-hdr.mch-visible .mvm-hs-ta { animation: mvmHsPushA 15s linear 2.4s infinite; }
+    #mvm-page.mvm-visible .mvm-hs-tb, #hmm-page.hmm-visible .mvm-hs-tb, #mct-hdr.mch-visible .mvm-hs-tb { animation: mvmHsPushB 15s linear 2.4s infinite; }
+    @keyframes mvmHsPushA { 0%, 45% { transform: translateY(0); animation-timing-function: cubic-bezier(.6,0,.25,1); } 50% { transform: translateY(100%); }
+                            50.01%, 95% { transform: translateY(-100%); animation-timing-function: cubic-bezier(.6,0,.25,1); } 100% { transform: translateY(0); } }
+    @keyframes mvmHsPushB { 0%, 45% { transform: translateY(-100%); animation-timing-function: cubic-bezier(.6,0,.25,1); } 50% { transform: translateY(0); }
+                            95% { transform: translateY(0); animation-timing-function: cubic-bezier(.6,0,.25,1); } 99.99% { transform: translateY(100%); } 100% { transform: translateY(-100%); } }
     /* idle motion (loops after the intro): emblems do a full spin every few seconds, footer lines pulse, swooshes drift, and the footer text opens its letter spacing
        (tracking sweep, like the Waiting screen) every 7.5 s */
     @keyframes mvmHsEmbIdle { 0%, 66% { transform: rotate(0); filter: drop-shadow(0 0 0 rgba(67,255,240,0)); } 78% { filter: drop-shadow(0 0 9px rgba(67,255,240,.9)); } 100% { transform: rotate(360deg); filter: drop-shadow(0 0 0 rgba(67,255,240,0)); } }
     @keyframes mvmHsGlow { 0%, 100% { opacity: .7; filter: brightness(1); } 50% { opacity: 1; filter: brightness(1.7); } }
     @keyframes mvmHsSwIdleL { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(7px); } }
     @keyframes mvmHsSwIdleR { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-7px); } }
-    @keyframes mvmHsTrack { 0%, 55%, 100% { transform: translateX(0); } 75% { transform: translateX(calc((var(--i) - 4.5) * 5px)); } }
     @keyframes mvmHsEmb { from { opacity: 0; transform: scale(.2) rotate(-120deg); } to { opacity: 1; transform: none; } }
     @keyframes mvmHsLine { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
     @keyframes mvmHsSwL { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
@@ -1641,6 +1651,366 @@
     @keyframes mvmFromLeft { from { opacity: 0; transform: translateX(-120px); } to { opacity: 1; transform: none; } }
     @keyframes mvmFromRight { from { opacity: 0; transform: translateX(140px); } to { opacity: 1; transform: none; } }
     @keyframes mvmRise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+
+    /* ── POST GOLD GRAPH (#pgg-page) — full-screen version of the ingame MCT gold graph + both teams' summaries.
+       Coordinates = 1920x1080 canvas, from assets/overlay/MCT/postgame/goldgraph/goldgraph_reference.jpg (D07-GOLD CURVE).
+       Team 1 (camp 1) = left / top panel / cyan, team 2 = right / bottom panel / yellow — same colour logic as the ingame
+       graph: the curve is cyan while team 1 leads, yellow while team 2 leads. Every element is its own absolute child
+       (Edit tab); the chart (#pgg-chart, an SVG in page coordinates) moves as one piece. */
+    @font-face { font-family: 'Source Han Sans MCT'; font-weight: 500; font-display: block; src: url('/assets/fonts/MCT/SourceHanSans/SourceHanSansCN-Medium.otf') format('opentype'); }
+    @font-face { font-family: 'Source Han Sans MCT'; font-weight: 700; font-display: block; src: url('/assets/fonts/MCT/SourceHanSans/SourceHanSansCN-Bold.otf') format('opentype'); }
+    #pgg-page { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: none; overflow: hidden; background: transparent; opacity: 0; transition: opacity 400ms ease; }
+    #pgg-page.pgg-on { display: block; }
+    #pgg-page.pgg-visible { opacity: 1; }
+    #pgg-page > * { position: absolute; }
+    #mct-hdr { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: none; pointer-events: none; opacity: 0; transition: opacity 400ms ease; }
+    #mct-hdr.mch-on { display: block; }
+    #mct-hdr.mch-visible { opacity: 1; }
+    #mct-hdr > * { position: absolute; }
+    #mch-hud { z-index: 100; left: 47px; top: 50px; width: 1826px; height: 1017px; pointer-events: none; }
+    .pgg-tile { width: 162px; height: 162px; box-sizing: border-box; background: linear-gradient(180deg, #2363b6 0%, #2a8bbd 55%, #2fb4b6 100%); border: 1.5px solid rgba(120,230,240,.55); }
+    #mch-tile1 { border-radius: 34px 34px 0 34px; } #mch-tile2 { border-radius: 34px 0 34px 34px; }   /* one square corner each, as in the reference (left: bottom-right, right: top-right) */
+    #mch-tile1 { left: 156px; top: 50px; } #mch-tile2 { left: 1604px; top: 50px; }
+    .pgg-logo { width: 138px; height: 138px; object-fit: contain; }
+    #mch-logo1 { left: 168px; top: 62px; } #mch-logo2 { left: 1616px; top: 62px; }
+    .pgg-logo:not([src]) { visibility: hidden; }
+    .pgg-tri { width: 330px; height: 70px; white-space: nowrap; font: 800 60px/70px 'Monument Ext MCT', sans-serif; letter-spacing: 3px; color: #43fff0; }
+    #mch-tri1 { left: 336px; top: 84px; } #mch-tri2 { left: 1253px; top: 84px; text-align: right; }
+    .pgg-res { width: 300px; height: 40px; white-space: nowrap; font: 700 29px/40px 'Source Han Sans MCT', sans-serif; }
+    .pgg-res.pgg-win { color: #43fff0; } .pgg-res.pgg-lose { color: #4a8df0; }
+    #mch-res1 { left: 337px; top: 141px; } #mch-res2 { left: 1281px; top: 141px; text-align: right; }
+    .pgg-sw { width: 112px; height: 28px; overflow: visible; }
+    #mch-sw1 { left: 330px; top: 186px; } #mch-sw2 { left: 1478px; top: 186px; }   /* #mch-sw2 is mirrored inside the SVG (pggSwoosh) — a CSS transform would be overridden by the entrance animation */
+    .pgg-score { width: 212px; height: 80px; white-space: nowrap; font: 800 81px/80px 'Monument Ext MCT', sans-serif; color: #fff; }
+    #mch-score1 { left: 600px; top: 74px; text-align: right; } #mch-score2 { left: 1113px; top: 74px; }
+    #mch-mark { left: 885px; top: 60px; width: 150px; height: 118px;
+      background: url('/assets/overlay/MCT/postgame/mct_m_logo.png') center / contain no-repeat; }   /* 400x310 art, gradient baked in */
+    #mch-stage { left: 710px; top: 203px; width: 500px; height: 40px; text-align: center; white-space: nowrap; font: 800 33px/40px 'Monument Ext MCT', sans-serif; color: #fff; }
+    #mch-matchgame { left: 710px; top: 239px; width: 500px; height: 30px; text-align: center; white-space: nowrap; font: 700 21px/30px 'Source Han Sans MCT', sans-serif; color: #43fff0; }
+    .pgg-panel { width: 529px; box-sizing: border-box; background: linear-gradient(180deg, rgba(36,86,170,.34), rgba(36,96,200,.5)); }
+    #pgg-panel1 { left: 75px; top: 347px; height: 275px; border: 1.5px solid rgba(67,255,240,.75); }
+    #pgg-panel2 { left: 75px; top: 704px; height: 271px; border: 1.5px solid #ffe100; }
+    .pgg-div { width: 1.5px; height: 230px; background: rgba(255,255,255,.45); }
+    #pgg-div1 { left: 383px; top: 375px; } #pgg-div2 { left: 383px; top: 732px; }
+    .pgg-hero { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #10152c; }
+    .pgg-hero:not([src]) { visibility: hidden; }
+    .pgg-role { width: 44px; height: 44px; border-radius: 3px; background: #47fff0; overflow: hidden; }
+    .pgg-role > div { position: absolute; left: -9px; top: -9px; width: 62px; height: 60px; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    .pgg-name { width: 186px; height: 36px; white-space: nowrap; overflow: visible; font: 700 26px/36px 'Source Han Sans MCT', sans-serif; color: #fff; text-transform: uppercase; }
+    .pgg-coin { width: 28px; height: 28px; }
+    .pgg-gold { width: 150px; height: 40px; text-align: center; white-space: nowrap; font: 800 34px/40px 'Monument Ext MCT', sans-serif; color: #fff; }
+    .pgg-lbl { white-space: nowrap; font: 700 15px/18px 'Source Han Sans MCT', sans-serif; text-transform: uppercase; }
+    .pgg-c1 { color: #43fff0; } .pgg-c2 { color: #ffe100; }
+    .pgg-kda { width: 160px; height: 32px; text-align: center; white-space: nowrap; font: 500 26px/32px 'Source Han Sans MCT', sans-serif; color: #fff; }
+    .pgg-ico { width: 34px; height: 34px; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    .pgg-ico.pgg-turtle { -webkit-mask-image: url('/assets/overlay/MCT/postgame/mct_turtle.png'); mask-image: url('/assets/overlay/MCT/postgame/mct_turtle.png'); }
+    .pgg-ico.pgg-lord   { -webkit-mask-image: url('/assets/overlay/MCT/postgame/mct_lord.png');   mask-image: url('/assets/overlay/MCT/postgame/mct_lord.png'); }
+    .pgg-ico.pgg-tower  { -webkit-mask-image: url('/assets/overlay/MCT/postgame/mct_turret.png');  mask-image: url('/assets/overlay/MCT/postgame/mct_turret.png'); }
+    .pgg-ico.pgg-c1 { background: #43fff0; } .pgg-ico.pgg-c2 { background: #ffe100; }
+    .pgg-olbl { width: 70px; height: 18px; text-align: center; }
+    .pgg-cnt { width: 70px; height: 28px; text-align: center; white-space: nowrap; font: 500 26px/28px 'Source Han Sans MCT', sans-serif; color: #fff; }
+    #pgg-title { left: 132px; top: 630px; width: 430px; height: 64px; white-space: nowrap; display: flex; align-items: center; font: 800 51px/64px 'Monument Ext MCT', sans-serif; color: #fff; }
+    #pgg-title svg { width: 0.78em; height: 0.78em; margin: 0 0.02em; flex: none; }
+    #pgg-chart { left: 600px; top: 290px; width: 1320px; height: 740px; overflow: visible; }
+    #pgg-chart .pgg-xlab { font: 500 24px 'Source Han Sans MCT', sans-serif; fill: #fff; }
+    #pgg-chart .pgg-ylab { font: 700 22px 'Source Han Sans MCT', sans-serif; }
+    /* Entrance: frames first, then their contents settle INSIDE them — opacity with at most a 6 px lift (nothing slides across a
+       panel / chart edge). Order: HUD + boxes -> header -> rows (top panel, then bottom, row by row) -> stats -> curve draws left to
+       right with the objective icons appearing as the line reaches them (pggDrawLine). Out = the page fade. */
+    @keyframes pggFade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes pggLift { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    @keyframes pggSettle { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+    #mct-hdr.mch-visible #mch-hud { animation: pggFade 500ms ease both; }
+    #pgg-page.pgg-visible .pgg-panel, #pgg-page.pgg-visible #pgg-chart { animation: pggFade 450ms ease both; }
+    #mct-hdr.mch-visible .pgg-tile { animation: pggSettle 500ms cubic-bezier(.2,.8,.2,1) both; }
+    #mct-hdr.mch-visible .pgg-logo, #mct-hdr.mch-visible #mch-mark { animation: pggSettle 500ms cubic-bezier(.2,.8,.2,1) 120ms both; }
+    #mct-hdr.mch-visible .pgg-tri, #mct-hdr.mch-visible .pgg-score, #mct-hdr.mch-visible #mch-stage { animation: pggLift 450ms cubic-bezier(.2,.8,.2,1) 200ms both; }
+    #mct-hdr.mch-visible .pgg-res, #mct-hdr.mch-visible .pgg-sw, #mct-hdr.mch-visible #mch-matchgame { animation: pggLift 450ms cubic-bezier(.2,.8,.2,1) 280ms both; }
+    #pgg-page.pgg-visible .pgg-div { animation: pggFade 400ms ease 300ms both; }
+    #pgg-page.pgg-visible .pgg-hero, #pgg-page.pgg-visible .pgg-role, #pgg-page.pgg-visible .pgg-name { animation: pggLift 380ms cubic-bezier(.2,.8,.2,1) calc(320ms + var(--r, 0) * 50ms) both; }
+    #pgg-page.pgg-visible [id^="pgg-hero-2-"], #pgg-page.pgg-visible [id^="pgg-role-2-"], #pgg-page.pgg-visible [id^="pgg-name-2-"] { animation-delay: calc(470ms + var(--r, 0) * 50ms); }
+    #pgg-page.pgg-visible #pgg-title { animation: pggFade 450ms ease 380ms both; }
+    #pgg-page.pgg-visible .pgg-coin, #pgg-page.pgg-visible .pgg-gold, #pgg-page.pgg-visible .pgg-lbl, #pgg-page.pgg-visible .pgg-kda,
+    #pgg-page.pgg-visible .pgg-ico, #pgg-page.pgg-visible .pgg-cnt { animation: pggLift 420ms cubic-bezier(.2,.8,.2,1) 560ms both; }
+    #pgg-page.pgg-visible [id$="-2"].pgg-coin, #pgg-page.pgg-visible [id$="-2"].pgg-gold, #pgg-page.pgg-visible [id$="-2"].pgg-lbl, #pgg-page.pgg-visible [id$="-2"].pgg-kda,
+    #pgg-page.pgg-visible [id$="-2"].pgg-ico, #pgg-page.pgg-visible [id$="-2"].pgg-cnt { animation-delay: 640ms; }
+    #pgg-marks image { opacity: 0; transform-box: fill-box; transform-origin: center; }
+    #pgg-hero-1-1 { left: 85px; top: 359px; } #pgg-role-1-1 { left: 137px; top: 359px; } #pgg-name-1-1 { left: 192px; top: 362px; }
+    #pgg-hero-1-2 { left: 85px; top: 410px; } #pgg-role-1-2 { left: 137px; top: 410px; } #pgg-name-1-2 { left: 192px; top: 413px; }
+    #pgg-hero-1-3 { left: 85px; top: 461px; } #pgg-role-1-3 { left: 137px; top: 461px; } #pgg-name-1-3 { left: 192px; top: 464px; }
+    #pgg-hero-1-4 { left: 85px; top: 511px; } #pgg-role-1-4 { left: 137px; top: 511px; } #pgg-name-1-4 { left: 192px; top: 514px; }
+    #pgg-hero-1-5 { left: 85px; top: 562px; } #pgg-role-1-5 { left: 137px; top: 562px; } #pgg-name-1-5 { left: 192px; top: 565px; }
+    #pgg-coin-1 { left: 415px; top: 372px; } #pgg-gold-1 { left: 429px; top: 396px; }
+    #pgg-kdal-1 { left: 417px; top: 449px; } #pgg-kda-1 { left: 415px; top: 463px; }
+    #pgg-ico-turtle-1 { left: 416px; top: 514px; } #pgg-ico-lord-1 { left: 482px; top: 514px; } #pgg-ico-tower-1 { left: 547px; top: 514px; }
+    #pgg-lbl-turtle-1 { left: 398px; top: 552px; } #pgg-lbl-lord-1 { left: 464px; top: 552px; } #pgg-lbl-tower-1 { left: 529px; top: 552px; }
+    #pgg-n-turtle-1 { left: 398px; top: 569px; } #pgg-n-lord-1 { left: 464px; top: 569px; } #pgg-n-tower-1 { left: 529px; top: 569px; }
+    #pgg-hero-2-1 { left: 85px; top: 716px; } #pgg-role-2-1 { left: 137px; top: 716px; } #pgg-name-2-1 { left: 192px; top: 719px; }
+    #pgg-hero-2-2 { left: 85px; top: 767px; } #pgg-role-2-2 { left: 137px; top: 767px; } #pgg-name-2-2 { left: 192px; top: 770px; }
+    #pgg-hero-2-3 { left: 85px; top: 818px; } #pgg-role-2-3 { left: 137px; top: 818px; } #pgg-name-2-3 { left: 192px; top: 821px; }
+    #pgg-hero-2-4 { left: 85px; top: 868px; } #pgg-role-2-4 { left: 137px; top: 868px; } #pgg-name-2-4 { left: 192px; top: 871px; }
+    #pgg-hero-2-5 { left: 85px; top: 919px; } #pgg-role-2-5 { left: 137px; top: 919px; } #pgg-name-2-5 { left: 192px; top: 922px; }
+    #pgg-coin-2 { left: 415px; top: 729px; } #pgg-gold-2 { left: 429px; top: 753px; }
+    #pgg-kdal-2 { left: 417px; top: 806px; } #pgg-kda-2 { left: 415px; top: 820px; }
+    #pgg-ico-turtle-2 { left: 416px; top: 871px; } #pgg-ico-lord-2 { left: 482px; top: 871px; } #pgg-ico-tower-2 { left: 547px; top: 871px; }
+    #pgg-lbl-turtle-2 { left: 398px; top: 909px; } #pgg-lbl-lord-2 { left: 464px; top: 909px; } #pgg-lbl-tower-2 { left: 529px; top: 909px; }
+    #pgg-n-turtle-2 { left: 398px; top: 926px; } #pgg-n-lord-2 { left: 464px; top: 926px; } #pgg-n-tower-2 { left: 529px; top: 926px; }
+
+    /* ── MCT Post H2H (#p2m-page) — used instead of #p2h-page under data-theme-name="mct" (same 'post_h2h' feature slot).
+       Reference: assets/overlay/MCT/postgame/h2h/h2h_reference.jpg. Header = the Post Gold Graph's (shared .pgg-* classes, filled by
+       mctFillHeader). Two player cards (hero art + FRONT photo clipped by the card frame, name plate) and a GOLD DISTRIBUTION panel:
+       5 rows (Total / Jungle Creeps / Turtle & Lord / Turret / Kill & Assist) for EVERY role, from the feed's gold_map.
+       Bar = the leader's share, anchored at the leader's side: blue at the anchor -> cyan at the tip. Every element is its own absolute child. */
+    #p2m-page { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: none; overflow: hidden; background: transparent; opacity: 0; transition: opacity 400ms ease; }
+    #p2m-page.p2m-on { display: block; }
+    #p2m-page.p2m-visible { opacity: 1; }
+    #p2m-page > * { position: absolute; }
+    .p2m-title { width: 800px; text-align: center; white-space: nowrap; display: flex; justify-content: center; align-items: center; font: 800 69px/72px 'Monument Ext MCT', sans-serif; color: #fff; }
+    .p2m-title svg { width: 0.78em; height: 0.78em; margin: 0 0.02em; flex: none; }
+    #p2m-title1 { left: 560px; top: 318px; height: 72px; } #p2m-title2 { left: 560px; top: 378px; height: 72px; }
+    #p2m-panel { left: 605px; top: 480px; width: 710px; height: 551px; box-sizing: border-box; border: 1.5px solid rgba(110,200,255,.75); border-bottom-width: 1.5px;
+      border-radius: 50px 50px 0 0; background: linear-gradient(180deg, rgba(20,48,110,.55) 0%, rgba(30,74,160,.62) 100%); }
+    .p2m-lbl { left: 740px; width: 441px; height: 32px; text-align: center; white-space: nowrap; font: 500 25px/32px 'Source Han Sans MCT', sans-serif; color: #fff; text-transform: uppercase; }
+    .p2m-val { width: 120px; height: 40px; white-space: nowrap; font: 500 33px/40px 'Source Han Sans MCT', sans-serif; color: #fff; }
+    .p2m-v1 { left: 612px; text-align: right; } .p2m-v2 { left: 1190px; text-align: left; }
+    .p2m-bar { left: 740px; width: 441px; height: 18px; background: #061229; }
+    .p2m-fill { position: absolute; top: 0; height: 100%; width: 0; transition: width 650ms cubic-bezier(.2,.8,.2,1); }
+    .p2m-fill.p2m-from-l { left: 0; background: linear-gradient(90deg, #2f86ee, #43fff0); }
+    .p2m-fill.p2m-from-r { right: 0; background: linear-gradient(270deg, #2f86ee, #43fff0); }
+    .p2m-fill::after { content: ''; position: absolute; top: -2px; width: 3px; height: 22px; background: #9ffff7; }
+    .p2m-fill.p2m-from-l::after { right: -1px; } .p2m-fill.p2m-from-r::after { left: -1px; }
+    .p2m-fill.p2m-empty::after { display: none; }
+    #p2m-lbl-0 { top: 521px; } #p2m-v1-0, #p2m-v2-0 { top: 551px; } #p2m-bar-0 { top: 562px; }
+    #p2m-lbl-1 { top: 619px; } #p2m-v1-1, #p2m-v2-1 { top: 649px; } #p2m-bar-1 { top: 660px; }
+    #p2m-lbl-2 { top: 718px; } #p2m-v1-2, #p2m-v2-2 { top: 748px; } #p2m-bar-2 { top: 759px; }
+    #p2m-lbl-3 { top: 816px; } #p2m-v1-3, #p2m-v2-3 { top: 846px; } #p2m-bar-3 { top: 857px; }
+    #p2m-lbl-4 { top: 914px; } #p2m-v1-4, #p2m-v2-4 { top: 944px; } #p2m-bar-4 { top: 955px; }
+    /* player cards — the frame clips the hero art + photo (children positioned relative to the card) */
+    .p2m-card { top: 286px; width: 444px; height: 746px; box-sizing: border-box; overflow: hidden; border: 2px solid #43fff0;
+      background: radial-gradient(120% 80% at 30% 20%, #5b86de 0%, #2c55b5 45%, #16307a 100%); }
+    #p2m-card1 { left: 52px; border-radius: 44px 0 0 0; } #p2m-card2 { left: 1424px; border-radius: 0 44px 0 0; }
+    .p2m-card > img { position: absolute; }
+    .p2m-card > img:not([src]) { visibility: hidden; }
+    .p2m-hero { height: 760px; width: 1002px; object-fit: contain; }
+    #p2m-hero1 { left: -500px; top: -30px; } #p2m-hero2 { left: -270px; top: -30px; }
+    .p2m-photo { width: 550px; height: 550px; object-fit: contain; object-position: 50% 100%; }
+    #p2m-photo1 { left: 20px; top: 72px; } #p2m-photo2 { left: -128px; top: 72px; }
+    .p2m-plate { top: 908px; width: 444px; height: 124px; box-sizing: border-box; border: 2px solid #43fff0; border-top: 0;
+      background: linear-gradient(180deg, #0e2566 0%, #173f95 60%, #1f4ea8 100%); }
+    #p2m-plate1 { left: 52px; } #p2m-plate2 { left: 1424px; }
+    .p2m-spell { width: 55px; height: 55px; top: 921px; border-radius: 50%; box-sizing: border-box; border: 2px solid #f0b93a; object-fit: cover; background: #3a2a10; }
+    .p2m-spell:not([src]) { visibility: hidden; }
+    #p2m-spell1 { left: 62px; } #p2m-spell2 { left: 1803px; }
+    .p2m-role { width: 55px; height: 55px; top: 920px; background: #47fff0; overflow: hidden; }
+    .p2m-role > div { position: absolute; left: -12px; top: -11px; width: 79px; height: 77px; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    #p2m-role1 { left: 433px; } #p2m-role2 { left: 1432px; }
+    .p2m-name { width: 296px; height: 32px; top: 932px; text-align: center; white-space: nowrap; font: 400 26px/32px 'Monument Ext MCT', sans-serif; color: #43fff0; text-transform: uppercase; }
+    #p2m-name1 { left: 125px; } #p2m-name2 { left: 1499px; }
+    .p2m-heroname { width: 340px; height: 26px; top: 987px; text-align: center; white-space: nowrap; font: 400 21.5px/26px 'Monument Ext MCT', sans-serif; color: #fff; text-transform: uppercase; }   /* Regular weight, as in the reference */
+    #p2m-heroname1 { left: 104px; } #p2m-heroname2 { left: 1476px; }
+    /* ── MCT Consolidated Post page 1 (#mcp-page) — used instead of #cp-page under data-theme-name="mct" (same 'consolidated_post' slot).
+       Reference: assets/overlay/MCT/postgame/post/D03-ITEM BUILD_reference.png. Shared top bar (#mct-hdr); 5 player rows per team
+       (mctpost_playercont.png, mirrored for team 2) in lane order EXP/JUNGLE/MID/ROAM/GOLD; middle column (mctpost_middlecont.png):
+       game time, team gold / turret / lord / turtle / orange buff / purple buff (arrow lit on the side that has more), sponsor.
+       Every element is its own absolute child; the hero art + photo of each row sit in a clip box (#mcp-art-N). Positions are generated
+       per row (team 2 = mirrored about x 959). */
+    #mcp-page { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: none; overflow: hidden; background: transparent; opacity: 0; transition: opacity 400ms ease; }
+    #mcp-page.mcp-on { display: block; }
+    #mcp-page.mcp-visible { opacity: 1; }
+    #mcp-page > * { position: absolute; }
+    .mcp-bg { width: 659px; height: 143px; }
+    .mcp-R.mcp-bg { transform: scaleX(-1); }
+    .mcp-art { width: 185px; height: 141px; overflow: hidden; }
+    .mcp-art > img { position: absolute; }
+    .mcp-art > img:not([src]) { visibility: hidden; }
+    .mcp-hero { width: 330px; height: 250px; object-fit: contain; }
+    .mcp-R > .mcp-hero { transform: scaleX(-1); }
+    .mcp-photo { width: 180px; height: 180px; object-fit: contain; object-position: 50% 0; }
+    .mcp-spell { width: 36px; height: 36px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid #f0b93a; object-fit: cover; background: #3a2a10; }
+    .mcp-spell:not([src]) { visibility: hidden; }
+    .mcp-lvl { width: 32px; height: 28px; background: #43fff0; text-align: center; font: 700 20px/28px 'Source Han Sans MCT', sans-serif; color: #13254f; }
+    .mcp-role { width: 64px; height: 64px; background: linear-gradient(180deg, #2f8cf0 0%, #3bc6f2 50%, #43fff0 100%); -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    .mcp-name { width: 190px; height: 30px; white-space: nowrap; font: 700 20.5px/30px 'Source Han Sans MCT', sans-serif; color: #fff; text-transform: uppercase; }
+    .mcp-lbl { width: 110px; height: 18px; white-space: nowrap; font: 700 14px/18px 'Source Han Sans MCT', sans-serif; color: #fff; text-transform: uppercase; }
+    .mcp-val { height: 34px; white-space: nowrap; font: 400 26px/34px 'Monument Ext MCT', sans-serif; color: #fff; }
+    .mcp-kda { width: 150px; } .mcp-gold { width: 110px; }
+    .mcp-R.mcp-name, .mcp-R.mcp-lbl, .mcp-R.mcp-val { text-align: right; }
+    .mcp-div { width: 1.5px; height: 114px; background: rgba(110,230,255,.8); }
+    .mcp-item { width: 51px; height: 51px; border-radius: 50%; box-sizing: border-box; border: 2px solid #f4c82c; background: #0d1f5e; object-fit: cover; }
+    .mcp-item:not([src]) { content: ''; }
+    #mcp-mid { left: 714px; top: 282px; width: 492px; height: 754px; }
+    #mcp-gt-label { left: 810px; top: 304px; width: 300px; height: 26px; text-align: center; font: 500 20.5px/26px 'Source Han Sans MCT', sans-serif; color: #fff; }
+    #mcp-gt { left: 810px; top: 331px; width: 300px; height: 40px; text-align: center; white-space: nowrap; font: 400 32px/40px 'Monument Ext MCT', sans-serif; color: #43fff0; }
+    .mcp-mv { width: 200px; height: 40px; white-space: nowrap; font: 400 32px/40px 'Monument Ext MCT', sans-serif; color: #fff; }
+    .mcp-mv1 { left: 694px; text-align: right; } .mcp-mv2 { left: 1030px; }
+    .mcp-arr { width: 9px; height: 13px; background: #102a66; }
+    .mcp-arr.mcp-lit { background: #43fff0; }
+    .mcp-arrl { left: 913px; clip-path: polygon(100% 0, 0 50%, 100% 100%); } .mcp-arrr { left: 996px; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+    .mcp-ico { left: 941px; width: 36px; height: 38px; object-fit: contain; }
+    svg.mcp-ico { width: 36px; height: 36px; }
+    #mcp-sp-label { left: 810px; top: 904px; width: 300px; height: 30px; text-align: center; font: 500 21px/30px 'Source Han Sans MCT', sans-serif; color: #fff; text-transform: uppercase; }
+    #mcp-sp { left: 860px; top: 946px; width: 200px; height: 64px; object-fit: contain; transition: opacity 300ms ease; }
+    #mcp-sp:not([src]) { visibility: hidden; }
+    #mcp-bg-1 { left: 47px; top: 285.0px; } #mcp-art-1 { left: 48px; top: 286.0px; } #mcp-hero-1 { left: -150px; top: -20px; } #mcp-photo-1 { left: 53px; top: 0px; } #mcp-spell-1 { left: 48px; top: 391.0px; } #mcp-lvl-1 { left: 202px; top: 399.0px; } #mcp-role-1 { left: 234px; top: 283.0px; } #mcp-name-1 { left: 309px; top: 301.0px; } #mcp-kdal-1 { left: 254px; top: 368.0px; } #mcp-kda-1 { left: 254px; top: 384.0px; } #mcp-goldl-1 { left: 399px; top: 368.0px; } #mcp-gold-1 { left: 399px; top: 384.0px; } #mcp-div-1 { left: 511px; top: 300.0px; } #mcp-item-1-0 { left: 525px; top: 299.0px; } #mcp-item-1-1 { left: 585px; top: 299.0px; } #mcp-item-1-2 { left: 645px; top: 299.0px; } #mcp-item-1-3 { left: 525px; top: 360.0px; } #mcp-item-1-4 { left: 585px; top: 360.0px; } #mcp-item-1-5 { left: 645px; top: 360.0px; }
+    #mcp-bg-2 { left: 47px; top: 436.5px; } #mcp-art-2 { left: 48px; top: 437.5px; } #mcp-hero-2 { left: -150px; top: -20px; } #mcp-photo-2 { left: 53px; top: 0px; } #mcp-spell-2 { left: 48px; top: 542.5px; } #mcp-lvl-2 { left: 202px; top: 550.5px; } #mcp-role-2 { left: 234px; top: 434.5px; } #mcp-name-2 { left: 309px; top: 452.5px; } #mcp-kdal-2 { left: 254px; top: 519.5px; } #mcp-kda-2 { left: 254px; top: 535.5px; } #mcp-goldl-2 { left: 399px; top: 519.5px; } #mcp-gold-2 { left: 399px; top: 535.5px; } #mcp-div-2 { left: 511px; top: 451.5px; } #mcp-item-2-0 { left: 525px; top: 450.5px; } #mcp-item-2-1 { left: 585px; top: 450.5px; } #mcp-item-2-2 { left: 645px; top: 450.5px; } #mcp-item-2-3 { left: 525px; top: 511.5px; } #mcp-item-2-4 { left: 585px; top: 511.5px; } #mcp-item-2-5 { left: 645px; top: 511.5px; }
+    #mcp-bg-3 { left: 47px; top: 588.0px; } #mcp-art-3 { left: 48px; top: 589.0px; } #mcp-hero-3 { left: -150px; top: -20px; } #mcp-photo-3 { left: 53px; top: 0px; } #mcp-spell-3 { left: 48px; top: 694.0px; } #mcp-lvl-3 { left: 202px; top: 702.0px; } #mcp-role-3 { left: 234px; top: 586.0px; } #mcp-name-3 { left: 309px; top: 604.0px; } #mcp-kdal-3 { left: 254px; top: 671.0px; } #mcp-kda-3 { left: 254px; top: 687.0px; } #mcp-goldl-3 { left: 399px; top: 671.0px; } #mcp-gold-3 { left: 399px; top: 687.0px; } #mcp-div-3 { left: 511px; top: 603.0px; } #mcp-item-3-0 { left: 525px; top: 602.0px; } #mcp-item-3-1 { left: 585px; top: 602.0px; } #mcp-item-3-2 { left: 645px; top: 602.0px; } #mcp-item-3-3 { left: 525px; top: 663.0px; } #mcp-item-3-4 { left: 585px; top: 663.0px; } #mcp-item-3-5 { left: 645px; top: 663.0px; }
+    #mcp-bg-4 { left: 47px; top: 739.5px; } #mcp-art-4 { left: 48px; top: 740.5px; } #mcp-hero-4 { left: -150px; top: -20px; } #mcp-photo-4 { left: 53px; top: 0px; } #mcp-spell-4 { left: 48px; top: 845.5px; } #mcp-lvl-4 { left: 202px; top: 853.5px; } #mcp-role-4 { left: 234px; top: 737.5px; } #mcp-name-4 { left: 309px; top: 755.5px; } #mcp-kdal-4 { left: 254px; top: 822.5px; } #mcp-kda-4 { left: 254px; top: 838.5px; } #mcp-goldl-4 { left: 399px; top: 822.5px; } #mcp-gold-4 { left: 399px; top: 838.5px; } #mcp-div-4 { left: 511px; top: 754.5px; } #mcp-item-4-0 { left: 525px; top: 753.5px; } #mcp-item-4-1 { left: 585px; top: 753.5px; } #mcp-item-4-2 { left: 645px; top: 753.5px; } #mcp-item-4-3 { left: 525px; top: 814.5px; } #mcp-item-4-4 { left: 585px; top: 814.5px; } #mcp-item-4-5 { left: 645px; top: 814.5px; }
+    #mcp-bg-5 { left: 47px; top: 891.0px; } #mcp-art-5 { left: 48px; top: 892.0px; } #mcp-hero-5 { left: -150px; top: -20px; } #mcp-photo-5 { left: 53px; top: 0px; } #mcp-spell-5 { left: 48px; top: 997.0px; } #mcp-lvl-5 { left: 202px; top: 1005.0px; } #mcp-role-5 { left: 234px; top: 889.0px; } #mcp-name-5 { left: 309px; top: 907.0px; } #mcp-kdal-5 { left: 254px; top: 974.0px; } #mcp-kda-5 { left: 254px; top: 990.0px; } #mcp-goldl-5 { left: 399px; top: 974.0px; } #mcp-gold-5 { left: 399px; top: 990.0px; } #mcp-div-5 { left: 511px; top: 906.0px; } #mcp-item-5-0 { left: 525px; top: 905.0px; } #mcp-item-5-1 { left: 585px; top: 905.0px; } #mcp-item-5-2 { left: 645px; top: 905.0px; } #mcp-item-5-3 { left: 525px; top: 966.0px; } #mcp-item-5-4 { left: 585px; top: 966.0px; } #mcp-item-5-5 { left: 645px; top: 966.0px; }
+    #mcp-bg-6 { left: 1212px; top: 285.0px; } #mcp-art-6 { left: 1685px; top: 286.0px; } #mcp-hero-6 { left: 5px; top: -20px; } #mcp-photo-6 { left: -48px; top: 0px; } #mcp-spell-6 { left: 1834px; top: 391.0px; } #mcp-lvl-6 { left: 1684px; top: 399.0px; } #mcp-role-6 { left: 1620px; top: 283.0px; } #mcp-name-6 { left: 1419px; top: 301.0px; } #mcp-kdal-6 { left: 1554px; top: 368.0px; } #mcp-kda-6 { left: 1514px; top: 384.0px; } #mcp-goldl-6 { left: 1409px; top: 368.0px; } #mcp-gold-6 { left: 1409px; top: 384.0px; } #mcp-div-6 { left: 1405.5px; top: 300.0px; } #mcp-item-6-0 { left: 1222px; top: 299.0px; } #mcp-item-6-1 { left: 1282px; top: 299.0px; } #mcp-item-6-2 { left: 1342px; top: 299.0px; } #mcp-item-6-3 { left: 1222px; top: 360.0px; } #mcp-item-6-4 { left: 1282px; top: 360.0px; } #mcp-item-6-5 { left: 1342px; top: 360.0px; }
+    #mcp-bg-7 { left: 1212px; top: 436.5px; } #mcp-art-7 { left: 1685px; top: 437.5px; } #mcp-hero-7 { left: 5px; top: -20px; } #mcp-photo-7 { left: -48px; top: 0px; } #mcp-spell-7 { left: 1834px; top: 542.5px; } #mcp-lvl-7 { left: 1684px; top: 550.5px; } #mcp-role-7 { left: 1620px; top: 434.5px; } #mcp-name-7 { left: 1419px; top: 452.5px; } #mcp-kdal-7 { left: 1554px; top: 519.5px; } #mcp-kda-7 { left: 1514px; top: 535.5px; } #mcp-goldl-7 { left: 1409px; top: 519.5px; } #mcp-gold-7 { left: 1409px; top: 535.5px; } #mcp-div-7 { left: 1405.5px; top: 451.5px; } #mcp-item-7-0 { left: 1222px; top: 450.5px; } #mcp-item-7-1 { left: 1282px; top: 450.5px; } #mcp-item-7-2 { left: 1342px; top: 450.5px; } #mcp-item-7-3 { left: 1222px; top: 511.5px; } #mcp-item-7-4 { left: 1282px; top: 511.5px; } #mcp-item-7-5 { left: 1342px; top: 511.5px; }
+    #mcp-bg-8 { left: 1212px; top: 588.0px; } #mcp-art-8 { left: 1685px; top: 589.0px; } #mcp-hero-8 { left: 5px; top: -20px; } #mcp-photo-8 { left: -48px; top: 0px; } #mcp-spell-8 { left: 1834px; top: 694.0px; } #mcp-lvl-8 { left: 1684px; top: 702.0px; } #mcp-role-8 { left: 1620px; top: 586.0px; } #mcp-name-8 { left: 1419px; top: 604.0px; } #mcp-kdal-8 { left: 1554px; top: 671.0px; } #mcp-kda-8 { left: 1514px; top: 687.0px; } #mcp-goldl-8 { left: 1409px; top: 671.0px; } #mcp-gold-8 { left: 1409px; top: 687.0px; } #mcp-div-8 { left: 1405.5px; top: 603.0px; } #mcp-item-8-0 { left: 1222px; top: 602.0px; } #mcp-item-8-1 { left: 1282px; top: 602.0px; } #mcp-item-8-2 { left: 1342px; top: 602.0px; } #mcp-item-8-3 { left: 1222px; top: 663.0px; } #mcp-item-8-4 { left: 1282px; top: 663.0px; } #mcp-item-8-5 { left: 1342px; top: 663.0px; }
+    #mcp-bg-9 { left: 1212px; top: 739.5px; } #mcp-art-9 { left: 1685px; top: 740.5px; } #mcp-hero-9 { left: 5px; top: -20px; } #mcp-photo-9 { left: -48px; top: 0px; } #mcp-spell-9 { left: 1834px; top: 845.5px; } #mcp-lvl-9 { left: 1684px; top: 853.5px; } #mcp-role-9 { left: 1620px; top: 737.5px; } #mcp-name-9 { left: 1419px; top: 755.5px; } #mcp-kdal-9 { left: 1554px; top: 822.5px; } #mcp-kda-9 { left: 1514px; top: 838.5px; } #mcp-goldl-9 { left: 1409px; top: 822.5px; } #mcp-gold-9 { left: 1409px; top: 838.5px; } #mcp-div-9 { left: 1405.5px; top: 754.5px; } #mcp-item-9-0 { left: 1222px; top: 753.5px; } #mcp-item-9-1 { left: 1282px; top: 753.5px; } #mcp-item-9-2 { left: 1342px; top: 753.5px; } #mcp-item-9-3 { left: 1222px; top: 814.5px; } #mcp-item-9-4 { left: 1282px; top: 814.5px; } #mcp-item-9-5 { left: 1342px; top: 814.5px; }
+    #mcp-bg-10 { left: 1212px; top: 891.0px; } #mcp-art-10 { left: 1685px; top: 892.0px; } #mcp-hero-10 { left: 5px; top: -20px; } #mcp-photo-10 { left: -48px; top: 0px; } #mcp-spell-10 { left: 1834px; top: 997.0px; } #mcp-lvl-10 { left: 1684px; top: 1005.0px; } #mcp-role-10 { left: 1620px; top: 889.0px; } #mcp-name-10 { left: 1419px; top: 907.0px; } #mcp-kdal-10 { left: 1554px; top: 974.0px; } #mcp-kda-10 { left: 1514px; top: 990.0px; } #mcp-goldl-10 { left: 1409px; top: 974.0px; } #mcp-gold-10 { left: 1409px; top: 990.0px; } #mcp-div-10 { left: 1405.5px; top: 906.0px; } #mcp-item-10-0 { left: 1222px; top: 905.0px; } #mcp-item-10-1 { left: 1282px; top: 905.0px; } #mcp-item-10-2 { left: 1342px; top: 905.0px; } #mcp-item-10-3 { left: 1222px; top: 966.0px; } #mcp-item-10-4 { left: 1282px; top: 966.0px; } #mcp-item-10-5 { left: 1342px; top: 966.0px; }
+    #mcp-v1-0, #mcp-v2-0 { top: 395.0px; } #mcp-al-0, #mcp-ar-0 { top: 408.5px; } #mcp-ico-0 { top: 396.0px; }
+    #mcp-v1-1, #mcp-v2-1 { top: 482.4px; } #mcp-al-1, #mcp-ar-1 { top: 495.9px; } #mcp-ico-1 { top: 483.4px; }
+    #mcp-v1-2, #mcp-v2-2 { top: 569.8px; } #mcp-al-2, #mcp-ar-2 { top: 583.3px; } #mcp-ico-2 { top: 570.8px; }
+    #mcp-v1-3, #mcp-v2-3 { top: 657.2px; } #mcp-al-3, #mcp-ar-3 { top: 670.7px; } #mcp-ico-3 { top: 658.2px; }
+    #mcp-v1-4, #mcp-v2-4 { top: 744.6px; } #mcp-al-4, #mcp-ar-4 { top: 758.1px; } #mcp-ico-4 { top: 745.6px; }
+    #mcp-v1-5, #mcp-v2-5 { top: 832.0px; } #mcp-al-5, #mcp-ar-5 { top: 845.5px; } #mcp-ico-5 { top: 833.0px; }
+    /* Post Game Emblem mode (same page, feature 'emblems'): the item block is swapped for the emblem block — core talent (left, tier 3),
+       tier 1 / tier 2 talents stacked (gold rings), emblem set (right, blue ring). Only one block is displayed (mcp-mode-items / -emblems). */
+    .mcp-emb { width: 52px; height: 52px; border-radius: 50%; box-sizing: border-box; border: 2px solid #f4c82c; background: #2a3440; object-fit: cover; }
+    .mcp-emb.mcp-set { width: 53px; height: 53px; border-color: #3d82e6; background: rgba(150,120,200,.35); padding: 6px; }
+    .mcp-emb:not([src]) { visibility: hidden; }
+    #mcp-page:not(.mcp-mode-items) .mcp-it, #mcp-page:not(.mcp-mode-emblems) .mcp-em, #mcp-page:not(.mcp-mode-stats) .mcp-st { display: none; }
+    @keyframes mcpOut { from { opacity: 1; } to { opacity: 0; } }
+    #mcp-emb-1-0 { left: 524px; top: 331.0px; } #mcp-emb-1-1 { left: 584px; top: 298.0px; } #mcp-emb-1-2 { left: 584px; top: 362.5px; } #mcp-emb-1-3 { left: 643px; top: 330.0px; }
+    #mcp-emb-2-0 { left: 524px; top: 482.5px; } #mcp-emb-2-1 { left: 584px; top: 449.5px; } #mcp-emb-2-2 { left: 584px; top: 514.0px; } #mcp-emb-2-3 { left: 643px; top: 481.5px; }
+    #mcp-emb-3-0 { left: 524px; top: 634.0px; } #mcp-emb-3-1 { left: 584px; top: 601.0px; } #mcp-emb-3-2 { left: 584px; top: 665.5px; } #mcp-emb-3-3 { left: 643px; top: 633.0px; }
+    #mcp-emb-4-0 { left: 524px; top: 785.5px; } #mcp-emb-4-1 { left: 584px; top: 752.5px; } #mcp-emb-4-2 { left: 584px; top: 817.0px; } #mcp-emb-4-3 { left: 643px; top: 784.5px; }
+    #mcp-emb-5-0 { left: 524px; top: 937.0px; } #mcp-emb-5-1 { left: 584px; top: 904.0px; } #mcp-emb-5-2 { left: 584px; top: 968.5px; } #mcp-emb-5-3 { left: 643px; top: 936.0px; }
+    #mcp-emb-6-0 { left: 1342px; top: 331.0px; } #mcp-emb-6-1 { left: 1282px; top: 298.0px; } #mcp-emb-6-2 { left: 1282px; top: 362.5px; } #mcp-emb-6-3 { left: 1222px; top: 330.0px; }
+    #mcp-emb-7-0 { left: 1342px; top: 482.5px; } #mcp-emb-7-1 { left: 1282px; top: 449.5px; } #mcp-emb-7-2 { left: 1282px; top: 514.0px; } #mcp-emb-7-3 { left: 1222px; top: 481.5px; }
+    #mcp-emb-8-0 { left: 1342px; top: 634.0px; } #mcp-emb-8-1 { left: 1282px; top: 601.0px; } #mcp-emb-8-2 { left: 1282px; top: 665.5px; } #mcp-emb-8-3 { left: 1222px; top: 633.0px; }
+    #mcp-emb-9-0 { left: 1342px; top: 785.5px; } #mcp-emb-9-1 { left: 1282px; top: 752.5px; } #mcp-emb-9-2 { left: 1282px; top: 817.0px; } #mcp-emb-9-3 { left: 1222px; top: 784.5px; }
+    #mcp-emb-10-0 { left: 1342px; top: 937.0px; } #mcp-emb-10-1 { left: 1282px; top: 904.0px; } #mcp-emb-10-2 { left: 1282px; top: 968.5px; } #mcp-emb-10-3 { left: 1222px; top: 936.0px; }
+    /* Post Game Stats mode (feature 'stats'): Damage Dealt / Damage Taken bars, length = the player's share of the highest value among all 10.
+       Fill gradients from the reference (blue -> cyan, red -> orange -> yellow, brightest at the tip) + a slightly taller tip marker;
+       team 2's bars are anchored on the right. (The reference's mirrored "DAMAGE TAKEN" label on one row is a mistake — rendered normally.) */
+    .mcp-slbl { width: 176px; height: 18px; white-space: nowrap; font: 700 14px/18px 'Source Han Sans MCT', sans-serif; text-transform: uppercase; }
+    .mcp-slbl.mcp-dl { color: #43fff0; } .mcp-slbl.mcp-tl { color: #ffe100; }
+    .mcp-R.mcp-slbl { text-align: right; }
+    .mcp-sbar { width: 176px; height: 18px; background: #020c1e; }
+    .mcp-sfill { position: absolute; top: 0; height: 100%; width: 0; transition: width 750ms cubic-bezier(.2,.8,.2,1); }
+    .mcp-L > .mcp-sfill { left: 0; } .mcp-R > .mcp-sfill { right: 0; }
+    .mcp-sfill::after { content: ''; position: absolute; top: -2.5px; width: 5px; height: 23px; }
+    .mcp-L > .mcp-sfill::after { right: -1px; } .mcp-R > .mcp-sfill::after { left: -1px; }
+    .mcp-sfill.mcp-zero::after { display: none; }
+    .mcp-L.mcp-db > .mcp-sfill { background: linear-gradient(90deg, #2f8ff0 0%, #2f9cf0 22%, #43fff0 62%, #43fff0 100%); }
+    .mcp-R.mcp-db > .mcp-sfill { background: linear-gradient(270deg, #2f8ff0 0%, #2f9cf0 22%, #43fff0 62%, #43fff0 100%); }
+    .mcp-L.mcp-tb > .mcp-sfill { background: linear-gradient(90deg, #ff3a12 0%, #ff4e14 18%, #ffa01a 50%, #ffe612 78%, #ffe612 100%); }
+    .mcp-R.mcp-tb > .mcp-sfill { background: linear-gradient(270deg, #ff3a12 0%, #ff4e14 18%, #ffa01a 50%, #ffe612 78%, #ffe612 100%); }
+    .mcp-db > .mcp-sfill::after { background: #43fff0; } .mcp-tb > .mcp-sfill::after { background: #ffe612; }
+    #mcp-dl-1 { left: 520px; top: 297.0px; } #mcp-db-1 { left: 522.5px; top: 323.0px; } #mcp-tl-1 { left: 520px; top: 369.0px; } #mcp-tb-1 { left: 522.5px; top: 395.0px; }
+    #mcp-dl-2 { left: 520px; top: 448.5px; } #mcp-db-2 { left: 522.5px; top: 474.5px; } #mcp-tl-2 { left: 520px; top: 520.5px; } #mcp-tb-2 { left: 522.5px; top: 546.5px; }
+    #mcp-dl-3 { left: 520px; top: 600.0px; } #mcp-db-3 { left: 522.5px; top: 626.0px; } #mcp-tl-3 { left: 520px; top: 672.0px; } #mcp-tb-3 { left: 522.5px; top: 698.0px; }
+    #mcp-dl-4 { left: 520px; top: 751.5px; } #mcp-db-4 { left: 522.5px; top: 777.5px; } #mcp-tl-4 { left: 520px; top: 823.5px; } #mcp-tb-4 { left: 522.5px; top: 849.5px; }
+    #mcp-dl-5 { left: 520px; top: 903.0px; } #mcp-db-5 { left: 522.5px; top: 929.0px; } #mcp-tl-5 { left: 520px; top: 975.0px; } #mcp-tb-5 { left: 522.5px; top: 1001.0px; }
+    #mcp-dl-6 { left: 1222px; top: 297.0px; } #mcp-db-6 { left: 1219.5px; top: 323.0px; } #mcp-tl-6 { left: 1222px; top: 369.0px; } #mcp-tb-6 { left: 1219.5px; top: 395.0px; }
+    #mcp-dl-7 { left: 1222px; top: 448.5px; } #mcp-db-7 { left: 1219.5px; top: 474.5px; } #mcp-tl-7 { left: 1222px; top: 520.5px; } #mcp-tb-7 { left: 1219.5px; top: 546.5px; }
+    #mcp-dl-8 { left: 1222px; top: 600.0px; } #mcp-db-8 { left: 1219.5px; top: 626.0px; } #mcp-tl-8 { left: 1222px; top: 672.0px; } #mcp-tb-8 { left: 1219.5px; top: 698.0px; }
+    #mcp-dl-9 { left: 1222px; top: 751.5px; } #mcp-db-9 { left: 1219.5px; top: 777.5px; } #mcp-tl-9 { left: 1222px; top: 823.5px; } #mcp-tb-9 { left: 1219.5px; top: 849.5px; }
+    #mcp-dl-10 { left: 1222px; top: 903.0px; } #mcp-db-10 { left: 1219.5px; top: 929.0px; } #mcp-tl-10 { left: 1222px; top: 975.0px; } #mcp-tb-10 { left: 1219.5px; top: 1001.0px; }
+    /* in: rows slide in from their own side, top to bottom; middle column rises; then the numbers settle */
+    @keyframes mcpFromL { from { opacity: 0; transform: translateX(-36px); } to { opacity: 1; transform: none; } }
+    @keyframes mcpFromR { from { opacity: 0; transform: translateX(36px); } to { opacity: 1; transform: none; } }
+    @keyframes mcpFromRbg { from { opacity: 0; transform: scaleX(-1) translateX(-36px); } to { opacity: 1; transform: scaleX(-1); } }
+    #mcp-page.mcp-visible .mcp-L { animation: mcpFromL 520ms cubic-bezier(.16,.84,.24,1) calc(150ms + var(--r) * 70ms) both; }
+    #mcp-page.mcp-visible .mcp-R { animation: mcpFromR 520ms cubic-bezier(.16,.84,.24,1) calc(150ms + var(--r) * 70ms) both; }
+    #mcp-page.mcp-visible .mcp-R.mcp-bg { animation-name: mcpFromRbg; }
+    #mcp-page.mcp-visible .mcp-M { animation: pggLift 480ms cubic-bezier(.2,.8,.2,1) calc(200ms + var(--r, 0) * 50ms) both; }
+    /* the right-hand block (items / emblems / stats) only FADES — in on show and on a swap, out before the next block fades in.
+       Doubled classes so these beat the row slide-in rules above (same specificity otherwise -> the later rule won and the block flew in / cut out). */
+    @keyframes mcpFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    #mcp-page.mcp-visible .mcp-it.mcp-it, #mcp-page.mcp-visible .mcp-em.mcp-em, #mcp-page.mcp-visible .mcp-st.mcp-st { animation: mcpFadeIn 420ms ease calc(250ms + var(--r) * 40ms) both; }
+    #mcp-page.mcp-visible.mcp-swapin .mcp-it.mcp-it, #mcp-page.mcp-visible.mcp-swapin .mcp-em.mcp-em, #mcp-page.mcp-visible.mcp-swapin .mcp-st.mcp-st { animation-delay: calc(var(--r) * 40ms); }
+    #mcp-page.mcp-visible .mcp-out.mcp-out.mcp-out { animation: mcpOut 300ms ease both; }   /* the outgoing block on a swap */
+    /* ── MCT Post 4 Key (#m4k-page) — used instead of #post4key-page under data-theme-name="mct" (same 'post4key' slot).
+       Reference: assets/overlay/MCT/postgame/post4key/post4key_reference.png. Shared top bar (#mct-hdr) + four H2H-style player cards
+       (hero art + FRONT photo clipped by the frame), each the game's leader in Damage Dealt / Gold Per Minute / Damage Taken / Assists. */
+    #m4k-page { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: none; overflow: hidden; background: transparent; opacity: 0; transition: opacity 400ms ease; }
+    #m4k-page.m4k-on { display: block; }
+    #m4k-page.m4k-visible { opacity: 1; }
+    #m4k-page > * { position: absolute; }
+    .m4k-card { top: 286px; width: 444px; height: 746px; box-sizing: border-box; overflow: hidden; border: 2px solid #43fff0; border-radius: 44px 0 0 0;
+      background: radial-gradient(120% 80% at 30% 20%, #5b86de 0%, #2c55b5 45%, #16307a 100%); }
+    .m4k-card > img { position: absolute; }
+    .m4k-card > img:not([src]) { visibility: hidden; }
+    .m4k-hero { left: -500px; top: -30px; width: 1002px; height: 760px; object-fit: contain; }
+    .m4k-photo { left: 30px; top: 37px; width: 520px; height: 520px; object-fit: contain; object-position: 50% 100%; }
+    .m4k-plate { top: 843px; width: 444px; height: 189px; box-sizing: border-box; border: 2px solid #43fff0; border-top: 0;
+      background: linear-gradient(180deg, #0e2566 0%, #173f95 60%, #1f4ea8 100%); }
+    .m4k-spell { top: 848px; width: 55px; height: 55px; border-radius: 50%; box-sizing: border-box; border: 2px solid #f0b93a; object-fit: cover; background: #3a2a10; }
+    .m4k-spell:not([src]) { visibility: hidden; }
+    .m4k-role { top: 848px; width: 55px; height: 55px; background: #47fff0; overflow: hidden; }
+    .m4k-role > div { position: absolute; left: -12px; top: -11px; width: 79px; height: 77px; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    .m4k-name { top: 859px; width: 296px; height: 32px; text-align: center; white-space: nowrap; font: 400 26px/32px 'Monument Ext MCT', sans-serif; color: #43fff0; text-transform: uppercase; }
+    .m4k-label { top: 921px; width: 420px; height: 26px; text-align: center; white-space: nowrap; font: 700 20.5px/26px 'Source Han Sans MCT', sans-serif; color: #efe9e9; text-transform: uppercase; }
+    .m4k-value { top: 944px; width: 420px; height: 84px; text-align: center; white-space: nowrap; font: 400 74px/84px 'Monument Ext MCT', sans-serif; color: #fff; }
+    #m4k-card1, #m4k-plate1 { left: 52px; } #m4k-spell1 { left: 62px; } #m4k-role1 { left: 433px; } #m4k-name1 { left: 125px; } #m4k-label1, #m4k-value1 { left: 64px; }
+    #m4k-card2, #m4k-plate2 { left: 510px; } #m4k-spell2 { left: 520px; } #m4k-role2 { left: 891px; } #m4k-name2 { left: 583px; } #m4k-label2, #m4k-value2 { left: 522px; }
+    #m4k-card3, #m4k-plate3 { left: 968px; } #m4k-spell3 { left: 978px; } #m4k-role3 { left: 1349px; } #m4k-name3 { left: 1041px; } #m4k-label3, #m4k-value3 { left: 980px; }
+    #m4k-card4, #m4k-plate4 { left: 1426px; } #m4k-spell4 { left: 1436px; } #m4k-role4 { left: 1807px; } #m4k-name4 { left: 1499px; } #m4k-label4, #m4k-value4 { left: 1438px; }
+    /* in: cards rise in one after another (left -> right), then the numbers count up (m4kShow) */
+    @keyframes m4kRise { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+    #m4k-page.m4k-visible #m4k-card1, #m4k-page.m4k-visible #m4k-plate1, #m4k-page.m4k-visible #m4k-spell1, #m4k-page.m4k-visible #m4k-role1, #m4k-page.m4k-visible #m4k-name1, #m4k-page.m4k-visible #m4k-label1, #m4k-page.m4k-visible #m4k-value1 { animation: m4kRise 600ms cubic-bezier(.16,.84,.24,1) 150ms both; }
+    #m4k-page.m4k-visible #m4k-card2, #m4k-page.m4k-visible #m4k-plate2, #m4k-page.m4k-visible #m4k-spell2, #m4k-page.m4k-visible #m4k-role2, #m4k-page.m4k-visible #m4k-name2, #m4k-page.m4k-visible #m4k-label2, #m4k-page.m4k-visible #m4k-value2 { animation: m4kRise 600ms cubic-bezier(.16,.84,.24,1) 260ms both; }
+    #m4k-page.m4k-visible #m4k-card3, #m4k-page.m4k-visible #m4k-plate3, #m4k-page.m4k-visible #m4k-spell3, #m4k-page.m4k-visible #m4k-role3, #m4k-page.m4k-visible #m4k-name3, #m4k-page.m4k-visible #m4k-label3, #m4k-page.m4k-visible #m4k-value3 { animation: m4kRise 600ms cubic-bezier(.16,.84,.24,1) 370ms both; }
+    #m4k-page.m4k-visible #m4k-card4, #m4k-page.m4k-visible #m4k-plate4, #m4k-page.m4k-visible #m4k-spell4, #m4k-page.m4k-visible #m4k-role4, #m4k-page.m4k-visible #m4k-name4, #m4k-page.m4k-visible #m4k-label4, #m4k-page.m4k-visible #m4k-value4 { animation: m4kRise 600ms cubic-bezier(.16,.84,.24,1) 480ms both; }
+    /* in: header like the Gold Graph, cards slide in from their side, title + panel rise, then the bars grow (p2mGrow) */
+    @keyframes p2mFromL { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
+    @keyframes p2mFromR { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+    #p2m-page.p2m-visible #p2m-card1, #p2m-page.p2m-visible #p2m-plate1, #p2m-page.p2m-visible #p2m-spell1, #p2m-page.p2m-visible #p2m-role1,
+    #p2m-page.p2m-visible #p2m-name1, #p2m-page.p2m-visible #p2m-heroname1 { animation: p2mFromL 600ms cubic-bezier(.16,.84,.24,1) 150ms both; }
+    #p2m-page.p2m-visible #p2m-card2, #p2m-page.p2m-visible #p2m-plate2, #p2m-page.p2m-visible #p2m-spell2, #p2m-page.p2m-visible #p2m-role2,
+    #p2m-page.p2m-visible #p2m-name2, #p2m-page.p2m-visible #p2m-heroname2 { animation: p2mFromR 600ms cubic-bezier(.16,.84,.24,1) 250ms both; }
+    #p2m-page.p2m-visible .p2m-title { animation: pggLift 500ms cubic-bezier(.2,.8,.2,1) 300ms both; }
+    #p2m-page.p2m-visible #p2m-panel { animation: pggFade 450ms ease 350ms both; }
+    #p2m-page.p2m-visible .p2m-lbl, #p2m-page.p2m-visible .p2m-bar, #p2m-page.p2m-visible .p2m-val { animation: pggLift 420ms cubic-bezier(.2,.8,.2,1) calc(420ms + var(--r, 0) * 60ms) both; }
+
+    /* ── MCT Post Heatmap (#hmm-page) — used instead of #heatmap-page under data-theme-name="mct" (same 'heatmap' feature slot).
+       Hero / photo / front water / HUD / logo are the MCT MVP scene's; coordinates from assets/overlay/MCT/postgame/heatmap/heatmap_reference.jpg.
+       The map is the skewed in-game render (heatmap_map.png, 786x532): positions are drawn through a 4-corner perspective map
+       (HMM_QUAD in the heatmap script, corners from heatmap_map_guide.png), so the canvases share the map image's own pixel grid. */
+    #hmm-page { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: none; overflow: hidden; background: transparent; opacity: 0; transition: opacity 400ms ease; }
+    #hmm-page.hmm-on { display: block; }
+    #hmm-page.hmm-visible { opacity: 1; }
+    #hmm-page > * { position: absolute; }
+    #hmm-hud { z-index: 100; left: 47px; top: 50px; width: 1826px; height: 1017px; pointer-events: none; }
+    #hmm-logo { left: 129px; top: 29px; width: 219px; height: 71px; }
+    #hmm-hero { left: 551px; top: -48px; width: 1155.2px; height: 1300px; object-fit: contain; object-position: 50% 0; }   /* = the MCT MVP hero's current (Edit-tab) size */
+    #hmm-map { left: 219px; top: 146px; width: 786px; height: 532px; overflow: hidden; }
+    #hmm-map-img, #hmm-heat-canvas, #hmm-dot-canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
+    #hmm-heat-canvas { opacity: .88; }
+    #hmm-dot-canvas { pointer-events: none; }
+    #hmm-container { left: 219px; top: 675px; width: 1248px; height: 357px; }
+    #hmm-photo { left: 903px; top: 39px; width: 1550px; height: 1550px; object-fit: contain; }
+    #hmm-water { left: 785px; top: 0; width: 1135px; height: 1080px; pointer-events: none; }
+    #hmm-title { left: 78px; top: 147px; width: 89px; height: 865px; }
+    .hmm-label { font: 400 19px/26px 'Source Han Sans MCT', sans-serif; color: #43fff0; text-transform: uppercase; white-space: nowrap; }
+    .hmm-value { height: 70px; white-space: nowrap; font: 800 57px/70px 'Monument Ext MCT', sans-serif; color: #fff; display: flex; align-items: center; }
+    #hmm-dur-label { left: 263px; top: 704px; width: 400px; height: 26px; }
+    #hmm-dur { left: 263px; top: 719px; width: 640px; }
+    #hmm-dur .hmm-dash { display: block; flex: none; width: 0.86em; height: 0.09em; margin: 0 0.05em; background: currentColor; }   /* the font's own dash is far too long — same fix as the Waiting screen score */
+    #hmm-stat-label { left: 263px; top: 791px; width: 260px; height: 26px; }
+    #hmm-stat { left: 263px; top: 806px; width: 262px; }
+    #hmm-kp-label { left: 535px; top: 791px; width: 260px; height: 26px; }
+    #hmm-kp { left: 535px; top: 806px; width: 360px; }
+    #hmm-line { left: 305px; top: 896px; width: 612px; height: 2px; background: rgba(67, 255, 240, .55); }
+    #hmm-teamlogo { left: 417px; top: 928px; width: 104px; height: 73px; object-fit: contain; }
+    #hmm-role { left: 546px; top: 933px; width: 57px; height: 57px; border-radius: 4px; background: #47fff0; overflow: hidden; }
+    #hmm-role-glyph { position: absolute; left: -12px; top: -11px; width: 80px; height: 78px; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    #hmm-name { left: 620px; top: 920px; width: 560px; height: 96px; white-space: nowrap; font: 800 84px/96px 'Monument Ext MCT', sans-serif; color: #43fff0; }
+    #hmm-hero:not([src]), #hmm-teamlogo:not([src]), #hmm-photo:not([src]) { visibility: hidden; }
+    #hmm-page.hmm-visible #hmm-container, #hmm-page.hmm-visible #hmm-hud { animation: mvmFade 500ms ease both; }
+    #hmm-page.hmm-visible #hmm-title { animation: mvmFromLeft 600ms cubic-bezier(.16,.84,.24,1) 80ms both; }
+    #hmm-page.hmm-visible #hmm-map { animation: mvmRise 600ms cubic-bezier(.16,.84,.24,1) 100ms both; }
+    #hmm-page.hmm-visible #hmm-hero { animation: mvmFade 600ms ease 150ms both; }
+    /* front water first, then the player slides in behind it (the photo entering before the water read as the water popping in front of him) */
+    #hmm-page.hmm-visible #hmm-water { animation: mvmFade 450ms ease 0ms both; }
+    #hmm-page.hmm-visible #hmm-photo { animation: mvmFromRight 650ms cubic-bezier(.16,.84,.24,1) 380ms both; }
+    #hmm-page.hmm-visible .hmm-label, #hmm-page.hmm-visible .hmm-value, #hmm-page.hmm-visible #hmm-line { animation: mvmRise 520ms cubic-bezier(.16,.84,.24,1) 260ms both; }
+    #hmm-page.hmm-visible #hmm-teamlogo, #hmm-page.hmm-visible #hmm-role, #hmm-page.hmm-visible #hmm-name { animation: mvmRise 520ms cubic-bezier(.16,.84,.24,1) 340ms both; }
     /* Scene background toggle (dashboard Control → Postgame → Scene Background): off = transparent, no installed background loop. */
     #mct-bg { display: none; position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; object-fit: cover; z-index: 0; pointer-events: none; }
     html[data-theme-name="mct"] #mct-bg { display: block; }
@@ -5250,6 +5620,165 @@
         <div class="hm-legend-row"><span class="hm-legend-icon" id="hm-legend-icon-death"></span><span class="hm-legend-label">Death</span></div>
       </div>
     </div>
+    <!-- Post Gold Graph (#pgg-page) — see the POST GOLD GRAPH CSS/JS blocks. Every element is its own absolute child (Edit tab). -->
+    <div id="pgg-page">
+      <div id="pgg-panel1" class="pgg-panel"></div><div id="pgg-panel2" class="pgg-panel"></div>
+      <div id="pgg-div1" class="pgg-div"></div><div id="pgg-div2" class="pgg-div"></div>
+      <img id="pgg-hero-1-1" class="pgg-hero" style="--r:0" alt=""><div id="pgg-role-1-1" class="pgg-role" style="--r:0"><div></div></div><div id="pgg-name-1-1" class="pgg-name" style="--r:0"></div>
+      <img id="pgg-hero-1-2" class="pgg-hero" style="--r:1" alt=""><div id="pgg-role-1-2" class="pgg-role" style="--r:1"><div></div></div><div id="pgg-name-1-2" class="pgg-name" style="--r:1"></div>
+      <img id="pgg-hero-1-3" class="pgg-hero" style="--r:2" alt=""><div id="pgg-role-1-3" class="pgg-role" style="--r:2"><div></div></div><div id="pgg-name-1-3" class="pgg-name" style="--r:2"></div>
+      <img id="pgg-hero-1-4" class="pgg-hero" style="--r:3" alt=""><div id="pgg-role-1-4" class="pgg-role" style="--r:3"><div></div></div><div id="pgg-name-1-4" class="pgg-name" style="--r:3"></div>
+      <img id="pgg-hero-1-5" class="pgg-hero" style="--r:4" alt=""><div id="pgg-role-1-5" class="pgg-role" style="--r:4"><div></div></div><div id="pgg-name-1-5" class="pgg-name" style="--r:4"></div>
+      <svg id="pgg-coin-1" class="pgg-coin pgg-coinsvg" viewBox="0 0 40 40"></svg><div id="pgg-gold-1" class="pgg-gold"></div>
+      <div id="pgg-kdal-1" class="pgg-lbl pgg-c1">KDA</div><div id="pgg-kda-1" class="pgg-kda"></div>
+      <div id="pgg-ico-turtle-1" class="pgg-ico pgg-turtle pgg-c1"></div><div id="pgg-ico-lord-1" class="pgg-ico pgg-lord pgg-c1"></div><div id="pgg-ico-tower-1" class="pgg-ico pgg-tower pgg-c1"></div>
+      <div id="pgg-lbl-turtle-1" class="pgg-lbl pgg-olbl pgg-c1">TURTLE</div><div id="pgg-lbl-lord-1" class="pgg-lbl pgg-olbl pgg-c1">LORD</div><div id="pgg-lbl-tower-1" class="pgg-lbl pgg-olbl pgg-c1">TURRET</div>
+      <div id="pgg-n-turtle-1" class="pgg-cnt"></div><div id="pgg-n-lord-1" class="pgg-cnt"></div><div id="pgg-n-tower-1" class="pgg-cnt"></div>
+      <img id="pgg-hero-2-1" class="pgg-hero" style="--r:0" alt=""><div id="pgg-role-2-1" class="pgg-role" style="--r:0"><div></div></div><div id="pgg-name-2-1" class="pgg-name" style="--r:0"></div>
+      <img id="pgg-hero-2-2" class="pgg-hero" style="--r:1" alt=""><div id="pgg-role-2-2" class="pgg-role" style="--r:1"><div></div></div><div id="pgg-name-2-2" class="pgg-name" style="--r:1"></div>
+      <img id="pgg-hero-2-3" class="pgg-hero" style="--r:2" alt=""><div id="pgg-role-2-3" class="pgg-role" style="--r:2"><div></div></div><div id="pgg-name-2-3" class="pgg-name" style="--r:2"></div>
+      <img id="pgg-hero-2-4" class="pgg-hero" style="--r:3" alt=""><div id="pgg-role-2-4" class="pgg-role" style="--r:3"><div></div></div><div id="pgg-name-2-4" class="pgg-name" style="--r:3"></div>
+      <img id="pgg-hero-2-5" class="pgg-hero" style="--r:4" alt=""><div id="pgg-role-2-5" class="pgg-role" style="--r:4"><div></div></div><div id="pgg-name-2-5" class="pgg-name" style="--r:4"></div>
+      <svg id="pgg-coin-2" class="pgg-coin pgg-coinsvg" viewBox="0 0 40 40"></svg><div id="pgg-gold-2" class="pgg-gold"></div>
+      <div id="pgg-kdal-2" class="pgg-lbl pgg-c2">KDA</div><div id="pgg-kda-2" class="pgg-kda"></div>
+      <div id="pgg-ico-turtle-2" class="pgg-ico pgg-turtle pgg-c2"></div><div id="pgg-ico-lord-2" class="pgg-ico pgg-lord pgg-c2"></div><div id="pgg-ico-tower-2" class="pgg-ico pgg-tower pgg-c2"></div>
+      <div id="pgg-lbl-turtle-2" class="pgg-lbl pgg-olbl pgg-c2">TURTLE</div><div id="pgg-lbl-lord-2" class="pgg-lbl pgg-olbl pgg-c2">LORD</div><div id="pgg-lbl-tower-2" class="pgg-lbl pgg-olbl pgg-c2">TURRET</div>
+      <div id="pgg-n-turtle-2" class="pgg-cnt"></div><div id="pgg-n-lord-2" class="pgg-cnt"></div><div id="pgg-n-tower-2" class="pgg-cnt"></div>
+      <div id="pgg-title">G<svg class="pgg-coinsvg" viewBox="0 0 40 40"></svg>LD CURVE</div>
+      <svg id="pgg-chart" viewBox="600 290 1320 740" width="1320" height="740">
+        <defs>
+          <linearGradient id="pggPlotBg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a6fc4" stop-opacity=".22"/><stop offset="1" stop-color="#2a64e0" stop-opacity=".42"/></linearGradient>
+          <linearGradient id="pggLineGrad" gradientUnits="userSpaceOnUse" x1="0" y1="347" x2="0" y2="975">
+            <stop offset="0" stop-color="#43fff0"/><stop offset="0.5" stop-color="#43fff0"/><stop offset="0.5" stop-color="#ffe100"/><stop offset="1" stop-color="#ffe100"/>
+          </linearGradient>
+          <clipPath id="pggClip"><rect x="651" y="347" width="1217" height="628"/></clipPath>
+          <filter id="pggTint1" x="0" y="0" width="1" height="1"><feFlood flood-color="#43fff0"/><feComposite in2="SourceAlpha" operator="in"/></filter>
+          <filter id="pggTint2" x="0" y="0" width="1" height="1"><feFlood flood-color="#ffe100"/><feComposite in2="SourceAlpha" operator="in"/></filter>
+        </defs>
+        <rect x="651" y="347" width="1217" height="628" fill="url(#pggPlotBg)" stroke="rgba(96,160,255,.75)" stroke-width="1.5"/>
+        <g id="pgg-grid"></g>
+        <line x1="651" x2="1868" y1="661" y2="661" stroke="#3f8cff" stroke-width="2.5"/>
+        <path id="pgg-line" fill="none" stroke="url(#pggLineGrad)" stroke-width="2.6" stroke-linejoin="round" clip-path="url(#pggClip)"/>
+        <g id="pgg-marks"></g><g id="pgg-ylabels"></g><g id="pgg-xlabels"></g>
+      </svg>
+    </div>
+    <!-- MCT Post H2H (#p2m-page) — used instead of #p2h-page when data-theme-name="mct". See the MCT POST H2H CSS/JS blocks. -->
+    <div id="p2m-page">
+      <div id="p2m-card1" class="p2m-card"><img id="p2m-hero1" class="p2m-hero" alt=""><img id="p2m-photo1" class="p2m-photo" alt=""></div>
+      <div id="p2m-plate1" class="p2m-plate"></div><img id="p2m-spell1" class="p2m-spell" alt=""><div id="p2m-role1" class="p2m-role"><div></div></div>
+      <div id="p2m-name1" class="p2m-name"></div><div id="p2m-heroname1" class="p2m-heroname"></div>
+      <div id="p2m-card2" class="p2m-card"><img id="p2m-hero2" class="p2m-hero" alt=""><img id="p2m-photo2" class="p2m-photo" alt=""></div>
+      <div id="p2m-plate2" class="p2m-plate"></div><img id="p2m-spell2" class="p2m-spell" alt=""><div id="p2m-role2" class="p2m-role"><div></div></div>
+      <div id="p2m-name2" class="p2m-name"></div><div id="p2m-heroname2" class="p2m-heroname"></div>
+      <div id="p2m-title1" class="p2m-title">G<svg class="pgg-coinsvg" viewBox="0 0 40 40"></svg>LD</div>
+      <div id="p2m-title2" class="p2m-title">DISTRIBUTION</div>
+      <div id="p2m-panel"></div>
+      <div id="p2m-lbl-0" class="p2m-lbl" style="--r:0"></div><div id="p2m-v1-0" class="p2m-val p2m-v1" style="--r:0"></div><div id="p2m-bar-0" class="p2m-bar" style="--r:0"><div class="p2m-fill"></div></div><div id="p2m-v2-0" class="p2m-val p2m-v2" style="--r:0"></div>
+      <div id="p2m-lbl-1" class="p2m-lbl" style="--r:1"></div><div id="p2m-v1-1" class="p2m-val p2m-v1" style="--r:1"></div><div id="p2m-bar-1" class="p2m-bar" style="--r:1"><div class="p2m-fill"></div></div><div id="p2m-v2-1" class="p2m-val p2m-v2" style="--r:1"></div>
+      <div id="p2m-lbl-2" class="p2m-lbl" style="--r:2"></div><div id="p2m-v1-2" class="p2m-val p2m-v1" style="--r:2"></div><div id="p2m-bar-2" class="p2m-bar" style="--r:2"><div class="p2m-fill"></div></div><div id="p2m-v2-2" class="p2m-val p2m-v2" style="--r:2"></div>
+      <div id="p2m-lbl-3" class="p2m-lbl" style="--r:3"></div><div id="p2m-v1-3" class="p2m-val p2m-v1" style="--r:3"></div><div id="p2m-bar-3" class="p2m-bar" style="--r:3"><div class="p2m-fill"></div></div><div id="p2m-v2-3" class="p2m-val p2m-v2" style="--r:3"></div>
+      <div id="p2m-lbl-4" class="p2m-lbl" style="--r:4"></div><div id="p2m-v1-4" class="p2m-val p2m-v1" style="--r:4"></div><div id="p2m-bar-4" class="p2m-bar" style="--r:4"><div class="p2m-fill"></div></div><div id="p2m-v2-4" class="p2m-val p2m-v2" style="--r:4"></div>
+    </div>
+    <!-- MCT Consolidated Post page 1 (#mcp-page) — used instead of #cp-page when data-theme-name="mct". See the MCT CONSOLIDATED POST CSS/JS blocks. -->
+    <div id="mcp-page" class="mcp-mode-items">
+      <img id="mcp-mid" class="mcp-M" src="/assets/overlay/MCT/postgame/post/mctpost_middlecont.png" alt="">
+      <img id="mcp-bg-1" class="mcp-L mcp-bg" style="--r:0" src="/assets/overlay/MCT/postgame/post/mctpost_playercont.png" alt=""><div id="mcp-art-1" class="mcp-L mcp-art" style="--r:0"><img id="mcp-hero-1" class="mcp-hero" alt=""><img id="mcp-photo-1" class="mcp-photo" alt=""></div>
+      <img id="mcp-spell-1" class="mcp-L mcp-spell" style="--r:0" alt=""><div id="mcp-lvl-1" class="mcp-L mcp-lvl" style="--r:0"></div><div id="mcp-role-1" class="mcp-L mcp-role" style="--r:0"></div><div id="mcp-name-1" class="mcp-L mcp-name" style="--r:0"></div>
+      <div id="mcp-kdal-1" class="mcp-L mcp-lbl" style="--r:0">KDA</div><div id="mcp-kda-1" class="mcp-L mcp-val mcp-kda" style="--r:0"></div><div id="mcp-goldl-1" class="mcp-L mcp-lbl" style="--r:0">GOLD</div><div id="mcp-gold-1" class="mcp-L mcp-val mcp-gold" style="--r:0"></div><div id="mcp-div-1" class="mcp-L mcp-div" style="--r:0"></div>
+      <img id="mcp-item-1-0" class="mcp-L mcp-item mcp-it" style="--r:0" alt=""><img id="mcp-item-1-1" class="mcp-L mcp-item mcp-it" style="--r:0" alt=""><img id="mcp-item-1-2" class="mcp-L mcp-item mcp-it" style="--r:0" alt=""><img id="mcp-item-1-3" class="mcp-L mcp-item mcp-it" style="--r:0" alt=""><img id="mcp-item-1-4" class="mcp-L mcp-item mcp-it" style="--r:0" alt=""><img id="mcp-item-1-5" class="mcp-L mcp-item mcp-it" style="--r:0" alt=""><img id="mcp-emb-1-0" class="mcp-L mcp-emb mcp-em" style="--r:0" alt=""><img id="mcp-emb-1-1" class="mcp-L mcp-emb mcp-em" style="--r:0" alt=""><img id="mcp-emb-1-2" class="mcp-L mcp-emb mcp-em" style="--r:0" alt=""><img id="mcp-emb-1-3" class="mcp-L mcp-emb mcp-em mcp-set" style="--r:0" alt=""><div id="mcp-dl-1" class="mcp-L mcp-slbl mcp-dl mcp-st" style="--r:0">DAMAGE DEALT</div><div id="mcp-db-1" class="mcp-L mcp-sbar mcp-db mcp-st" style="--r:0"><div class="mcp-sfill"></div></div><div id="mcp-tl-1" class="mcp-L mcp-slbl mcp-tl mcp-st" style="--r:0">DAMAGE TAKEN</div><div id="mcp-tb-1" class="mcp-L mcp-sbar mcp-tb mcp-st" style="--r:0"><div class="mcp-sfill"></div></div>
+      <img id="mcp-bg-2" class="mcp-L mcp-bg" style="--r:1" src="/assets/overlay/MCT/postgame/post/mctpost_playercont.png" alt=""><div id="mcp-art-2" class="mcp-L mcp-art" style="--r:1"><img id="mcp-hero-2" class="mcp-hero" alt=""><img id="mcp-photo-2" class="mcp-photo" alt=""></div>
+      <img id="mcp-spell-2" class="mcp-L mcp-spell" style="--r:1" alt=""><div id="mcp-lvl-2" class="mcp-L mcp-lvl" style="--r:1"></div><div id="mcp-role-2" class="mcp-L mcp-role" style="--r:1"></div><div id="mcp-name-2" class="mcp-L mcp-name" style="--r:1"></div>
+      <div id="mcp-kdal-2" class="mcp-L mcp-lbl" style="--r:1">KDA</div><div id="mcp-kda-2" class="mcp-L mcp-val mcp-kda" style="--r:1"></div><div id="mcp-goldl-2" class="mcp-L mcp-lbl" style="--r:1">GOLD</div><div id="mcp-gold-2" class="mcp-L mcp-val mcp-gold" style="--r:1"></div><div id="mcp-div-2" class="mcp-L mcp-div" style="--r:1"></div>
+      <img id="mcp-item-2-0" class="mcp-L mcp-item mcp-it" style="--r:1" alt=""><img id="mcp-item-2-1" class="mcp-L mcp-item mcp-it" style="--r:1" alt=""><img id="mcp-item-2-2" class="mcp-L mcp-item mcp-it" style="--r:1" alt=""><img id="mcp-item-2-3" class="mcp-L mcp-item mcp-it" style="--r:1" alt=""><img id="mcp-item-2-4" class="mcp-L mcp-item mcp-it" style="--r:1" alt=""><img id="mcp-item-2-5" class="mcp-L mcp-item mcp-it" style="--r:1" alt=""><img id="mcp-emb-2-0" class="mcp-L mcp-emb mcp-em" style="--r:1" alt=""><img id="mcp-emb-2-1" class="mcp-L mcp-emb mcp-em" style="--r:1" alt=""><img id="mcp-emb-2-2" class="mcp-L mcp-emb mcp-em" style="--r:1" alt=""><img id="mcp-emb-2-3" class="mcp-L mcp-emb mcp-em mcp-set" style="--r:1" alt=""><div id="mcp-dl-2" class="mcp-L mcp-slbl mcp-dl mcp-st" style="--r:1">DAMAGE DEALT</div><div id="mcp-db-2" class="mcp-L mcp-sbar mcp-db mcp-st" style="--r:1"><div class="mcp-sfill"></div></div><div id="mcp-tl-2" class="mcp-L mcp-slbl mcp-tl mcp-st" style="--r:1">DAMAGE TAKEN</div><div id="mcp-tb-2" class="mcp-L mcp-sbar mcp-tb mcp-st" style="--r:1"><div class="mcp-sfill"></div></div>
+      <img id="mcp-bg-3" class="mcp-L mcp-bg" style="--r:2" src="/assets/overlay/MCT/postgame/post/mctpost_playercont.png" alt=""><div id="mcp-art-3" class="mcp-L mcp-art" style="--r:2"><img id="mcp-hero-3" class="mcp-hero" alt=""><img id="mcp-photo-3" class="mcp-photo" alt=""></div>
+      <img id="mcp-spell-3" class="mcp-L mcp-spell" style="--r:2" alt=""><div id="mcp-lvl-3" class="mcp-L mcp-lvl" style="--r:2"></div><div id="mcp-role-3" class="mcp-L mcp-role" style="--r:2"></div><div id="mcp-name-3" class="mcp-L mcp-name" style="--r:2"></div>
+      <div id="mcp-kdal-3" class="mcp-L mcp-lbl" style="--r:2">KDA</div><div id="mcp-kda-3" class="mcp-L mcp-val mcp-kda" style="--r:2"></div><div id="mcp-goldl-3" class="mcp-L mcp-lbl" style="--r:2">GOLD</div><div id="mcp-gold-3" class="mcp-L mcp-val mcp-gold" style="--r:2"></div><div id="mcp-div-3" class="mcp-L mcp-div" style="--r:2"></div>
+      <img id="mcp-item-3-0" class="mcp-L mcp-item mcp-it" style="--r:2" alt=""><img id="mcp-item-3-1" class="mcp-L mcp-item mcp-it" style="--r:2" alt=""><img id="mcp-item-3-2" class="mcp-L mcp-item mcp-it" style="--r:2" alt=""><img id="mcp-item-3-3" class="mcp-L mcp-item mcp-it" style="--r:2" alt=""><img id="mcp-item-3-4" class="mcp-L mcp-item mcp-it" style="--r:2" alt=""><img id="mcp-item-3-5" class="mcp-L mcp-item mcp-it" style="--r:2" alt=""><img id="mcp-emb-3-0" class="mcp-L mcp-emb mcp-em" style="--r:2" alt=""><img id="mcp-emb-3-1" class="mcp-L mcp-emb mcp-em" style="--r:2" alt=""><img id="mcp-emb-3-2" class="mcp-L mcp-emb mcp-em" style="--r:2" alt=""><img id="mcp-emb-3-3" class="mcp-L mcp-emb mcp-em mcp-set" style="--r:2" alt=""><div id="mcp-dl-3" class="mcp-L mcp-slbl mcp-dl mcp-st" style="--r:2">DAMAGE DEALT</div><div id="mcp-db-3" class="mcp-L mcp-sbar mcp-db mcp-st" style="--r:2"><div class="mcp-sfill"></div></div><div id="mcp-tl-3" class="mcp-L mcp-slbl mcp-tl mcp-st" style="--r:2">DAMAGE TAKEN</div><div id="mcp-tb-3" class="mcp-L mcp-sbar mcp-tb mcp-st" style="--r:2"><div class="mcp-sfill"></div></div>
+      <img id="mcp-bg-4" class="mcp-L mcp-bg" style="--r:3" src="/assets/overlay/MCT/postgame/post/mctpost_playercont.png" alt=""><div id="mcp-art-4" class="mcp-L mcp-art" style="--r:3"><img id="mcp-hero-4" class="mcp-hero" alt=""><img id="mcp-photo-4" class="mcp-photo" alt=""></div>
+      <img id="mcp-spell-4" class="mcp-L mcp-spell" style="--r:3" alt=""><div id="mcp-lvl-4" class="mcp-L mcp-lvl" style="--r:3"></div><div id="mcp-role-4" class="mcp-L mcp-role" style="--r:3"></div><div id="mcp-name-4" class="mcp-L mcp-name" style="--r:3"></div>
+      <div id="mcp-kdal-4" class="mcp-L mcp-lbl" style="--r:3">KDA</div><div id="mcp-kda-4" class="mcp-L mcp-val mcp-kda" style="--r:3"></div><div id="mcp-goldl-4" class="mcp-L mcp-lbl" style="--r:3">GOLD</div><div id="mcp-gold-4" class="mcp-L mcp-val mcp-gold" style="--r:3"></div><div id="mcp-div-4" class="mcp-L mcp-div" style="--r:3"></div>
+      <img id="mcp-item-4-0" class="mcp-L mcp-item mcp-it" style="--r:3" alt=""><img id="mcp-item-4-1" class="mcp-L mcp-item mcp-it" style="--r:3" alt=""><img id="mcp-item-4-2" class="mcp-L mcp-item mcp-it" style="--r:3" alt=""><img id="mcp-item-4-3" class="mcp-L mcp-item mcp-it" style="--r:3" alt=""><img id="mcp-item-4-4" class="mcp-L mcp-item mcp-it" style="--r:3" alt=""><img id="mcp-item-4-5" class="mcp-L mcp-item mcp-it" style="--r:3" alt=""><img id="mcp-emb-4-0" class="mcp-L mcp-emb mcp-em" style="--r:3" alt=""><img id="mcp-emb-4-1" class="mcp-L mcp-emb mcp-em" style="--r:3" alt=""><img id="mcp-emb-4-2" class="mcp-L mcp-emb mcp-em" style="--r:3" alt=""><img id="mcp-emb-4-3" class="mcp-L mcp-emb mcp-em mcp-set" style="--r:3" alt=""><div id="mcp-dl-4" class="mcp-L mcp-slbl mcp-dl mcp-st" style="--r:3">DAMAGE DEALT</div><div id="mcp-db-4" class="mcp-L mcp-sbar mcp-db mcp-st" style="--r:3"><div class="mcp-sfill"></div></div><div id="mcp-tl-4" class="mcp-L mcp-slbl mcp-tl mcp-st" style="--r:3">DAMAGE TAKEN</div><div id="mcp-tb-4" class="mcp-L mcp-sbar mcp-tb mcp-st" style="--r:3"><div class="mcp-sfill"></div></div>
+      <img id="mcp-bg-5" class="mcp-L mcp-bg" style="--r:4" src="/assets/overlay/MCT/postgame/post/mctpost_playercont.png" alt=""><div id="mcp-art-5" class="mcp-L mcp-art" style="--r:4"><img id="mcp-hero-5" class="mcp-hero" alt=""><img id="mcp-photo-5" class="mcp-photo" alt=""></div>
+      <img id="mcp-spell-5" class="mcp-L mcp-spell" style="--r:4" alt=""><div id="mcp-lvl-5" class="mcp-L mcp-lvl" style="--r:4"></div><div id="mcp-role-5" class="mcp-L mcp-role" style="--r:4"></div><div id="mcp-name-5" class="mcp-L mcp-name" style="--r:4"></div>
+      <div id="mcp-kdal-5" class="mcp-L mcp-lbl" style="--r:4">KDA</div><div id="mcp-kda-5" class="mcp-L mcp-val mcp-kda" style="--r:4"></div><div id="mcp-goldl-5" class="mcp-L mcp-lbl" style="--r:4">GOLD</div><div id="mcp-gold-5" class="mcp-L mcp-val mcp-gold" style="--r:4"></div><div id="mcp-div-5" class="mcp-L mcp-div" style="--r:4"></div>
+      <img id="mcp-item-5-0" class="mcp-L mcp-item mcp-it" style="--r:4" alt=""><img id="mcp-item-5-1" class="mcp-L mcp-item mcp-it" style="--r:4" alt=""><img id="mcp-item-5-2" class="mcp-L mcp-item mcp-it" style="--r:4" alt=""><img id="mcp-item-5-3" class="mcp-L mcp-item mcp-it" style="--r:4" alt=""><img id="mcp-item-5-4" class="mcp-L mcp-item mcp-it" style="--r:4" alt=""><img id="mcp-item-5-5" class="mcp-L mcp-item mcp-it" style="--r:4" alt=""><img id="mcp-emb-5-0" class="mcp-L mcp-emb mcp-em" style="--r:4" alt=""><img id="mcp-emb-5-1" class="mcp-L mcp-emb mcp-em" style="--r:4" alt=""><img id="mcp-emb-5-2" class="mcp-L mcp-emb mcp-em" style="--r:4" alt=""><img id="mcp-emb-5-3" class="mcp-L mcp-emb mcp-em mcp-set" style="--r:4" alt=""><div id="mcp-dl-5" class="mcp-L mcp-slbl mcp-dl mcp-st" style="--r:4">DAMAGE DEALT</div><div id="mcp-db-5" class="mcp-L mcp-sbar mcp-db mcp-st" style="--r:4"><div class="mcp-sfill"></div></div><div id="mcp-tl-5" class="mcp-L mcp-slbl mcp-tl mcp-st" style="--r:4">DAMAGE TAKEN</div><div id="mcp-tb-5" class="mcp-L mcp-sbar mcp-tb mcp-st" style="--r:4"><div class="mcp-sfill"></div></div>
+      <img id="mcp-bg-6" class="mcp-R mcp-bg" style="--r:0" src="/assets/overlay/MCT/postgame/post/mctpost_playercont.png" alt=""><div id="mcp-art-6" class="mcp-R mcp-art" style="--r:0"><img id="mcp-hero-6" class="mcp-hero" alt=""><img id="mcp-photo-6" class="mcp-photo" alt=""></div>
+      <img id="mcp-spell-6" class="mcp-R mcp-spell" style="--r:0" alt=""><div id="mcp-lvl-6" class="mcp-R mcp-lvl" style="--r:0"></div><div id="mcp-role-6" class="mcp-R mcp-role" style="--r:0"></div><div id="mcp-name-6" class="mcp-R mcp-name" style="--r:0"></div>
+      <div id="mcp-kdal-6" class="mcp-R mcp-lbl" style="--r:0">KDA</div><div id="mcp-kda-6" class="mcp-R mcp-val mcp-kda" style="--r:0"></div><div id="mcp-goldl-6" class="mcp-R mcp-lbl" style="--r:0">GOLD</div><div id="mcp-gold-6" class="mcp-R mcp-val mcp-gold" style="--r:0"></div><div id="mcp-div-6" class="mcp-R mcp-div" style="--r:0"></div>
+      <img id="mcp-item-6-0" class="mcp-R mcp-item mcp-it" style="--r:0" alt=""><img id="mcp-item-6-1" class="mcp-R mcp-item mcp-it" style="--r:0" alt=""><img id="mcp-item-6-2" class="mcp-R mcp-item mcp-it" style="--r:0" alt=""><img id="mcp-item-6-3" class="mcp-R mcp-item mcp-it" style="--r:0" alt=""><img id="mcp-item-6-4" class="mcp-R mcp-item mcp-it" style="--r:0" alt=""><img id="mcp-item-6-5" class="mcp-R mcp-item mcp-it" style="--r:0" alt=""><img id="mcp-emb-6-0" class="mcp-R mcp-emb mcp-em" style="--r:0" alt=""><img id="mcp-emb-6-1" class="mcp-R mcp-emb mcp-em" style="--r:0" alt=""><img id="mcp-emb-6-2" class="mcp-R mcp-emb mcp-em" style="--r:0" alt=""><img id="mcp-emb-6-3" class="mcp-R mcp-emb mcp-em mcp-set" style="--r:0" alt=""><div id="mcp-dl-6" class="mcp-R mcp-slbl mcp-dl mcp-st" style="--r:0">DAMAGE DEALT</div><div id="mcp-db-6" class="mcp-R mcp-sbar mcp-db mcp-st" style="--r:0"><div class="mcp-sfill"></div></div><div id="mcp-tl-6" class="mcp-R mcp-slbl mcp-tl mcp-st" style="--r:0">DAMAGE TAKEN</div><div id="mcp-tb-6" class="mcp-R mcp-sbar mcp-tb mcp-st" style="--r:0"><div class="mcp-sfill"></div></div>
+      <img id="mcp-bg-7" class="mcp-R mcp-bg" style="--r:1" src="/assets/overlay/MCT/postgame/post/mctpost_playercont.png" alt=""><div id="mcp-art-7" class="mcp-R mcp-art" style="--r:1"><img id="mcp-hero-7" class="mcp-hero" alt=""><img id="mcp-photo-7" class="mcp-photo" alt=""></div>
+      <img id="mcp-spell-7" class="mcp-R mcp-spell" style="--r:1" alt=""><div id="mcp-lvl-7" class="mcp-R mcp-lvl" style="--r:1"></div><div id="mcp-role-7" class="mcp-R mcp-role" style="--r:1"></div><div id="mcp-name-7" class="mcp-R mcp-name" style="--r:1"></div>
+      <div id="mcp-kdal-7" class="mcp-R mcp-lbl" style="--r:1">KDA</div><div id="mcp-kda-7" class="mcp-R mcp-val mcp-kda" style="--r:1"></div><div id="mcp-goldl-7" class="mcp-R mcp-lbl" style="--r:1">GOLD</div><div id="mcp-gold-7" class="mcp-R mcp-val mcp-gold" style="--r:1"></div><div id="mcp-div-7" class="mcp-R mcp-div" style="--r:1"></div>
+      <img id="mcp-item-7-0" class="mcp-R mcp-item mcp-it" style="--r:1" alt=""><img id="mcp-item-7-1" class="mcp-R mcp-item mcp-it" style="--r:1" alt=""><img id="mcp-item-7-2" class="mcp-R mcp-item mcp-it" style="--r:1" alt=""><img id="mcp-item-7-3" class="mcp-R mcp-item mcp-it" style="--r:1" alt=""><img id="mcp-item-7-4" class="mcp-R mcp-item mcp-it" style="--r:1" alt=""><img id="mcp-item-7-5" class="mcp-R mcp-item mcp-it" style="--r:1" alt=""><img id="mcp-emb-7-0" class="mcp-R mcp-emb mcp-em" style="--r:1" alt=""><img id="mcp-emb-7-1" class="mcp-R mcp-emb mcp-em" style="--r:1" alt=""><img id="mcp-emb-7-2" class="mcp-R mcp-emb mcp-em" style="--r:1" alt=""><img id="mcp-emb-7-3" class="mcp-R mcp-emb mcp-em mcp-set" style="--r:1" alt=""><div id="mcp-dl-7" class="mcp-R mcp-slbl mcp-dl mcp-st" style="--r:1">DAMAGE DEALT</div><div id="mcp-db-7" class="mcp-R mcp-sbar mcp-db mcp-st" style="--r:1"><div class="mcp-sfill"></div></div><div id="mcp-tl-7" class="mcp-R mcp-slbl mcp-tl mcp-st" style="--r:1">DAMAGE TAKEN</div><div id="mcp-tb-7" class="mcp-R mcp-sbar mcp-tb mcp-st" style="--r:1"><div class="mcp-sfill"></div></div>
+      <img id="mcp-bg-8" class="mcp-R mcp-bg" style="--r:2" src="/assets/overlay/MCT/postgame/post/mctpost_playercont.png" alt=""><div id="mcp-art-8" class="mcp-R mcp-art" style="--r:2"><img id="mcp-hero-8" class="mcp-hero" alt=""><img id="mcp-photo-8" class="mcp-photo" alt=""></div>
+      <img id="mcp-spell-8" class="mcp-R mcp-spell" style="--r:2" alt=""><div id="mcp-lvl-8" class="mcp-R mcp-lvl" style="--r:2"></div><div id="mcp-role-8" class="mcp-R mcp-role" style="--r:2"></div><div id="mcp-name-8" class="mcp-R mcp-name" style="--r:2"></div>
+      <div id="mcp-kdal-8" class="mcp-R mcp-lbl" style="--r:2">KDA</div><div id="mcp-kda-8" class="mcp-R mcp-val mcp-kda" style="--r:2"></div><div id="mcp-goldl-8" class="mcp-R mcp-lbl" style="--r:2">GOLD</div><div id="mcp-gold-8" class="mcp-R mcp-val mcp-gold" style="--r:2"></div><div id="mcp-div-8" class="mcp-R mcp-div" style="--r:2"></div>
+      <img id="mcp-item-8-0" class="mcp-R mcp-item mcp-it" style="--r:2" alt=""><img id="mcp-item-8-1" class="mcp-R mcp-item mcp-it" style="--r:2" alt=""><img id="mcp-item-8-2" class="mcp-R mcp-item mcp-it" style="--r:2" alt=""><img id="mcp-item-8-3" class="mcp-R mcp-item mcp-it" style="--r:2" alt=""><img id="mcp-item-8-4" class="mcp-R mcp-item mcp-it" style="--r:2" alt=""><img id="mcp-item-8-5" class="mcp-R mcp-item mcp-it" style="--r:2" alt=""><img id="mcp-emb-8-0" class="mcp-R mcp-emb mcp-em" style="--r:2" alt=""><img id="mcp-emb-8-1" class="mcp-R mcp-emb mcp-em" style="--r:2" alt=""><img id="mcp-emb-8-2" class="mcp-R mcp-emb mcp-em" style="--r:2" alt=""><img id="mcp-emb-8-3" class="mcp-R mcp-emb mcp-em mcp-set" style="--r:2" alt=""><div id="mcp-dl-8" class="mcp-R mcp-slbl mcp-dl mcp-st" style="--r:2">DAMAGE DEALT</div><div id="mcp-db-8" class="mcp-R mcp-sbar mcp-db mcp-st" style="--r:2"><div class="mcp-sfill"></div></div><div id="mcp-tl-8" class="mcp-R mcp-slbl mcp-tl mcp-st" style="--r:2">DAMAGE TAKEN</div><div id="mcp-tb-8" class="mcp-R mcp-sbar mcp-tb mcp-st" style="--r:2"><div class="mcp-sfill"></div></div>
+      <img id="mcp-bg-9" class="mcp-R mcp-bg" style="--r:3" src="/assets/overlay/MCT/postgame/post/mctpost_playercont.png" alt=""><div id="mcp-art-9" class="mcp-R mcp-art" style="--r:3"><img id="mcp-hero-9" class="mcp-hero" alt=""><img id="mcp-photo-9" class="mcp-photo" alt=""></div>
+      <img id="mcp-spell-9" class="mcp-R mcp-spell" style="--r:3" alt=""><div id="mcp-lvl-9" class="mcp-R mcp-lvl" style="--r:3"></div><div id="mcp-role-9" class="mcp-R mcp-role" style="--r:3"></div><div id="mcp-name-9" class="mcp-R mcp-name" style="--r:3"></div>
+      <div id="mcp-kdal-9" class="mcp-R mcp-lbl" style="--r:3">KDA</div><div id="mcp-kda-9" class="mcp-R mcp-val mcp-kda" style="--r:3"></div><div id="mcp-goldl-9" class="mcp-R mcp-lbl" style="--r:3">GOLD</div><div id="mcp-gold-9" class="mcp-R mcp-val mcp-gold" style="--r:3"></div><div id="mcp-div-9" class="mcp-R mcp-div" style="--r:3"></div>
+      <img id="mcp-item-9-0" class="mcp-R mcp-item mcp-it" style="--r:3" alt=""><img id="mcp-item-9-1" class="mcp-R mcp-item mcp-it" style="--r:3" alt=""><img id="mcp-item-9-2" class="mcp-R mcp-item mcp-it" style="--r:3" alt=""><img id="mcp-item-9-3" class="mcp-R mcp-item mcp-it" style="--r:3" alt=""><img id="mcp-item-9-4" class="mcp-R mcp-item mcp-it" style="--r:3" alt=""><img id="mcp-item-9-5" class="mcp-R mcp-item mcp-it" style="--r:3" alt=""><img id="mcp-emb-9-0" class="mcp-R mcp-emb mcp-em" style="--r:3" alt=""><img id="mcp-emb-9-1" class="mcp-R mcp-emb mcp-em" style="--r:3" alt=""><img id="mcp-emb-9-2" class="mcp-R mcp-emb mcp-em" style="--r:3" alt=""><img id="mcp-emb-9-3" class="mcp-R mcp-emb mcp-em mcp-set" style="--r:3" alt=""><div id="mcp-dl-9" class="mcp-R mcp-slbl mcp-dl mcp-st" style="--r:3">DAMAGE DEALT</div><div id="mcp-db-9" class="mcp-R mcp-sbar mcp-db mcp-st" style="--r:3"><div class="mcp-sfill"></div></div><div id="mcp-tl-9" class="mcp-R mcp-slbl mcp-tl mcp-st" style="--r:3">DAMAGE TAKEN</div><div id="mcp-tb-9" class="mcp-R mcp-sbar mcp-tb mcp-st" style="--r:3"><div class="mcp-sfill"></div></div>
+      <img id="mcp-bg-10" class="mcp-R mcp-bg" style="--r:4" src="/assets/overlay/MCT/postgame/post/mctpost_playercont.png" alt=""><div id="mcp-art-10" class="mcp-R mcp-art" style="--r:4"><img id="mcp-hero-10" class="mcp-hero" alt=""><img id="mcp-photo-10" class="mcp-photo" alt=""></div>
+      <img id="mcp-spell-10" class="mcp-R mcp-spell" style="--r:4" alt=""><div id="mcp-lvl-10" class="mcp-R mcp-lvl" style="--r:4"></div><div id="mcp-role-10" class="mcp-R mcp-role" style="--r:4"></div><div id="mcp-name-10" class="mcp-R mcp-name" style="--r:4"></div>
+      <div id="mcp-kdal-10" class="mcp-R mcp-lbl" style="--r:4">KDA</div><div id="mcp-kda-10" class="mcp-R mcp-val mcp-kda" style="--r:4"></div><div id="mcp-goldl-10" class="mcp-R mcp-lbl" style="--r:4">GOLD</div><div id="mcp-gold-10" class="mcp-R mcp-val mcp-gold" style="--r:4"></div><div id="mcp-div-10" class="mcp-R mcp-div" style="--r:4"></div>
+      <img id="mcp-item-10-0" class="mcp-R mcp-item mcp-it" style="--r:4" alt=""><img id="mcp-item-10-1" class="mcp-R mcp-item mcp-it" style="--r:4" alt=""><img id="mcp-item-10-2" class="mcp-R mcp-item mcp-it" style="--r:4" alt=""><img id="mcp-item-10-3" class="mcp-R mcp-item mcp-it" style="--r:4" alt=""><img id="mcp-item-10-4" class="mcp-R mcp-item mcp-it" style="--r:4" alt=""><img id="mcp-item-10-5" class="mcp-R mcp-item mcp-it" style="--r:4" alt=""><img id="mcp-emb-10-0" class="mcp-R mcp-emb mcp-em" style="--r:4" alt=""><img id="mcp-emb-10-1" class="mcp-R mcp-emb mcp-em" style="--r:4" alt=""><img id="mcp-emb-10-2" class="mcp-R mcp-emb mcp-em" style="--r:4" alt=""><img id="mcp-emb-10-3" class="mcp-R mcp-emb mcp-em mcp-set" style="--r:4" alt=""><div id="mcp-dl-10" class="mcp-R mcp-slbl mcp-dl mcp-st" style="--r:4">DAMAGE DEALT</div><div id="mcp-db-10" class="mcp-R mcp-sbar mcp-db mcp-st" style="--r:4"><div class="mcp-sfill"></div></div><div id="mcp-tl-10" class="mcp-R mcp-slbl mcp-tl mcp-st" style="--r:4">DAMAGE TAKEN</div><div id="mcp-tb-10" class="mcp-R mcp-sbar mcp-tb mcp-st" style="--r:4"><div class="mcp-sfill"></div></div>
+      <div id="mcp-gt-label" class="mcp-M">GAME TIME</div><div id="mcp-gt" class="mcp-M"></div>
+      <div id="mcp-v1-0" class="mcp-M mcp-mv mcp-mv1" style="--r:1"></div><div id="mcp-al-0" class="mcp-M mcp-arr mcp-arrl" style="--r:1"></div><svg id="mcp-ico-0" class="mcp-M mcp-ico pgg-coinsvg" style="--r:1" viewBox="0 0 40 40"></svg><div id="mcp-ar-0" class="mcp-M mcp-arr mcp-arrr" style="--r:1"></div><div id="mcp-v2-0" class="mcp-M mcp-mv mcp-mv2" style="--r:1"></div>
+      <div id="mcp-v1-1" class="mcp-M mcp-mv mcp-mv1" style="--r:2"></div><div id="mcp-al-1" class="mcp-M mcp-arr mcp-arrl" style="--r:2"></div><img id="mcp-ico-1" class="mcp-M mcp-ico" style="--r:2" src="/assets/overlay/MCT/postgame/mct_turret.png" alt=""><div id="mcp-ar-1" class="mcp-M mcp-arr mcp-arrr" style="--r:2"></div><div id="mcp-v2-1" class="mcp-M mcp-mv mcp-mv2" style="--r:2"></div>
+      <div id="mcp-v1-2" class="mcp-M mcp-mv mcp-mv1" style="--r:3"></div><div id="mcp-al-2" class="mcp-M mcp-arr mcp-arrl" style="--r:3"></div><img id="mcp-ico-2" class="mcp-M mcp-ico" style="--r:3" src="/assets/overlay/MCT/postgame/mct_lord.png" alt=""><div id="mcp-ar-2" class="mcp-M mcp-arr mcp-arrr" style="--r:3"></div><div id="mcp-v2-2" class="mcp-M mcp-mv mcp-mv2" style="--r:3"></div>
+      <div id="mcp-v1-3" class="mcp-M mcp-mv mcp-mv1" style="--r:4"></div><div id="mcp-al-3" class="mcp-M mcp-arr mcp-arrl" style="--r:4"></div><img id="mcp-ico-3" class="mcp-M mcp-ico" style="--r:4" src="/assets/overlay/MCT/postgame/mct_turtle.png" alt=""><div id="mcp-ar-3" class="mcp-M mcp-arr mcp-arrr" style="--r:4"></div><div id="mcp-v2-3" class="mcp-M mcp-mv mcp-mv2" style="--r:4"></div>
+      <div id="mcp-v1-4" class="mcp-M mcp-mv mcp-mv1" style="--r:5"></div><div id="mcp-al-4" class="mcp-M mcp-arr mcp-arrl" style="--r:5"></div><img id="mcp-ico-4" class="mcp-M mcp-ico" style="--r:5" src="/assets/overlay/MCT/postgame/mct_orangebuff.png" alt=""><div id="mcp-ar-4" class="mcp-M mcp-arr mcp-arrr" style="--r:5"></div><div id="mcp-v2-4" class="mcp-M mcp-mv mcp-mv2" style="--r:5"></div>
+      <div id="mcp-v1-5" class="mcp-M mcp-mv mcp-mv1" style="--r:6"></div><div id="mcp-al-5" class="mcp-M mcp-arr mcp-arrl" style="--r:6"></div><img id="mcp-ico-5" class="mcp-M mcp-ico" style="--r:6" src="/assets/overlay/MCT/postgame/mct_purplebuff.png" alt=""><div id="mcp-ar-5" class="mcp-M mcp-arr mcp-arrr" style="--r:6"></div><div id="mcp-v2-5" class="mcp-M mcp-mv mcp-mv2" style="--r:6"></div>
+      <div id="mcp-sp-label" class="mcp-M" style="--r:7">SPONSORED BY</div><img id="mcp-sp" class="mcp-M" style="--r:7" alt="">
+    </div>
+    <!-- MCT Post 4 Key (#m4k-page) — used instead of #post4key-page when data-theme-name="mct". See the MCT POST 4 KEY CSS/JS blocks. -->
+    <div id="m4k-page">
+      <div id="m4k-card1" class="m4k-card"><img id="m4k-hero1" class="m4k-hero" alt=""><img id="m4k-photo1" class="m4k-photo" alt=""></div>
+      <div id="m4k-plate1" class="m4k-plate"></div><img id="m4k-spell1" class="m4k-spell" alt=""><div id="m4k-role1" class="m4k-role"><div></div></div>
+      <div id="m4k-name1" class="m4k-name"></div><div id="m4k-label1" class="m4k-label"></div><div id="m4k-value1" class="m4k-value"></div>
+      <div id="m4k-card2" class="m4k-card"><img id="m4k-hero2" class="m4k-hero" alt=""><img id="m4k-photo2" class="m4k-photo" alt=""></div>
+      <div id="m4k-plate2" class="m4k-plate"></div><img id="m4k-spell2" class="m4k-spell" alt=""><div id="m4k-role2" class="m4k-role"><div></div></div>
+      <div id="m4k-name2" class="m4k-name"></div><div id="m4k-label2" class="m4k-label"></div><div id="m4k-value2" class="m4k-value"></div>
+      <div id="m4k-card3" class="m4k-card"><img id="m4k-hero3" class="m4k-hero" alt=""><img id="m4k-photo3" class="m4k-photo" alt=""></div>
+      <div id="m4k-plate3" class="m4k-plate"></div><img id="m4k-spell3" class="m4k-spell" alt=""><div id="m4k-role3" class="m4k-role"><div></div></div>
+      <div id="m4k-name3" class="m4k-name"></div><div id="m4k-label3" class="m4k-label"></div><div id="m4k-value3" class="m4k-value"></div>
+      <div id="m4k-card4" class="m4k-card"><img id="m4k-hero4" class="m4k-hero" alt=""><img id="m4k-photo4" class="m4k-photo" alt=""></div>
+      <div id="m4k-plate4" class="m4k-plate"></div><img id="m4k-spell4" class="m4k-spell" alt=""><div id="m4k-role4" class="m4k-role"><div></div></div>
+      <div id="m4k-name4" class="m4k-name"></div><div id="m4k-label4" class="m4k-label"></div><div id="m4k-value4" class="m4k-value"></div>
+    </div>
+    <!-- MCT postgame top bar + HUD (#mct-hdr), shared by Post Gold Graph and MCT Post H2H: it stays up (no re-animation) when one of
+         those scenes replaces the other (mctHdrShow / mctHdrRelease). -->
+    <div id="mct-hdr">
+      <div id="mch-tile1" class="pgg-tile"></div><img id="mch-logo1" class="pgg-logo" alt="">
+      <div id="mch-tile2" class="pgg-tile"></div><img id="mch-logo2" class="pgg-logo" alt="">
+      <div id="mch-tri1" class="pgg-tri"></div><div id="mch-res1" class="pgg-res"></div><svg id="mch-sw1" class="pgg-sw" viewBox="0 0 112 28"></svg>
+      <div id="mch-tri2" class="pgg-tri"></div><div id="mch-res2" class="pgg-res"></div><svg id="mch-sw2" class="pgg-sw" viewBox="0 0 112 28"></svg>
+      <div id="mch-score1" class="pgg-score"></div><div id="mch-mark"></div><div id="mch-score2" class="pgg-score"></div>
+      <div id="mch-stage"></div><div id="mch-matchgame"></div>
+      <div id="mch-hud"></div>   <!-- filled from #mvm-hud's markup at load -->
+    </div>
+    <!-- MCT Post Heatmap (#hmm-page) — used instead of #heatmap-page when data-theme-name="mct". Every element is its own absolute child so the Edit tab can move it. -->
+    <div id="hmm-page">
+      <img id="hmm-hero" src="" alt="">
+      <div id="hmm-map">
+        <img id="hmm-map-img" src="/assets/overlay/MCT/postgame/heatmap/heatmap_map.png" alt="">
+        <canvas id="hmm-heat-canvas"></canvas>
+        <canvas id="hmm-dot-canvas"></canvas>
+      </div>
+      <img id="hmm-container" src="/assets/overlay/MCT/postgame/heatmap/heatmap_container.png" alt="">
+      <img id="hmm-photo" src="" alt="">
+      <img id="hmm-water" src="/assets/overlay/MCT/postgame/mvp/mvp_frontwater.png" alt="">
+      <img id="hmm-title" src="/assets/overlay/MCT/postgame/heatmap/heatmap_text.png" alt="">
+      <img id="hmm-logo" src="/assets/overlay/MCT/postgame/mvp/mvp_logomct.png" alt="">
+      <div id="hmm-dur-label" class="hmm-label">GAME DURATION</div><div id="hmm-dur" class="hmm-value"></div>
+      <div id="hmm-stat-label" class="hmm-label">DAMAGE TAKEN</div><div id="hmm-stat" class="hmm-value">-</div>
+      <div id="hmm-kp-label" class="hmm-label">KP%</div><div id="hmm-kp" class="hmm-value">-</div>
+      <div id="hmm-line"></div>
+      <img id="hmm-teamlogo" src="" alt="">
+      <div id="hmm-role"><div id="hmm-role-glyph"></div></div>
+      <div id="hmm-name"></div>
+      <div id="hmm-hud"></div>   <!-- filled from #mvm-hud's markup at load (same HUD art + animation) -->
+    </div>
     <!-- Team Line-up Phase 0 — fullscreen intro + stinger, blue only for
          now. Not autoplay/loop — src/currentTime/play() driven entirely by
          luPlayIntroThenShow(). -->
@@ -5504,7 +6033,7 @@
       <div id="mvm-sponsor-title" class="mvm-label mvm-title">SPONSORED BY</div>
       <img id="mvm-sponsor" src="" alt="">
       <!-- HUD (one PNG, cut into pieces so each animates on its own) — sits on top of everything -->
-      <div id="mvm-hud"><div class="mvm-hs mvm-hs-emb mvm-hs-emb-l" style="left:-3px;top:-4px;width:42px;height:42px;background-position:3px 4px;"></div><div class="mvm-hs mvm-hs-emb mvm-hs-emb-r" style="left:1787px;top:-4px;width:42px;height:42px;background-position:-1787px 4px;"></div><div class="mvm-hs mvm-hs-sw mvm-hs-sw-l" style="left:1px;top:996px;width:42px;height:22px;background-position:-1px -996px;"></div><div class="mvm-hs mvm-hs-line mvm-hs-line-l" style="left:43px;top:996px;width:768px;height:22px;background-position:-43px -996px;"></div><div class="mvm-hs mvm-hs-line mvm-hs-line-r" style="left:1015px;top:996px;width:770px;height:22px;background-position:-1015px -996px;"></div><div class="mvm-hs mvm-hs-sw mvm-hs-sw-r" style="left:1785px;top:996px;width:42px;height:22px;background-position:-1785px -996px;"></div><div class="mvm-hs mvm-hs-txt" style="left:833px;top:990px;width:16px;height:36px;background-position:-833px -990px;--i:0;"></div><div class="mvm-hs mvm-hs-txt" style="left:849px;top:990px;width:16px;height:36px;background-position:-849px -990px;--i:1;"></div><div class="mvm-hs mvm-hs-txt" style="left:865px;top:990px;width:16px;height:36px;background-position:-865px -990px;--i:2;"></div><div class="mvm-hs mvm-hs-txt" style="left:881px;top:990px;width:16px;height:36px;background-position:-881px -990px;--i:3;"></div><div class="mvm-hs mvm-hs-txt" style="left:897px;top:990px;width:16px;height:36px;background-position:-897px -990px;--i:4;"></div><div class="mvm-hs mvm-hs-txt" style="left:913px;top:990px;width:16px;height:36px;background-position:-913px -990px;--i:5;"></div><div class="mvm-hs mvm-hs-txt" style="left:929px;top:990px;width:16px;height:36px;background-position:-929px -990px;--i:6;"></div><div class="mvm-hs mvm-hs-txt" style="left:945px;top:990px;width:16px;height:36px;background-position:-945px -990px;--i:7;"></div><div class="mvm-hs mvm-hs-txt" style="left:961px;top:990px;width:16px;height:36px;background-position:-961px -990px;--i:8;"></div><div class="mvm-hs mvm-hs-txt" style="left:977px;top:990px;width:16px;height:36px;background-position:-977px -990px;--i:9;"></div></div>
+      <div id="mvm-hud"><div class="mvm-hs mvm-hs-emb mvm-hs-emb-l" style="left:-3px;top:-4px;width:42px;height:42px;background-position:3px 4px;"></div><div class="mvm-hs mvm-hs-emb mvm-hs-emb-r" style="left:1787px;top:-4px;width:42px;height:42px;background-position:-1787px 4px;"></div><div class="mvm-hs mvm-hs-sw mvm-hs-sw-l" style="left:1px;top:996px;width:42px;height:22px;background-position:-1px -996px;"></div><div class="mvm-hs mvm-hs-line mvm-hs-line-l" style="left:43px;top:996px;width:768px;height:22px;background-position:-43px -996px;"></div><div class="mvm-hs mvm-hs-line mvm-hs-line-r" style="left:1015px;top:996px;width:770px;height:22px;background-position:-1015px -996px;"></div><div class="mvm-hs mvm-hs-sw mvm-hs-sw-r" style="left:1785px;top:996px;width:42px;height:22px;background-position:-1785px -996px;"></div><div class="mvm-hs-tbox" style="left:833px;top:990px;width:160px;height:36px;"><div class="mvm-hs mvm-hs-tl mvm-hs-ta" style="left:0;top:0;width:160px;height:36px;background-position:-833px -990px;"></div><div class="mvm-hs mvm-hs-tl mvm-hs-tb" style="left:0;top:0;width:160px;height:36px;background-position:-833px -990px;"></div></div></div>
     </div>
     <div id="mvp-page">
       <video id="mv-broll" muted loop playsinline preload="auto"></video>
@@ -6195,6 +6724,14 @@
         } else if (msg.action === 'hide') hideActiveFeature();
       });
 
+      sseSource.addEventListener('post_goldgraph', (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.action === 'show') {
+          document.getElementById('config-bar').classList.remove('debug-open');
+          setTimeout(showPostGoldGraph, 100);
+        } else if (msg.action === 'hide') hideActiveFeature();
+      });
+
       sseSource.addEventListener('post_golddistri', (e) => {
         const msg = JSON.parse(e.data);
         if (msg.action === 'show') {
@@ -6229,21 +6766,31 @@
         });
       });
 
+      /* Under MCT, scene routes like /overlay/post_emblems/show broadcast matchboard/middleboard/playerboard "show" just before the scene
+         event (its listener runs ~100 ms later). If that scene is an MCT top-bar scene (no boards), showing the M8 boards would flash them
+         for a moment — so wait 150 ms and skip the show when such a scene was requested in between. */
+      function mctBoardShow(fn) {
+        const before = requestedFeature;   /* a manual board toggle (no scene change in the window) still shows */
+        setTimeout(() => { if (requestedFeature !== before && mctHdrScene(requestedFeature)) return; fn(); }, 150);
+      }
       sseSource.addEventListener('matchboard', (e) => {
         const msg = JSON.parse(e.data);
-        if (msg.action === 'show') showMatchBoard();
+        if (msg.action === 'show' && mvIsMct()) mctBoardShow(showMatchBoard);   /* MCT: dropped if an MCT top-bar scene is the one coming in */
+        else if (msg.action === 'show') showMatchBoard();
         else if (msg.action === 'hide') hideMatchBoard();
       });
 
       sseSource.addEventListener('middleboard', (e) => {
         const msg = JSON.parse(e.data);
-        if (msg.action === 'show') showMiddleBoard();
+        if (msg.action === 'show' && mvIsMct()) mctBoardShow(showMiddleBoard);   /* MCT: dropped if an MCT top-bar scene is the one coming in */
+        else if (msg.action === 'show') showMiddleBoard();
         else if (msg.action === 'hide') hideMiddleBoard();
       });
 
       sseSource.addEventListener('playerboard', (e) => {
         const msg = JSON.parse(e.data);
-        if (msg.action === 'show') showPlayerBoard();
+        if (msg.action === 'show' && mvIsMct()) mctBoardShow(showPlayerBoard);   /* MCT: dropped if an MCT top-bar scene is the one coming in */
+        else if (msg.action === 'show') showPlayerBoard();
         else if (msg.action === 'hide') hidePlayerBoard();
       });
 
@@ -6936,6 +7483,7 @@
       items:      '/assets/webm/bgloopwaves2.webm',
       stats:      '/assets/webm/bgloopwaves2.webm',
       heatmap:    '/assets/webm/bgloopwaves2.webm',
+      goldgraph:  '/assets/webm/bgloopwaves2.webm',
     };
     // Per-theme background overrides — opt-in only, see CLAUDE.md's Theme
     // system section. A feature/theme pair not listed here just keeps
@@ -8407,22 +8955,27 @@
         })();
       }).catch(() => {});
     }
-    async function mvmApply(pl) {
-      const ep = pl.extra_param || {};
-      document.getElementById('mvm-name').textContent = pl.name || '';
-      mvmSetIcon('mvm-hero', mvHeroImgUrl(pl.heroid));
+    /* Player identity block shared by the MCT MVP (pfx 'mvm') and MCT Post Heatmap (pfx 'hmm') scenes:
+       <pfx>-name, -hero, -teamlogo, -photo, -role-glyph. */
+    async function mctSetIdentity(pfx, pl) {
+      document.getElementById(pfx + '-name').textContent = pl.name || '';
+      mvmSetIcon(pfx + '-hero', mvHeroImgUrl(pl.heroid));
       /* team logo: the white version (<TAG>_3.png) like the reference, else the normal one */
-      { const tl = document.getElementById('mvm-teamlogo'), tag = pl.team_simple_name ? encodeURIComponent(String(pl.team_simple_name).toUpperCase()) : '';
+      { const tl = document.getElementById(pfx + '-teamlogo'), tag = pl.team_simple_name ? encodeURIComponent(String(pl.team_simple_name).toUpperCase()) : '';
         tl.style.visibility = tag ? '' : 'hidden';
         tl.onerror = () => { tl.onerror = () => { tl.style.visibility = 'hidden'; }; tl.src = '/assets/team/logos/' + tag + '.png'; };
         if (tag) tl.src = '/assets/team/logos/' + tag + '_3.png'; else tl.removeAttribute('src'); }
       /* signature photo, else the placeholder (no player photos yet) */
-      const ph = document.getElementById('mvm-photo');
+      const ph = document.getElementById(pfx + '-photo');
       ph.style.visibility = '';
       ph.onerror = () => { ph.onerror = () => { ph.style.visibility = 'hidden'; }; ph.src = '/assets/photo/placeholder.png'; };
       ph.src = hlPhotoUrl(pl.name) || '/assets/photo/placeholder.png';
-      const glyph = await mvmRoleGlyph(pl.role);
-      document.getElementById('mvm-role-glyph').style.webkitMaskImage = document.getElementById('mvm-role-glyph').style.maskImage = glyph ? 'url(' + glyph + ')' : 'none';
+      const glyph = await mvmRoleGlyph(pl.role), g = document.getElementById(pfx + '-role-glyph');
+      g.style.webkitMaskImage = g.style.maskImage = glyph ? 'url(' + glyph + ')' : 'none';
+    }
+    async function mvmApply(pl) {
+      const ep = pl.extra_param || {};
+      await mctSetIdentity('mvm', pl);
       document.getElementById('mvm-kda').textContent = ep.kda || pl.kda || '-/-/-';
       document.getElementById('mvm-gpm').textContent = ep.gpm != null ? String(ep.gpm) : (pl.gpm != null ? String(pl.gpm) : '-');
       document.getElementById('mvm-kp').textContent = pl.kp != null ? Math.round(pl.kp) + '%' : '-';
@@ -9206,13 +9759,14 @@
          no-op. */
       const startsOwnBg = !!SCENE_VIDEO_SRC[newFeature] && !SCENE_VIDEO_DEFERRED_START.has(newFeature);
       sceneVideoHandoff = startsOwnBg;
-      try { await transitionTeardown(newFeature); } finally { sceneVideoHandoff = false; }
+      mctHdrNext = newFeature;   /* lets a Gold Graph / MCT H2H hide keep the shared top bar for the next one (mctHdrHide) */
+      try { await transitionTeardown(newFeature); } finally { sceneVideoHandoff = false; mctHdrNext = null; }
       if (startsOwnBg) showSceneVideo(newFeature);
       activeFeature = newFeature;
     }
 
     async function transitionTeardown(newFeature) {
-      if (POST_FEATURES.has(newFeature)) {
+      if (POST_FEATURES.has(newFeature) && !(MCT_HDR_FEATURES.includes(newFeature) && mvIsMct())) {   /* MCT scenes on the shared top bar — no Matchboard */
         /* Read BEFORE showMatchBoard() below — that's a no-op when
            Matchboard is already up (switching directly between two Post
            features), which is exactly the case setMatchBoardCompact needs
@@ -9299,6 +9853,7 @@
       if (prev === 'consolidated_post_2') return hideConsolidatedPost2();
       if (prev === 'post4key') return hidePost4Key();
       if (prev === 'golddistri') return hidePostGoldDistri();
+      if (prev === 'goldgraph') return hidePostGoldGraph();
       if (prev === 'killevents') return hidePostKillEvents();
       if (prev === 'post_h2h') return hidePostH2H();
       if (prev === 'post_carry') return hidePostCarry();
@@ -9404,6 +9959,7 @@
     }
 
     async function showPostEmblems() {
+      if (mvIsMct()) return mcpShow('emblems');   /* MCT theme: #mcp-page as Post Game Emblem */
       if (embVisible) return;
       await transitionTo('emblems');
       await fetchEmblemData();
@@ -9431,6 +9987,7 @@
     }
 
     function hidePostEmblems() {
+      if (mcpVisible) return mcpHide();
       if (!embVisible) return Promise.resolve();
       embVisible = false;
       EMB_CARD_CLASSES.forEach((cls, i) => {
@@ -10246,6 +10803,7 @@
     }
 
     async function showConsolidatedPost() {
+      if (mvIsMct()) return mcpShow('items');   /* MCT theme: #mcp-page as Post Game Items (decided per show) */
       if (cpVisible) return;
       // cp-compact itself is handled by transitionToImpl's
       // setMatchBoardCompact (fades if Matchboard's already up, sets it
@@ -10291,6 +10849,7 @@
     }
 
     function hideConsolidatedPost() {
+      if (mcpVisible) return mcpHide();
       if (!cpVisible) return Promise.resolve();
       cpVisible = false;
       hideCmbBoard();
@@ -10813,6 +11372,7 @@
     }
 
     async function showPost4Key() {
+      if (mvIsMct()) return m4kShow();   /* MCT theme: #m4k-page (decided per show) */
       if (p4kVisible) return;
       const page = document.getElementById('post4key-page');
       const dataPromise = fetchPost4KeyData();
@@ -10849,6 +11409,7 @@
     }
 
     function hidePost4Key() {
+      if (m4kVisible) return m4kHide();
       if (!p4kVisible) return Promise.resolve();
       p4kVisible = false;
       const page = document.getElementById('post4key-page');
@@ -11300,29 +11861,76 @@
        whatever size it is. */
     function hmSetupCanvas(c) {
       const scale = window.devicePixelRatio || 1;
-      c.width  = HM_CANVAS_SIZE * scale;
-      c.height = HM_CANVAS_SIZE * scale;
+      c.width  = HM_W * scale;
+      c.height = HM_H * scale;
       const ctx = c.getContext('2d');
-      ctx.scale(scale, scale);
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
       return ctx;
     }
-    const hmHeatCtx = hmSetupCanvas(document.getElementById('hm-heat-canvas'));
-    const hmDotCtx  = hmSetupCanvas(document.getElementById('hm-dot-canvas'));
 
-    const hmHeatBuf = new Float32Array(HM_CANVAS_SIZE * HM_CANVAS_SIZE);
+    /* ── Map geometry. The engine draws into a HM_W x HM_H buffer; which canvases/box and which game→canvas mapping it
+       uses is picked at show time by hmUseGeometry(): the square map of #heatmap-page (rotated 45°, old calibration) or
+       the MCT perspective map of #hmm-page.
+       MCT: game coords form a diamond — blue fountain (-x) / red fountain (+x) at the tips, Lord pit on -y, Turtle on +y;
+       the x reach (±55) is larger than the y reach (±45), so each axis is normalised on its own, rotated into the unit
+       square (TL = (0,-RY), TR = red, BR = (0,+RY), BL = blue) and projected onto the map's 4 corners with a homography.
+       Corners measured from heatmap_map_guide.png (pink dots, 786x532); fit checked by plotting a whole game's
+       position log over the art (lanes on the edge paths, fountains on the bases, turtle kills in the turtle pit). */
+    function hmSquareToQuad(q) {   /* unit square (0,0)(1,0)(1,1)(0,1) -> quad TL,TR,BR,BL (Heckbert) */
+      const [p0, p1, p2, p3] = q;
+      const dx1 = p1[0] - p2[0], dx2 = p3[0] - p2[0], dx3 = p0[0] - p1[0] + p2[0] - p3[0];
+      const dy1 = p1[1] - p2[1], dy2 = p3[1] - p2[1], dy3 = p0[1] - p1[1] + p2[1] - p3[1];
+      const den = dx1 * dy2 - dx2 * dy1, g = (dx3 * dy2 - dx2 * dy3) / den, h = (dx1 * dy3 - dx3 * dy1) / den;
+      const a = p1[0] - p0[0] + g * p1[0], b = p3[0] - p0[0] + h * p3[0], c = p0[0];
+      const d = p1[1] - p0[1] + g * p1[1], e = p3[1] - p0[1] + h * p3[1], f = p0[1];
+      return (u, v) => { const w = g * u + h * v + 1; return { x: (a * u + b * v + c) / w, y: (d * u + e * v + f) / w }; };
+    }
+    const HMM_QUAD = [[105.5, 76.5], [699.5, 48.5], [761.5, 456.5], [22.5, 483.5]];   /* TL, TR, BR, BL in heatmap_map.png px */
+    const HMM_RX = 55, HMM_RY = 45;
+    const hmmProject = hmSquareToQuad(HMM_QUAD);
+    const HM_GEOMETRIES = {
+      square: { w: HM_CANVAS_SIZE, h: HM_CANVAS_SIZE, radius: HM_HEAT_RADIUS, heat: 'hm-heat-canvas', dot: 'hm-dot-canvas', box: '.hm-map-box',
+        toCanvas(gx, gy) {
+          const half = HM_CANVAS_SIZE / 2;
+          return {
+            x: Math.max(4, Math.min(HM_CANVAS_SIZE - 4, half + gx * HM_MSCALE + gy * HM_MSCALE)),
+            y: Math.max(4, Math.min(HM_CANVAS_SIZE - 4, half - gx * HM_MSCALE + gy * HM_MSCALE)),
+          };
+        } },
+      mct: { w: 786, h: 532, radius: 46, heat: 'hmm-heat-canvas', dot: 'hmm-dot-canvas', box: '#hmm-map',
+        toCanvas(gx, gy) {
+          const nx = gx / HMM_RX, ny = gy / HMM_RY, k = v => Math.max(0.01, Math.min(0.99, v));
+          return hmmProject(k((nx + ny + 1) / 2), k((ny - nx + 1) / 2));
+        } },
+    };
+    let HM_W, HM_H, HM_RADIUS, hmGeoKey = null, hmHeatCtx, hmDotCtx, hmMapBox, hmGameToCanvas, hmHeatBuf, hmImgData, hmPixels;
     let   hmBufMax  = 0.001;
+    const hmHeatOff    = document.createElement('canvas');
+    const hmHeatOffCtx = hmHeatOff.getContext('2d');
+    function hmUseGeometry(key) {
+      if (hmGeoKey === key) return;
+      const g = HM_GEOMETRIES[key];
+      hmGeoKey = key; HM_W = g.w; HM_H = g.h; HM_RADIUS = g.radius; hmGameToCanvas = g.toCanvas;
+      hmHeatCtx = hmSetupCanvas(document.getElementById(g.heat));
+      hmDotCtx  = hmSetupCanvas(document.getElementById(g.dot));
+      hmMapBox  = document.querySelector(g.box);
+      hmHeatBuf = new Float32Array(HM_W * HM_H);
+      hmHeatOff.width = HM_W; hmHeatOff.height = HM_H;
+      hmImgData = hmHeatOffCtx.createImageData(HM_W, HM_H); hmPixels = hmImgData.data;
+    }
+    hmUseGeometry('square');
 
     function hmStampHeat(cx, cy) {
-      const r = HM_HEAT_RADIUS, r2 = r * r;
-      const x0 = Math.max(0, (cx - r) | 0), x1 = Math.min(HM_CANVAS_SIZE - 1, (cx + r + 1) | 0);
-      const y0 = Math.max(0, (cy - r) | 0), y1 = Math.min(HM_CANVAS_SIZE - 1, (cy + r + 1) | 0);
+      const r = HM_RADIUS, r2 = r * r;
+      const x0 = Math.max(0, (cx - r) | 0), x1 = Math.min(HM_W - 1, (cx + r + 1) | 0);
+      const y0 = Math.max(0, (cy - r) | 0), y1 = Math.min(HM_H - 1, (cy + r + 1) | 0);
       for (let py = y0; py <= y1; py++) {
         const dy = py - cy;
         for (let px = x0; px <= x1; px++) {
           const d2 = (px - cx) * (px - cx) + dy * dy;
           if (d2 >= r2) continue;
           const norm = 1 - d2 / r2;
-          const i = py * HM_CANVAS_SIZE + px;
+          const i = py * HM_W + px;
           hmHeatBuf[i] += HM_HEAT_STRENGTH * norm * norm;
           if (hmHeatBuf[i] > hmBufMax) hmBufMax = hmHeatBuf[i];
         }
@@ -11355,13 +11963,6 @@
       }
     }
 
-    const hmHeatOff    = document.createElement('canvas');
-    hmHeatOff.width    = HM_CANVAS_SIZE;
-    hmHeatOff.height   = HM_CANVAS_SIZE;
-    const hmHeatOffCtx = hmHeatOff.getContext('2d');
-    const hmImgData    = hmHeatOffCtx.createImageData(HM_CANVAS_SIZE, HM_CANVAS_SIZE);
-    const hmPixels     = hmImgData.data;
-
     function hmRenderHeat() {
       for (let i = 0; i < hmHeatBuf.length; i++) {
         const norm = hmHeatBuf[i] / hmBufMax;
@@ -11370,16 +11971,8 @@
         hmPixels[i*4]=c[0]; hmPixels[i*4+1]=c[1]; hmPixels[i*4+2]=c[2]; hmPixels[i*4+3]=c[3];
       }
       hmHeatOffCtx.putImageData(hmImgData, 0, 0);
-      hmHeatCtx.clearRect(0, 0, HM_CANVAS_SIZE, HM_CANVAS_SIZE);
-      hmHeatCtx.drawImage(hmHeatOff, 0, 0, HM_CANVAS_SIZE, HM_CANVAS_SIZE);
-    }
-
-    function hmGameToCanvas(gx, gy) {
-      const half = HM_CANVAS_SIZE / 2;
-      return {
-        x: Math.max(4, Math.min(HM_CANVAS_SIZE - 4, half + gx * HM_MSCALE + gy * HM_MSCALE)),
-        y: Math.max(4, Math.min(HM_CANVAS_SIZE - 4, half - gx * HM_MSCALE + gy * HM_MSCALE)),
-      };
+      hmHeatCtx.clearRect(0, 0, HM_W, HM_H);
+      hmHeatCtx.drawImage(hmHeatOff, 0, 0, HM_W, HM_H);
     }
 
     function hmFmt(s) {
@@ -11433,8 +12026,8 @@
       hmBufMax = 0.001;
       hmPixels.fill(0);
       hmHeatOffCtx.putImageData(hmImgData, 0, 0);
-      hmHeatCtx.clearRect(0, 0, HM_CANVAS_SIZE, HM_CANVAS_SIZE);
-      hmDotCtx.clearRect(0, 0, HM_CANVAS_SIZE, HM_CANVAS_SIZE);
+      hmHeatCtx.clearRect(0, 0, HM_W, HM_H);
+      hmDotCtx.clearRect(0, 0, HM_W, HM_H);
       for (const tr of hmActiveTracks) {
         tr.lastStampX = tr.lastStampY = -9999; tr._lastPos = null;
         tr.nextKillIdx = tr.nextDeathIdx = tr.nextAssistIdx = 0;
@@ -11444,7 +12037,7 @@
     }
 
     function hmDrawDots(now) {
-      hmDotCtx.clearRect(0, 0, HM_CANVAS_SIZE, HM_CANVAS_SIZE);
+      hmDotCtx.clearRect(0, 0, HM_W, HM_H);
       for (const tr of hmActiveTracks) {
         if (!tr._lastPos) continue;
         const { x, y } = tr._lastPos;
@@ -11578,7 +12171,7 @@
     document.getElementById('hm-legend-icon-death').innerHTML  = hmEventSvg('death');
 
     function hmTriggerEventIcon(cx, cy, type) {
-      const mapBox = document.querySelector('.hm-map-box');
+      const mapBox = hmMapBox;
       if (!mapBox) return;
       /* cx/cy (from hmGameToCanvas) are in the canvas's fixed 0..
          HM_CANVAS_SIZE BUFFER space, not real CSS pixels — the canvas
@@ -11591,8 +12184,8 @@
          content-box size, matching what the canvases actually fill).
          Read fresh per call rather than cached, since .hm-map-box is a
          dashboard Edit-tab-resizable group. */
-      const scaleX = mapBox.clientWidth  / HM_CANVAS_SIZE;
-      const scaleY = mapBox.clientHeight / HM_CANVAS_SIZE;
+      const scaleX = mapBox.clientWidth  / HM_W;
+      const scaleY = mapBox.clientHeight / HM_H;
       const px = cx * scaleX, py = cy * scaleY;
       const el = document.createElement('div');
       el.className = 'hm-event-icon';
@@ -11705,12 +12298,17 @@
        kill-event broadcaster uses. Shared by kill/death/assist below —
        same shape, different source field. */
     function hmBuildCheckpoints(waypoints, field) {
+      /* Compared against the running MAX, not just the previous waypoint: a log holding the same game twice (duplicate
+         timestamps, e.g. a replay polled over a live log) interleaves two series after sorting, and a plain prev/cur
+         compare fired an icon on every zig-zag — hundreds of icons for a 21-event KDA. */
       const events = [];
+      let max = waypoints.length ? waypoints[0][field] : null;
       for (let i = 1; i < waypoints.length; i++) {
-        const prev = waypoints[i - 1][field], cur = waypoints[i][field];
-        if (cur != null && prev != null && cur > prev) {
+        const cur = waypoints[i][field];
+        if (cur != null && max != null && cur > max) {
           events.push({ t: waypoints[i].t, x: waypoints[i].x, y: waypoints[i].y });
         }
+        if (cur != null && (max == null || cur > max)) max = cur;
       }
       return events;
     }
@@ -11822,14 +12420,92 @@
        and applies them to the already-existing DOM/canvas state. Caller
        is responsible for the activeFeature-still-current guard around
        each await, since the two call sites need it at different points. */
+    /* ── MCT player card (#hmm-page): same player pick as the regular card (cfg camp/seat, default blue seat 1).
+       Middle stat depends on the player's role (the regular theme's MVP card let the MVP API name it via mvp_title; the
+       Dire feed has no such API, so the per-role choice lives here): EXP = Damage Taken, Gold = GPM, Mid = Damage Dealt,
+       Jungle = GPM, Roam = Assists. It and KP% cover the chosen time window: deltas over the server's /positions log for
+       the player's camp (total_hurt/total_damage per tick need lib/pollers.js logging them; older logs fall back to the
+       whole-game value). */
+    const HMM_ROLE_STAT = {
+      exp_laner:  { label: 'DAMAGE TAKEN', field: 'total_hurt',   game: pl => pl.total_hurt },
+      gold_laner: { label: 'GPM',          field: 'gold', perMin: true, game: pl => (pl.extra_param || {}).gpm },
+      mid_laner:  { label: 'DAMAGE DEALT', field: 'total_damage', game: pl => pl.total_damage },
+      jungler:    { label: 'GPM',          field: 'gold', perMin: true, game: pl => (pl.extra_param || {}).gpm },
+      roamer:     { label: 'ASSISTS',      field: 'assist_num',   game: pl => pl.assist_num },
+    };
+    function hmmRoleStat(role) {
+      const r = String(role || '').toLowerCase().replace(/[\s-]+/g, '_');
+      const key = /exp/.test(r) ? 'exp_laner' : /gold/.test(r) ? 'gold_laner' : /mid/.test(r) ? 'mid_laner' : /jung/.test(r) ? 'jungler' : /roam/.test(r) ? 'roamer' : 'gold_laner';
+      return HMM_ROLE_STAT[key];
+    }
+    async function hmmWindowStats(camp, seat, cfg, stat) {
+      try {
+        const qs = new URLSearchParams({ camp, from: cfg.from || 0, to: cfg.to });
+        const pos = ((await (await fetch(buildUrl('/positions?' + qs), { cache: 'no-store' })).json()).positions) || [];
+        const bySeat = {};
+        for (const p of pos) (bySeat[p.seat] = bySeat[p.seat] || []).push(p);
+        const mine = bySeat[seat];
+        if (!mine || mine.length < 2) return null;
+        const delta = (arr, f) => {
+          arr.sort((a, b) => a.game_time_s - b.game_time_s);
+          const a = arr[0][f], b = arr[arr.length - 1][f];
+          return a == null || b == null ? null : Math.max(0, b - a);
+        };
+        let teamKills = 0;
+        for (const s in bySeat) teamKills += delta(bySeat[s], 'kill_num') || 0;
+        const ka = (delta(mine, 'kill_num') || 0) + (delta(mine, 'assist_num') || 0);
+        let v = delta(mine, stat.field);
+        if (v != null && stat.perMin) { const mins = (mine[mine.length - 1].game_time_s - mine[0].game_time_s) / 60; v = mins > 0 ? v / mins : null; }
+        return { stat: v, kp: teamKills > 0 ? Math.min(100, ka / teamKills * 100) : 0 };
+      } catch (e) { return null; }
+    }
+    function hmmSetDuration(fromS, toS) {
+      const el = document.getElementById('hmm-dur');
+      el.innerHTML = '<span>' + hmFmtPadded(fromS) + '</span><span class="hmm-dash"></span><span>' + hmFmtPadded(toS) + '</span>';
+    }
+    async function hmmApplyPlayerCard(cfg) {
+      const cardCamp = Number(cfg.camp) || 1, cardSeat = Number(cfg.seat) || 1;
+      let gd = null, pl = null;
+      try { const j = await (await fetch(buildUrl('/api/gamedata-proxy?fresh=1'), { cache: 'no-store' })).json(); gd = j.data || null; } catch (e) {}
+      if (gd) {
+        const camp = (gd.camp_list || []).find(c => c.campid === cardCamp);
+        pl = camp && camp['seat_' + cardSeat];
+        if (pl && !pl.name) pl = null;
+      }
+      const sample = !pl && isPreviewFrame;   /* preview with no feed: the MVP scene's sample player */
+      if (sample) pl = Object.assign({ campid: 1, total_hurt: 1082, total_damage: 98000, assist_num: 20 }, MVM_SAMPLE);
+      hmmSetDuration(cfg.from || 0, cfg.to >= 99999 ? ((gd && gd.game_time) || 0) : cfg.to);
+      if (!pl) return;
+      await mctSetIdentity('hmm', pl);
+      const stat = hmmRoleStat(pl.role);
+      const w = sample ? null : await hmmWindowStats(cardCamp, cardSeat, cfg, stat);
+      const val = w && w.stat != null ? w.stat : stat.game(pl);
+      const kp  = w && w.kp   != null ? w.kp   : pl.kp;
+      document.getElementById('hmm-stat-label').textContent = stat.label;
+      document.getElementById('hmm-stat').textContent = val != null ? String(Math.round(val)) : '-';
+      document.getElementById('hmm-kp').textContent  = kp  != null ? Math.round(kp) + '%' : '-';
+    }
+    function hmmFitText() {
+      /* measure with the real font: before Monument has loaded the fallback is narrower and nothing would shrink */
+      if (!document.fonts.check('800 57px "Monument Ext MCT"')) { document.fonts.load('800 57px "Monument Ext MCT"').then(() => { if (hmVisible && hmGeoKey === 'mct') hmmFitText(); }); }
+      const fit = (el, max, min, w) => { let px = max; el.style.fontSize = px + 'px'; while (el.scrollWidth > w && px > min) { px -= 2; el.style.fontSize = px + 'px'; } };
+      fit(document.getElementById('hmm-name'), 84, 40, 560);
+      fit(document.getElementById('hmm-stat'), 57, 30, 262);
+      fit(document.getElementById('hmm-kp'), 57, 30, 360);
+      fit(document.getElementById('hmm-dur'), 57, 30, 640);
+    }
+    /* same HUD art + build animation as the MCT MVP scene */
+    document.getElementById('hmm-hud').innerHTML = document.getElementById('mvm-hud').innerHTML;
+
     async function hmLoadAndApply(cfg) {
-      const [positions] = await Promise.all([fetchHeatmapPositions(cfg), hmApplyPlayerCard(cfg)]);
+      const mct = hmGeoKey === 'mct';
+      const [positions] = await Promise.all([fetchHeatmapPositions(cfg), mct ? hmmApplyPlayerCard(cfg) : hmApplyPlayerCard(cfg)]);
       /* Map brightness — tuned from the dashboard's Post Heatmap Controls
          box (Map Brightness slider), same live-refresh path as the rest
          of this cfg object. Overrides the .hm-map-bg CSS rule's own
          brightness(0.25) fallback, which only applies before this first
-         runs. */
-      document.querySelector('.hm-map-bg').style.filter =
+         runs. The slider is gone from the dashboard; the MCT map always shows at full brightness (1.0). */
+      if (!mct) document.querySelector('.hm-map-bg').style.filter =
         `brightness(${cfg.mapBrightness != null ? cfg.mapBrightness : 0.25})`;
       hmFromS = cfg.from;
       hmPlaybackSecs = cfg.playbackSec;
@@ -11854,9 +12530,12 @@
       hmResetLoop();
     }
 
+    function hmPage() { return hmGeoKey === 'mct' ? { page: document.getElementById('hmm-page'), on: 'hmm-on', vis: 'hmm-visible' }
+                                                : { page: document.getElementById('heatmap-page'), on: 'hm-on', vis: 'hm-visible' }; }
     async function showPostHeatmap() {
       if (hmVisible) return;
-      const page = document.getElementById('heatmap-page');
+      hmUseGeometry(mvIsMct() ? 'mct' : 'square');   /* MCT theme = #hmm-page; picked per show, so a theme switch applies on the next show */
+      const { page, on, vis } = hmPage();
       const cfgPromise = fetchHeatmapConfig();
       await transitionTo('heatmap');
       const cfg = await cfgPromise;
@@ -11867,9 +12546,9 @@
       if (activeFeature !== 'heatmap') return; /* superseded while preloading */
       hmVisible = true;
       showSceneVideo('heatmap');
-      page.classList.add('hm-on');
+      page.classList.add(on);
       void page.offsetWidth;
-      page.classList.add('hm-visible');
+      page.classList.add(vis);
       hmFitPlayerText();
       requestAnimationFrame(hmFrame);
     }
@@ -11880,6 +12559,7 @@
        a live focus-player change via hmLiveRefresh (a new name/value can
        be a different length than whatever the font-size last shrank to). */
     function hmFitPlayerText() {
+      if (hmGeoKey === 'mct') return hmmFitText();
       hlFitName(document.getElementById('hm-name'));
       mvFitStatValue(document.getElementById('hmst-kda-value'), 25.4, 14);
       mvFitStatValue(document.getElementById('hmst-kp-value'), 25.4, 14);
@@ -11904,13 +12584,643 @@
       if (!hmVisible) return Promise.resolve();
       hmVisible = false;
       hmClearEventIcons(); /* stop hmFrame's RAF loop from leaving one mid-flight */
-      const page = document.getElementById('heatmap-page');
-      page.classList.remove('hm-visible');
+      const { page, on, vis } = hmPage();
+      page.classList.remove(vis);
       return new Promise(resolve => setTimeout(() => {
-        page.classList.remove('hm-on');
+        page.classList.remove(on);
         hideSceneVideo();
         resolve();
       }, 420));
+    }
+
+    /* ════════════════════════════════════════════════
+       POST GOLD GRAPH (#pgg-page, feature 'goldgraph', SSE post_goldgraph) — a full-screen version of the ingame MCT
+       gold graph (overlay-goldgraphmct.js) plus a summary of both teams. One snapshot per show.
+       Data: live feed (/api/gamedata-proxy: teams, kills, result, players, team gold, KDA, turtle/lord/turret counts),
+       /match/state (stage, match, game), the server's /positions log (gold per player per second -> team gold
+       difference) and /events (lord/turtle/tower kills with their game time -> the icons along the top (team 1) and
+       bottom (team 2) of the chart). Curve: cyan above the baseline (team 1 ahead), yellow below (team 2 ahead).
+       ════════════════════════════════════════════════ */
+    const pggPage = document.getElementById('pgg-page');
+    const PGG_PL = 651, PGG_PT = 347, PGG_PW = 1217, PGG_PH = 628, PGG_BASE = PGG_PT + PGG_PH / 2;
+    const PGG_ICONS = { turtle: '/assets/overlay/MCT/postgame/mct_turtle.png', lord: '/assets/overlay/MCT/postgame/mct_lord.png', tower: '/assets/overlay/MCT/postgame/mct_turret.png' };   /* cyan MCT art; recoloured per team by #pggTint1/2 */
+    let pggVisible = false;
+    const pggSvg = (tag, attrs) => { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); Object.keys(attrs || {}).forEach(k => e.setAttribute(k, attrs[k])); return e; };
+    /* gold coin (the ingame mct_goldicon.png is a 16 px raster — redrawn as vector so it stays sharp at 28-40 px) */
+    document.querySelectorAll('#pgg-page .pgg-coinsvg, #p2m-page .pgg-coinsvg, #mcp-page .pgg-coinsvg').forEach(svg => {
+      svg.innerHTML = '<path d="M20 1.2 L37.6 10.6 L37.6 29.4 L20 38.8 L2.4 29.4 L2.4 10.6 Z" fill="#ffe100" stroke="#ffe100" stroke-width="2.4" stroke-linejoin="round"/>' +
+        '<text x="20" y="30.5" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="30" fill="#14213f">$</text>';
+    });
+    /* Series pips under VICTORY / DEFEAT (the slanted wave strokes): one per game needed to win the Match Board's Best Of
+       (ceil(Bo/2): BO1 1, BO3 2, BO5 3, BO7 4), cyan = games this team has won (Match Board series score), grey = the rest,
+       filled from the centre outward (right team mirrored). The SVG box is 112 px (3 pips); a BO7's 4th pip overflows outward. */
+    function pggSwoosh(svg, total, won, mirror) {
+      const band = 'M0 3 C12 -1 22 5 30 13 C37 20 44 25 58 24 L52 28 C38 30 29 25 21 18 C14 12 8 6 0 3 Z';
+      const paths = [];
+      for (let i = 0; i < total; i++) paths.push('<path transform="translate(' + (i * 27) + ' 0)" d="' + band + '" fill="' + (i >= total - won ? '#43fff0' : '#8f97a3') + '"/>');
+      svg.innerHTML = '<g' + (mirror ? ' transform="translate(112 0) scale(-1 1)"' : '') + '>' + paths.join('') + '</g>';
+    }
+    document.getElementById('mch-hud').innerHTML = document.getElementById('mvm-hud').innerHTML;
+    /* Shared MCT top bar + HUD (#mct-hdr). Shown by each scene that uses it; a scene's hide leaves it up when the scene coming in
+       (mctHdrNext, set by transitionToImpl before the teardown) also uses it — so Gold Graph <-> MCT Post H2H keeps the bar still. */
+    const mctHdr = document.getElementById('mct-hdr');
+    let mctHdrNext = null, mctHdrTimer = null;
+    const MCT_HDR_FEATURES = ['post_h2h', 'post4key', 'consolidated_post', 'emblems', 'stats'];   /* MCT-theme scenes on the shared top bar (besides the Gold Graph) */
+    function mctHdrScene(f) { return f === 'goldgraph' || (MCT_HDR_FEATURES.includes(f) && mvIsMct()); }
+    function mctHdrShow() {
+      clearTimeout(mctHdrTimer);
+      mctHdr.querySelectorAll('.pgg-tri').forEach(el => { let px = 60; el.style.fontSize = px + 'px'; while (el.scrollWidth > 330 && px > 30) { px -= 2; el.style.fontSize = px + 'px'; } });
+      if (mctHdr.classList.contains('mch-visible')) return;   /* already up from the previous scene: no re-animation */
+      mctHdr.classList.add('mch-on');
+      void mctHdr.offsetWidth;
+      mctHdr.classList.add('mch-visible');
+    }
+    function mctHdrHide(force) {
+      if (!force && mctHdrScene(mctHdrNext)) return;   /* the next scene keeps it */
+      if (!mctHdr.classList.contains('mch-on')) return;
+      mctHdr.classList.remove('mch-visible');
+      clearTimeout(mctHdrTimer);
+      mctHdrTimer = setTimeout(() => mctHdr.classList.remove('mch-on'), 420);
+    }
+
+    const pggFmtK = v => (Math.round(v / 100) / 10).toFixed(1) + 'k';
+    const pggFmtT = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+
+    async function pggFetch() {
+      const j = u => fetch(buildUrl(u), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+      const [g, ms, pos, ev] = await Promise.all([j('/api/gamedata-proxy?fresh=1'), j('/match/state'), j('/positions'), j('/events')]);
+      return { gd: g && g.data, ms: ms || {}, pos: (pos && pos.positions) || [], ev: (ev && ev.events) || [] };
+    }
+    function pggSeries(pos, liveDiff) {
+      const by = {};
+      pos.forEach(p => { const r = by[p.game_time_s] || (by[p.game_time_s] = { a: 0, b: 0, n: 0 }); if (p.camp === 1) r.a += p.gold || 0; else if (p.camp === 2) r.b += p.gold || 0; r.n++; });
+      const ts = Object.keys(by).map(Number).sort((x, y) => x - y).filter(t => by[t].n >= 8);   /* skip ticks missing most players */
+      let raw = ts.map(t => ({ t, diff: by[t].a - by[t].b }));
+      /* light centred smoothing (±2 s) — keeps the per-second "alive" texture, takes the edge off single-tick spikes */
+      raw = raw.map((p, i) => { let s = 0, n = 0; for (let k = Math.max(0, i - 2); k <= Math.min(raw.length - 1, i + 2); k++) { s += raw[k].diff; n++; } return { t: p.t, diff: s / n }; });
+      /* sign guard (same as the ingame graph): if the log's camps come out swapped vs the live team gold, flip */
+      const last = raw.length ? raw[raw.length - 1].diff : 0;
+      if (liveDiff != null && Math.abs(last) > 1000 && Math.abs(liveDiff) > 1000 && Math.sign(last) !== Math.sign(liveDiff)) raw = raw.map(p => ({ t: p.t, diff: -p.diff }));
+      return raw;
+    }
+    function pggSample() {   /* preview with no feed: a plausible made-up game so the layout can be checked */
+      const names = [['Kairi', 91, 'exp_laner'], ['Sanz', 84, 'jungler'], ['Kiboy', 21, 'mid_laner'], ['Butss', 104, 'roamer'], ['CW', 110, 'gold_laner']];
+      const camp = (id, tri) => { const c = { campid: id, team_simple_name: tri, score: id === 1 ? 27 : 12, total_money: id === 1 ? 18500 : 24500, kill_tortoise: 3, kill_lord: 3, kill_tower: 6 };
+        names.forEach((n, i) => { c['seat_' + (i + 1)] = { name: 'Player Name', heroid: n[1], role: n[2], kill_num: id === 1 ? 2 : 5, dead_num: 3, assist_num: 2 }; }); return c; };
+      const pos = []; let d = 0;
+      for (let t = 1; t <= 1800; t++) { d += (Math.sin(t / 97) * 30) - (t / 1800) * 9 + (Math.random() - .5) * 120; [1, 2].forEach(c => { for (let s = 1; s <= 5; s++) pos.push({ game_time_s: t, camp: c, seat: s, gold: c === 1 ? 300 + t * 9 + d / 5 : 300 + t * 9 }); }); }
+      const ev = [[180, 'turtle', 'camp1'], [750, 'tower', 'camp1'], [980, 'tower', 'camp1'], [1290, 'lord', 'camp1'], [1310, 'tower', 'camp1'], [560, 'turtle', 'camp2'], [690, 'lord', 'camp2'], [920, 'tower', 'camp2'], [1160, 'lord', 'camp2'], [1420, 'tower', 'camp2'], [1500, 'lord', 'camp2'], [1700, 'tower', 'camp2']]
+        .map(([time_s, type, camp]) => ({ time_s, type, camp }));
+      return { gd: { win_camp: 1, game_time: 1800, camp_list: [camp(1, 'ONIC'), camp(2, 'BAC')] }, ms: { stage: 'Group Stage', match: 1, game: 3, series: 'BO5', home: { short: 'ONIC', score: 2 }, away: { short: 'BAC', score: 1 } }, pos, ev };
+    }
+
+    function pggChart(series, events, T) {
+      const grid = document.getElementById('pgg-grid'), yl = document.getElementById('pgg-ylabels'), xl = document.getElementById('pgg-xlabels'), marks = document.getElementById('pgg-marks');
+      [grid, yl, xl, marks].forEach(g => { g.innerHTML = ''; });
+      let maxAbs = 0; series.forEach(p => { maxAbs = Math.max(maxAbs, Math.abs(p.diff)); });
+      const S = [1000, 2000, 2500, 5000, 10000, 20000, 25000, 50000].find(s => 2 * s >= maxAbs * 1.08) || 100000;   /* plot = ±2S, gridline + label at ±S */
+      const yOf = d => PGG_BASE - (d / (2 * S)) * (PGG_PH / 2);
+      const xOf = t => PGG_PL + (t / T) * PGG_PW;
+      const line = (x1, y1, x2, y2) => grid.appendChild(pggSvg('line', { x1, y1, x2, y2, stroke: 'rgba(96,160,255,.45)', 'stroke-width': 1.2 }));
+      [PGG_PT + PGG_PH / 4, PGG_PT + PGG_PH * 3 / 4].forEach(y => line(PGG_PL, y, PGG_PL + PGG_PW, y));
+      const kLab = (S / 1000) + 'K';
+      [[PGG_PT + PGG_PH / 4, kLab, '#43fff0'], [PGG_BASE, '0', '#fff'], [PGG_PT + PGG_PH * 3 / 4, kLab, '#ffe100']].forEach(([y, txt, fill]) => {
+        const t = pggSvg('text', { class: 'pgg-ylab', x: PGG_PL + PGG_PW - 4 + (txt === '0' ? 7 : 0), y: y + 8, fill }); t.textContent = txt; yl.appendChild(t);
+      });
+      /* x: gridline + label every 5 min, "00:00" at the left edge and the final time at the right edge (both rows) */
+      const xLab = (txt, x, anchor) => [329, 1014].forEach(y => { const t = pggSvg('text', { class: 'pgg-xlab', x, y, 'text-anchor': anchor }); t.textContent = txt; xl.appendChild(t); });
+      xLab('00:00', PGG_PL - 3, 'start');
+      xLab(pggFmtT(T), PGG_PL + PGG_PW + 4, 'end');
+      for (let m = 5; m * 60 < T; m += 5) {
+        const x = xOf(m * 60);
+        line(x, PGG_PT, x, PGG_PT + PGG_PH);
+        if (PGG_PL + PGG_PW - x > 95 && x - PGG_PL > 95) xLab(pggFmtT(m * 60), x, 'middle');
+      }
+      /* curve (decimated to ≤ 900 points) */
+      const step = Math.max(1, Math.ceil(series.length / 900));
+      const d = series.filter((p, i) => i % step === 0 || i === series.length - 1)
+        .map((p, i) => (i ? 'L' : 'M') + xOf(p.t).toFixed(1) + ' ' + Math.max(PGG_PT, Math.min(PGG_PT + PGG_PH, yOf(p.diff))).toFixed(1)).join('');
+      document.getElementById('pgg-line').setAttribute('d', d);
+      /* objective icons: team 1 along the top edge, team 2 along the bottom; a second icon too close to the previous one steps inward */
+      const lastX = { 1: [], 2: [] };
+      events.filter(e => PGG_ICONS[e.type] && (e.camp === 'camp1' || e.camp === 'camp2')).sort((a, b) => a.time_s - b.time_s).forEach(e => {
+        const c = e.camp === 'camp1' ? 1 : 2, x = xOf(Math.min(e.time_s, T));
+        let row = 0; while (lastX[c].some(o => o.row === row && Math.abs(o.x - x) < 24)) row++;
+        lastX[c].push({ x, row });
+        const y = c === 1 ? PGG_PT + 8 + row * 30 : PGG_PT + PGG_PH - 34 - row * 30;
+        marks.appendChild(pggSvg('image', { href: PGG_ICONS[e.type], x: x - 12, y: y - 2, width: 24, height: 27, filter: 'url(#pggTint' + c + ')' }));
+      });
+    }
+
+    /* MCT postgame header (Post Gold Graph, MCT Post H2H): <pfx>-tri1/2, -logo1/2, -score1/2, -res1/2, -sw1/2, -stage, -matchgame. */
+    function mctFillHeader(pfx, gd, ms) {
+      ms = ms || {};
+      const win = Number(gd.win_camp) || 0;
+      [1, 2].forEach(n => {
+        const c = (gd.camp_list || []).find(x => x.campid === n) || {};
+        const tri = String(c.team_simple_name || '').toUpperCase();
+        document.getElementById(pfx + '-tri' + n).textContent = tri;
+        const logo = document.getElementById(pfx + '-logo' + n), tag = encodeURIComponent(tri);
+        logo.onerror = () => { logo.onerror = () => logo.removeAttribute('src'); logo.src = '/assets/team/logos/' + tag + '.png'; };
+        if (tri) logo.src = '/assets/team/logos/' + tag + '_3.png'; else logo.removeAttribute('src');
+        const kills = [1, 2, 3, 4, 5].reduce((a, i) => a + ((c['seat_' + i] || {}).kill_num || 0), 0);
+        document.getElementById(pfx + '-score' + n).textContent = c.score != null ? c.score : kills;
+        const res = document.getElementById(pfx + '-res' + n);
+        res.textContent = win ? (win === n ? 'VICTORY' : 'DEFEAT') : '';
+        res.className = 'pgg-res ' + (win === n ? 'pgg-win' : 'pgg-lose');
+        /* series pips: this camp's Match Board team (by tricode, else the board's swap) */
+        const bo = parseInt(String(ms.series || 'BO5').replace(/\D/g, ''), 10) || 5, need = Math.max(1, Math.ceil(bo / 2));
+        const h = ms.home || {}, a = ms.away || {}, up = v => String(v || '').toUpperCase();
+        const team = up(h.short) === tri ? h : up(a.short) === tri ? a : ((n === 1) !== !!ms.swapped ? h : a);
+        pggSwoosh(document.getElementById(pfx + '-sw' + n), need, Math.max(0, Math.min(need, Number(team.score) || 0)), n === 2);
+      });
+      document.getElementById(pfx + '-stage').textContent = String(ms.stage || '').toUpperCase();
+      /* game number = series score so far (home + away): the Match Board score is entered after the win, so the game just played is
+         their sum — ms.game has already moved on to the next game. Both still 0 → fall back to ms.game. */
+      const played = (Number((ms.home || {}).score) || 0) + (Number((ms.away || {}).score) || 0), gameNo = played || ms.game;
+      document.getElementById(pfx + '-matchgame').textContent = (ms.match ? 'MATCH ' + ms.match : '') + (gameNo ? ' GAME ' + gameNo : '');
+    }
+    async function pggApply(d) {
+      const camps = [1, 2].map(id => (d.gd.camp_list || []).find(c => c.campid === id) || {});
+      const win = Number(d.gd.win_camp) || 0;
+      for (let k = 0; k < 2; k++) {
+        const c = camps[k], n = k + 1, raw = [1, 2, 3, 4, 5].map(i => c['seat_' + i] || {});
+        /* rows in lane order EXP, JUNGLE, MID, ROAM, GOLD (reference) — the feed's seats aren't always in that order; players with an
+           unknown/duplicate role fill the remaining rows in seat order */
+        const seats = new Array(5).fill(null), rest = [];
+        raw.forEach(p => { const r = String(p.role || '').toLowerCase(), i = /exp/.test(r) ? 0 : /jung/.test(r) ? 1 : /mid/.test(r) ? 2 : /roam/.test(r) ? 3 : /gold/.test(r) ? 4 : -1;
+          if (i >= 0 && !seats[i]) seats[i] = p; else rest.push(p); });
+        for (let i = 0; i < 5; i++) if (!seats[i]) seats[i] = rest.shift() || {};
+        const kills = seats.reduce((a, p) => a + (p.kill_num || 0), 0), deaths = seats.reduce((a, p) => a + (p.dead_num || 0), 0), assists = seats.reduce((a, p) => a + (p.assist_num || 0), 0);
+        for (let i = 0; i < 5; i++) {
+          const p = seats[i], r = i + 1;
+          const h = document.getElementById(`pgg-hero-${n}-${r}`);
+          h.onerror = () => h.removeAttribute('src');
+          if (p.heroid) h.src = heroWebUrl(p.heroid, '/'); else h.removeAttribute('src');
+          document.getElementById(`pgg-name-${n}-${r}`).textContent = p.name || '';
+          const glyph = await mvmRoleGlyph(['exp_laner', 'jungler', 'mid_laner', 'roamer', 'gold_laner'][i]);   /* the row's lane */
+          const g = document.getElementById(`pgg-role-${n}-${r}`).firstElementChild;
+          g.style.webkitMaskImage = g.style.maskImage = glyph ? 'url(' + glyph + ')' : 'none';
+        }
+        const gold = c.total_money || seats.reduce((a, p) => a + (p.gold || 0), 0);
+        document.getElementById('pgg-gold-' + n).textContent = pggFmtK(gold);
+        document.getElementById('pgg-kda-' + n).textContent = kills + '/' + deaths + '/' + assists;
+        document.getElementById('pgg-n-turtle-' + n).textContent = c.kill_tortoise || 0;
+        document.getElementById('pgg-n-lord-' + n).textContent = c.kill_lord || 0;
+        document.getElementById('pgg-n-tower-' + n).textContent = c.kill_tower || 0;
+      }
+      mctFillHeader('mch', d.gd, d.ms);
+      const liveDiff = (camps[0].total_money || 0) - (camps[1].total_money || 0);
+      const series = pggSeries(d.pos, camps[0].total_money && camps[1].total_money ? liveDiff : null);
+      const T = Math.max(60, Number(d.gd.game_time) || 0, series.length ? series[series.length - 1].t : 0);
+      pggChart(series, d.ev, T);
+    }
+    function pggFit() {
+      document.querySelectorAll('#pgg-page .pgg-name').forEach(el => { let px = 26; el.style.fontSize = px + 'px'; while (el.scrollWidth > 186 && px > 15) { px -= 1; el.style.fontSize = px + 'px'; } });
+    }
+    const PGG_DRAW_DELAY = 500, PGG_DRAW_MS = 1700;
+    function pggDrawLine() {
+      const ln = document.getElementById('pgg-line'), len = ln.getTotalLength ? ln.getTotalLength() : 0;
+      if (len) {
+        ln.style.strokeDasharray = len; ln.style.strokeDashoffset = len;
+        /* drawn left -> right at an even pace (the path is evenly sampled in time, so linear dash = linear game time) */
+        const an = ln.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: PGG_DRAW_MS, delay: PGG_DRAW_DELAY, easing: 'linear', fill: 'both' });
+        an.finished.then(() => { ln.style.strokeDasharray = ''; ln.style.strokeDashoffset = ''; an.cancel(); }).catch(() => {});
+      }
+      /* each objective icon appears as the line passes its time */
+      document.querySelectorAll('#pgg-marks image').forEach(im => {
+        const f = Math.max(0, Math.min(1, (parseFloat(im.getAttribute('x')) + 12 - PGG_PL) / PGG_PW));
+        const an = im.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1)' }],
+          { duration: 260, delay: PGG_DRAW_DELAY + f * PGG_DRAW_MS, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'both' });
+        an.finished.then(() => { im.style.opacity = 1; an.cancel(); }).catch(() => {});
+      });
+    }
+    async function showPostGoldGraph() {
+      if (pggVisible) return;
+      const dataP = pggFetch();
+      await transitionTo('goldgraph');
+      let d = await dataP;
+      if (activeFeature !== 'goldgraph') return;
+      if (!d.gd || !(d.gd.camp_list || []).length) { if (!isPreviewFrame) { mctHdrHide(true); return; } d = pggSample(); }
+      await pggApply(d);
+      if (document.fonts && document.fonts.load) await Promise.race([document.fonts.load('800 58px "Monument Ext MCT"'), new Promise(r => setTimeout(r, 800))]);
+      await preloadMedia(pggPage.querySelectorAll('img'), 1500);
+      if (activeFeature !== 'goldgraph') return;
+      pggVisible = true;
+      showSceneVideo('goldgraph');
+      pggPage.classList.add('pgg-on');
+      mctHdrShow();
+      pggFit();
+      void pggPage.offsetWidth;
+      pggPage.classList.add('pgg-visible');
+      pggDrawLine();
+    }
+    function hidePostGoldGraph() {
+      if (!pggVisible) return Promise.resolve();
+      pggVisible = false;
+      mctHdrHide();
+      pggPage.classList.remove('pgg-visible');
+      return new Promise(resolve => setTimeout(() => { pggPage.classList.remove('pgg-on'); hideSceneVideo(); resolve(); }, 420));
+    }
+
+    /* ════════════════════════════════════════════════
+       MCT POST H2H (#p2m-page) — replaces #p2h-page under data-theme-name="mct" (showPostH2H / hidePostH2H delegate here).
+       Both teams' player in the dashboard's Post H2H role (/api/h2h-config) + a GOLD DISTRIBUTION comparison that is the
+       same 5 rows for every role: Total (seat.gold) and the feed's gold_map sectors 2 jungle creeps, 3 turtle+lord,
+       4 turrets, 6 kills+assists. No Matchboard (own header, mctFillHeader); the page-2 flip doesn't apply here.
+       ════════════════════════════════════════════════ */
+    const p2mPage = document.getElementById('p2m-page');
+    let p2mVisible = false;
+    const P2M_ROWS = [
+      { label: 'Total',          get: s => s.gold || 0 },
+      { label: 'Jungle Creeps',  key: '2' },
+      { label: 'Turtle & Lord',  key: '3' },
+      { label: 'Turret',         key: '4' },
+      { label: 'Kill & Assist',  key: '6' },
+    ];
+    function p2mRowVal(row, seat) {
+      if (!seat) return null;
+      if (row.get) return row.get(seat);
+      const gm = seat.gold_map || {};
+      return Number(gm[row.key] != null ? gm[row.key] : seat['gold_map_' + row.key]) || 0;
+    }
+    function p2mSample(role) {   /* preview with no feed */
+      const d = pggSample().gd;
+      d.camp_list.forEach((c, k) => { for (let i = 1; i <= 5; i++) { const s = c['seat_' + i]; s.gold = k ? 9100 : 12400; s.skillid = 20080; s.hero_name = 'Popol and Kupa';
+        s.gold_map = k ? { 2: 2100, 3: 300, 4: 820, 6: 1400 } : { 2: 3400, 3: 1200, 4: 640, 6: 2900 }; } });
+      return d;
+    }
+    async function p2mFetch() {
+      const j = u => fetch(buildUrl(u), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+      const [cfg, gd, ms] = await Promise.all([fetchH2HConfig(), fetchH2HGameData(), j('/match/state')]);
+      return { cfg: cfg || {}, gd, ms: ms || {} };
+    }
+    async function p2mApplyCard(n, seat, role) {
+      const set = (id, url) => { const el = document.getElementById(id); el.onerror = () => el.removeAttribute('src'); if (url) el.src = url; else el.removeAttribute('src'); };
+      set('p2m-hero' + n, seat && seat.heroid ? mvHeroImgUrl(seat.heroid) : '');
+      set('p2m-spell' + n, seat ? ftSpellUrl(seat.skillid) : '');
+      /* photo: FRONT pose (as in the reference), else the signature portrait, else nothing */
+      const ph = document.getElementById('p2m-photo' + n), name = seat && seat.name;
+      ph.onerror = () => { ph.onerror = () => ph.removeAttribute('src'); ph.src = hlPhotoUrl(name); };
+      if (name) ph.src = luPoseUrl(name, 'FRONT'); else ph.removeAttribute('src');
+      document.getElementById('p2m-name' + n).textContent = (seat && seat.name) || '';
+      document.getElementById('p2m-heroname' + n).textContent = (seat && (seat.hero_name || '')) || '';
+      document.getElementById('p2m-role' + n).style.visibility = seat ? '' : 'hidden';
+      const glyph = seat ? await mvmRoleGlyph(role) : '', g = document.getElementById('p2m-role' + n).firstElementChild;   /* the compared lane's glyph */
+      g.style.webkitMaskImage = g.style.maskImage = glyph ? 'url(' + glyph + ')' : 'none';
+    }
+    async function p2mApply(d) {
+      const role = (d.cfg && d.cfg.role) || 'gold_laner';
+      const camps = [1, 2].map(id => (d.gd.camp_list || []).find(c => c.campid === id) || null);
+      const want = MCT_LANES.findIndex(l => String(role).toLowerCase().includes(l));
+      const seats = camps.map(c => c ? (p2hFindSeat(c, role) || (want >= 0 ? mctLaneSlots(c)[want] : null)) : null);
+      mctFillHeader('mch', d.gd, d.ms);
+      await Promise.all([p2mApplyCard(1, seats[0], role), p2mApplyCard(2, seats[1], role)]);
+      return P2M_ROWS.map((row, i) => {
+        const a = p2mRowVal(row, seats[0]), b = p2mRowVal(row, seats[1]);
+        document.getElementById('p2m-lbl-' + i).textContent = row.label;
+        document.getElementById('p2m-v1-' + i).textContent = a == null ? '-' : p2hFmtGoldSector(0);
+        document.getElementById('p2m-v2-' + i).textContent = b == null ? '-' : p2hFmtGoldSector(0);
+        const fill = document.getElementById('p2m-bar-' + i).firstElementChild;
+        const sum = (a || 0) + (b || 0), fromRight = (b || 0) > (a || 0);
+        fill.style.transition = 'none'; fill.style.width = '0%';
+        fill.className = 'p2m-fill ' + (fromRight ? 'p2m-from-r' : 'p2m-from-l') + (sum ? '' : ' p2m-empty');
+        void fill.offsetWidth; fill.style.transition = '';
+        return { i, a, b, pct: sum ? Math.max(a || 0, b || 0) / sum * 100 : 0 };
+      });
+    }
+    function p2mGrow(rows, delay) {
+      setTimeout(() => {
+        if (!p2mVisible) return;
+        rows.forEach(r => {
+          document.getElementById('p2m-bar-' + r.i).firstElementChild.style.width = r.pct + '%';
+          if (r.a != null) p2hCountUp(document.getElementById('p2m-v1-' + r.i), r.a, p2hFmtGoldSector);
+          if (r.b != null) p2hCountUp(document.getElementById('p2m-v2-' + r.i), r.b, p2hFmtGoldSector);
+        });
+      }, delay);
+    }
+    function p2mFit() {
+      p2mPage.querySelectorAll('.p2m-name').forEach(el => { let px = 26; el.style.fontSize = px + 'px'; while (el.scrollWidth > 296 && px > 13) { px -= 1; el.style.fontSize = px + 'px'; } });
+      p2mPage.querySelectorAll('.p2m-heroname').forEach(el => { let px = 21.5; el.style.fontSize = px + 'px'; while (el.scrollWidth > 340 && px > 11) { px -= 1; el.style.fontSize = px + 'px'; } });
+    }
+    async function p2mShow() {
+      if (p2mVisible) return;
+      const dataP = p2mFetch();
+      await transitionTo('post_h2h');
+      const d = await dataP;
+      if (activeFeature !== 'post_h2h') return;
+      if (!d.gd || !(d.gd.camp_list || []).length) { if (!isPreviewFrame) { mctHdrHide(true); return; } d.gd = p2mSample(); }
+      const rows = await p2mApply(d);
+      if (document.fonts && document.fonts.load) await Promise.race([document.fonts.load('800 58px "Monument Ext MCT"'), document.fonts.load('400 26px "Monument Ext MCT"'), new Promise(r => setTimeout(r, 800))]);
+      await preloadMedia(p2mPage.querySelectorAll('img'), 1500);
+      if (activeFeature !== 'post_h2h') return;
+      p2mVisible = true;
+      showSceneVideo('post_h2h');
+      p2mPage.classList.add('p2m-on');
+      mctHdrShow();
+      p2mFit();
+      void p2mPage.offsetWidth;
+      p2mPage.classList.add('p2m-visible');
+      p2mGrow(rows, 750);
+    }
+    function p2mHide() {
+      if (!p2mVisible) return Promise.resolve();
+      p2mVisible = false;
+      mctHdrHide();
+      p2mPage.classList.remove('p2m-visible');
+      return new Promise(resolve => setTimeout(() => { p2mPage.classList.remove('p2m-on'); hideSceneVideo(); resolve(); }, 420));
+    }
+    /* ════════════════════════════════════════════════
+       MCT POST 4 KEY (#m4k-page) — replaces #post4key-page under data-theme-name="mct" (showPost4Key / hidePost4Key delegate here).
+       Leaders across both teams (judger seats excluded): Damage Dealt (total_damage), Gold Per Minute (extra_param.gpm),
+       Damage Taken (total_hurt), Assists (assist_num, tie -> higher GPM) — same picks as the classic Post 4 Key.
+       Shared top bar (#mct-hdr), no Matchboard.
+       ════════════════════════════════════════════════ */
+    /* role -> lane slot [exp, jungle, mid, roam, gold]; players the feed gives no/duplicate role fill the empty lanes in seat order
+       (same rule as the Gold Graph rows). Used by MCT Post H2H (which player) and MCT Post 4 Key (which role glyph). */
+    const MCT_LANES = ['exp', 'jung', 'mid', 'roam', 'gold'], MCT_LANE_ROLES = ['exp_laner', 'jungler', 'mid_laner', 'roamer', 'gold_laner'];
+    function mctLaneSlots(c) {
+      const slots = new Array(5).fill(null), rest = [];
+      [1, 2, 3, 4, 5].map(i => c['seat_' + i]).filter(p => p && !p.judger).forEach(p => { const r = String(p.role || '').toLowerCase(), i = MCT_LANES.findIndex(l => r.includes(l));
+        if (i >= 0 && !slots[i]) slots[i] = p; else rest.push(p); });
+      for (let i = 0; i < 5; i++) if (!slots[i]) slots[i] = rest.shift() || null;
+      return slots;
+    }
+    const m4kPage = document.getElementById('m4k-page');
+    let m4kVisible = false;
+    const M4K_STATS = [
+      { label: 'Damage Dealt',    get: s => s.total_damage || 0 },
+      { label: 'Gold Per Minute', get: s => (s.extra_param && s.extra_param.gpm) || 0 },
+      { label: 'Damage Taken',    get: s => s.total_hurt || 0 },
+      { label: 'Assists',         get: s => s.assist_num || 0, tie: s => (s.extra_param && s.extra_param.gpm) || 0 },
+    ];
+    function m4kSample() {   /* preview with no feed */
+      const d = pggSample().gd;
+      d.camp_list.forEach((c, k) => { for (let i = 1; i <= 5; i++) { const s = c['seat_' + i]; s.name = ['Kairi', 'Sanz', 'Kiboy', 'Butss', 'CW'][i - 1]; s.skillid = 20080;
+        s.total_damage = 30000 + (i * 7919 + k * 3301) % 60000; s.total_hurt = 25000 + (i * 5813 + k * 1907) % 70000; s.assist_num = (i * 7 + k * 3) % 21;
+        s.extra_param = { gpm: 600 + (i * 131 + k * 77) % 500 }; } });
+      return d;
+    }
+    function m4kLeaders(gd) {
+      const seats = [];
+      (gd.camp_list || []).filter(c => c.campid === 1 || c.campid === 2).forEach(c => {
+        const slots = mctLaneSlots(c);
+        for (let i = 1; i <= 5; i++) { const p = c['seat_' + i]; if (p && !p.judger) { const k = slots.indexOf(p); seats.push(Object.assign({}, p, { laneRole: k >= 0 ? MCT_LANE_ROLES[k] : p.role })); } } });
+      if (!seats.length) return null;
+      return M4K_STATS.map(st => seats.reduce((best, s) => {
+        const a = st.get(s), b = st.get(best);
+        return a > b || (a === b && st.tie && st.tie(s) > st.tie(best)) ? s : best;
+      }, seats[0]));
+    }
+    async function m4kApply(gd) {
+      const leaders = m4kLeaders(gd);
+      if (!leaders) return null;
+      await Promise.all(leaders.map(async (seat, k) => {
+        const n = k + 1;
+        const set = (id, url) => { const el = document.getElementById(id); el.onerror = () => el.removeAttribute('src'); if (url) el.src = url; else el.removeAttribute('src'); };
+        set('m4k-hero' + n, seat.heroid ? mvHeroImgUrl(seat.heroid) : '');
+        set('m4k-spell' + n, ftSpellUrl(seat.skillid) || '');
+        const ph = document.getElementById('m4k-photo' + n);
+        ph.onerror = () => { ph.onerror = () => ph.removeAttribute('src'); ph.src = hlPhotoUrl(seat.name); };
+        if (seat.name) ph.src = luPoseUrl(seat.name, 'FRONT'); else ph.removeAttribute('src');
+        document.getElementById('m4k-name' + n).textContent = seat.name || '';
+        document.getElementById('m4k-label' + n).textContent = M4K_STATS[k].label;
+        document.getElementById('m4k-value' + n).textContent = '0';
+        const glyph = await mvmRoleGlyph(seat.laneRole || seat.role), g = document.getElementById('m4k-role' + n).firstElementChild;
+        g.style.webkitMaskImage = g.style.maskImage = glyph ? 'url(' + glyph + ')' : 'none';
+      }));
+      return leaders.map((seat, k) => Math.round(M4K_STATS[k].get(seat)));
+    }
+    function m4kFit() {
+      m4kPage.querySelectorAll('.m4k-name').forEach(el => { let px = 26; el.style.fontSize = px + 'px'; while (el.scrollWidth > 296 && px > 13) { px -= 1; el.style.fontSize = px + 'px'; } });
+    }
+    function m4kFitValue(el) { let px = 74; el.style.fontSize = px + 'px'; while (el.scrollWidth > 420 && px > 36) { px -= 2; el.style.fontSize = px + 'px'; } }
+    async function m4kShow() {
+      if (m4kVisible) return;
+      const j = u => fetch(buildUrl(u), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+      const dataP = Promise.all([j('/api/gamedata-proxy?fresh=1'), j('/match/state')]);
+      await transitionTo('post4key');
+      const [g, ms] = await dataP;
+      if (activeFeature !== 'post4key') return;
+      let gd = g && g.data;
+      if (!gd || !(gd.camp_list || []).length) { if (!isPreviewFrame) { mctHdrHide(true); return; } gd = m4kSample(); }
+      mctFillHeader('mch', gd, ms || {});
+      const values = await m4kApply(gd);
+      if (!values) { mctHdrHide(true); return; }
+      if (document.fonts && document.fonts.load) await Promise.race([Promise.all([document.fonts.load('800 58px "Monument Ext MCT"'), document.fonts.load('400 74px "Monument Ext MCT"')]), new Promise(r => setTimeout(r, 800))]);
+      await preloadMedia(m4kPage.querySelectorAll('img'), 1500);
+      if (activeFeature !== 'post4key') return;
+      m4kVisible = true;
+      showSceneVideo('post4key');
+      m4kPage.classList.add('m4k-on');
+      mctHdrShow();
+      m4kFit();
+      void m4kPage.offsetWidth;
+      m4kPage.classList.add('m4k-visible');
+      values.forEach((v, k) => {
+        const el = document.getElementById('m4k-value' + (k + 1));
+        el.textContent = String(v); m4kFitValue(el); el.textContent = '0';   /* size for the final number, then count up to it */
+        setTimeout(() => { if (m4kVisible) p2hCountUp(el, v, x => String(Math.round(x))); }, 650 + k * 110);
+      });
+    }
+    function m4kHide() {
+      if (!m4kVisible) return Promise.resolve();
+      m4kVisible = false;
+      mctHdrHide();
+      m4kPage.classList.remove('m4k-visible');
+      return new Promise(resolve => setTimeout(() => { m4kPage.classList.remove('m4k-on'); hideSceneVideo(); resolve(); }, 420));
+    }
+    /* ════════════════════════════════════════════════
+       MCT CONSOLIDATED POST page 1 (#mcp-page) — replaces #cp-page under data-theme-name="mct" (showConsolidatedPost /
+       hideConsolidatedPost delegate here). Live feed (/api/gamedata-proxy): per player hero, FRONT photo, spell, level, lane glyph,
+       name, KDA, gold, items; per team total gold / turrets / lords / turtles. Orange (red) / purple (blue) buff counts come from the post-match data
+       (/dire/api/postdata = upstream /postdata, else /api/postinfo-proxy): camp_list[].red_buff_num / blue_buff_num — "-" if neither answers. Shared top bar (#mct-hdr), no Matchboard.
+       ════════════════════════════════════════════════ */
+    const mcpPage = document.getElementById('mcp-page');
+    let mcpVisible = false, mcpSpTimer = null, mcpMode = 'items';   /* 'items' = Post Game Items (consolidated_post), 'emblems' = Post Game Emblem (emblems) */
+    const MCP_FEATURE = { items: 'consolidated_post', emblems: 'emblems', stats: 'stats' };
+    const MCP_BLOCK = { items: '.mcp-it', emblems: '.mcp-em', stats: '.mcp-st' };
+    /* talents by tier (2nd digit of the id: 811 tier 1, 821 tier 2, 731 tier 3 = core) -> [core (left), tier 1 (top), tier 2 (bottom)] */
+    function mcpTalents(seat) {
+      const rm = seat.rune_map || {}, ids = [seat.rune_map_1 || rm['1'], seat.rune_map_2 || rm['2'], seat.rune_map_3 || rm['3']].filter(Boolean);
+      const out = [null, null, null], rest = [];
+      ids.forEach(id => { const t = Number(String(id)[1]), k = t === 3 ? 0 : t === 1 ? 1 : t === 2 ? 2 : -1; if (k >= 0 && !out[k]) out[k] = id; else rest.push(id); });
+      for (let k = 0; k < 3; k++) if (!out[k]) out[k] = rest.shift() || null;
+      return out;
+    }
+    const mcpFmtK = v => (Math.round((v || 0) / 100) / 10).toFixed(1) + 'K';
+    function mcpSample() {   /* preview with no feed */
+      const d = m4kSample();
+      d.camp_list.forEach((c, k) => { for (let i = 1; i <= 5; i++) { const s = c['seat_' + i]; s.level = 15; s.gold = 1953 + i * 311 + k * 97; s.kill_num = 9; s.dead_num = 9; s.assist_num = 11;
+        s.equip_list = [{ value: 1002 }, { value: 2104 }, { value: 2105 }, { value: 2306 }, { value: 3105 }, { value: 0 }];
+        s.rune_id = 20001; s.rune_map_1 = 811; s.rune_map_2 = 821; s.rune_map_3 = 731; s.total_damage = 20000 + i * 9000 + k * 4000; s.total_hurt = 50000 - i * 7000 + k * 3000; } });
+      return d;
+    }
+    async function mcpApplyRow(n, seat, lane) {
+      const set = (id, url) => { const el = document.getElementById(id); el.onerror = () => el.removeAttribute('src'); if (url) el.src = url; else el.removeAttribute('src'); };
+      set('mcp-hero-' + n, seat && seat.heroid ? mvHeroImgUrl(seat.heroid) : '');
+      set('mcp-spell-' + n, seat ? ftSpellUrl(seat.skillid) : '');
+      const ph = document.getElementById('mcp-photo-' + n), name = seat && seat.name;
+      ph.onerror = () => { ph.onerror = () => ph.removeAttribute('src'); ph.src = hlPhotoUrl(name); };
+      if (name) ph.src = luPoseUrl(name, 'FRONT'); else ph.removeAttribute('src');
+      document.getElementById('mcp-lvl-' + n).textContent = seat && seat.level != null ? seat.level : '';
+      document.getElementById('mcp-lvl-' + n).style.visibility = seat ? '' : 'hidden';
+      document.getElementById('mcp-name-' + n).textContent = (seat && seat.name) || '';
+      document.getElementById('mcp-kda-' + n).textContent = seat ? `${seat.kill_num || 0}/${seat.dead_num || 0}/${seat.assist_num || 0}` : '';
+      document.getElementById('mcp-gold-' + n).textContent = seat ? String(Math.round(seat.gold || 0)) : '';
+      const items = (seat && seat.equip_list) || [];
+      for (let j = 0; j < 6; j++) set(`mcp-item-${n}-${j}`, items[j] && items[j].value ? '/assets/game/items/' + items[j].value + '.png' : '');
+      const tal = seat ? mcpTalents(seat) : [null, null, null];
+      [tal[0], tal[1], tal[2], seat && seat.rune_id].forEach((id, k) => set(`mcp-emb-${n}-${k}`, mvRuneUrl(id)));
+      const glyph = seat ? await mvmRoleGlyph(lane) : '', g = document.getElementById('mcp-role-' + n);
+      g.style.webkitMaskImage = g.style.maskImage = glyph ? 'url(' + glyph + ')' : 'none';
+    }
+    function mcpMidRow(r, a, b, fmt) {
+      const has = a != null && b != null;
+      document.getElementById('mcp-v1-' + r).textContent = a == null ? '-' : fmt(a);
+      document.getElementById('mcp-v2-' + r).textContent = b == null ? '-' : fmt(b);
+      document.getElementById('mcp-al-' + r).classList.toggle('mcp-lit', has && a >= b);   /* arrow lit toward the side with more (both on a tie) */
+      document.getElementById('mcp-ar-' + r).classList.toggle('mcp-lit', has && b >= a);
+    }
+    async function mcpApply(gd, pi) {
+      const camps = [1, 2].map(id => (gd.camp_list || []).find(c => c.campid === id) || null);
+      const rows = [];
+      camps.forEach((c, k) => { const slots = c ? mctLaneSlots(c) : new Array(5).fill(null);
+        slots.forEach((seat, i) => rows.push(mcpApplyRow(k * 5 + i + 1, seat, MCT_LANE_ROLES[i]))); });
+      await Promise.all(rows);
+      /* stats bars: share of the highest damage dealt (total_damage) / taken (total_hurt) among all 10 players */
+      const all = camps.map(c => c ? mctLaneSlots(c) : new Array(5).fill(null)).flat();
+      const maxD = Math.max(1, ...all.map(p => (p && p.total_damage) || 0)), maxT = Math.max(1, ...all.map(p => (p && p.total_hurt) || 0));
+      all.forEach((p, i) => {
+        const n = i + 1, d = document.getElementById('mcp-db-' + n).firstElementChild, t = document.getElementById('mcp-tb-' + n).firstElementChild;
+        d.dataset.pct = p ? ((p.total_damage || 0) / maxD * 100).toFixed(2) : 0;
+        t.dataset.pct = p ? ((p.total_hurt || 0) / maxT * 100).toFixed(2) : 0;
+        d.classList.toggle('mcp-zero', !(p && p.total_damage)); t.classList.toggle('mcp-zero', !(p && p.total_hurt));
+      });
+      document.getElementById('mcp-gt').textContent = fmtGameTime(gd.game_time);
+      const v = (c, key) => c ? Number(c[key]) || 0 : null;
+      mcpMidRow(0, v(camps[0], 'total_money'), v(camps[1], 'total_money'), mcpFmtK);
+      mcpMidRow(1, v(camps[0], 'kill_tower'), v(camps[1], 'kill_tower'), String);
+      mcpMidRow(2, v(camps[0], 'kill_lord'), v(camps[1], 'kill_lord'), String);
+      mcpMidRow(3, v(camps[0], 'kill_tortoise'), v(camps[1], 'kill_tortoise'), String);
+      const pc = [1, 2].map(id => ((pi && pi.camp_list) || []).find(c => c.campid === id) || null);
+      const buff = (c, key) => c && c[key] != null ? Number(c[key]) || 0 : null;
+      mcpMidRow(4, buff(pc[0], 'red_buff_num'), buff(pc[1], 'red_buff_num'), String);    /* orange = the API's red buff */
+      mcpMidRow(5, buff(pc[0], 'blue_buff_num'), buff(pc[1], 'blue_buff_num'), String);  /* purple = blue buff */
+    }
+    function mcpFit() {
+      mcpPage.querySelectorAll('.mcp-name').forEach(el => { let px = 20.5; el.style.fontSize = px + 'px'; while (el.scrollWidth > 190 && px > 12) { px -= .5; el.style.fontSize = px + 'px'; } });
+      /* KDA / gold: canvas-measured (the boxes are fixed-width, so scrollWidth can't tell overflow from fit) */
+      const fitW = (el, max, room) => { const w = annivTextWidth(el.textContent, "400 " + max + "px 'Monument Ext MCT'"); el.style.fontSize = (w > room ? Math.max(14, max * room / w) : max).toFixed(1) + 'px'; };
+      mcpPage.querySelectorAll('.mcp-gold').forEach(el => fitW(el, 26, 106));
+      mcpPage.querySelectorAll('.mcp-kda').forEach(el => fitW(el, 26, 140));
+      mcpPage.querySelectorAll('.mcp-mv').forEach(el => { let px = 32; el.style.fontSize = px + 'px'; while (el.scrollWidth > 200 && px > 16) { px -= 1; el.style.fontSize = px + 'px'; } });
+    }
+    /* sponsor: white logos (assets/sponsor/<SET>/white/, else the plain one), cross-fading, resumes after the last one aired (SponsorCursor) */
+    function mcpStartSponsor() {
+      clearTimeout(mcpSpTimer);
+      const img = document.getElementById('mcp-sp');
+      fetch('/api/sponsors' + SponsorSet.qs(), { cache: 'no-store' }).then(r => r.json()).then(list => {
+        if (!list || !list.length || !mcpVisible) { img.removeAttribute('src'); return; }
+        let i = SponsorCursor.start(list.length);
+        (function next() {
+          if (!mcpVisible) return;
+          const sp = list[i % list.length]; SponsorCursor.aired(i % list.length); i++;
+          img.style.opacity = 0;
+          setTimeout(() => {
+            if (!mcpVisible) return;
+            img.onerror = () => { img.onerror = null; img.src = sp.src; };
+            img.src = sp.src.replace(/\/([^\/]+)$/, '/white/$1');
+            img.style.opacity = 1;
+            mcpSpTimer = setTimeout(next, Math.max(2000, sp.dur || 4000));
+          }, 300);
+        })();
+      }).catch(() => {});
+    }
+    /* Items <-> Emblems: the outgoing scene's hide keeps the page up when the incoming one is its sibling (mctHdrNext), and the
+       incoming show then only swaps the right-hand block (mcpSwap) — rows, photos, middle column and top bar stay still. */
+    function mcpSibling(f) { return mvIsMct() && Object.values(MCP_FEATURE).includes(f); }
+    let mcpKept = false;
+    function mcpSetMode(mode) { mcpMode = mode; Object.keys(MCP_FEATURE).forEach(m => mcpPage.classList.toggle('mcp-mode-' + m, m === mode)); }
+    /* stats bars: reset to 0 (no transition), then grow each row as its block slides in */
+    function mcpResetBars() { mcpPage.querySelectorAll('.mcp-sfill').forEach(f => { f.style.transition = 'none'; f.style.width = '0%'; void f.offsetWidth; f.style.transition = ''; }); }
+    function mcpGrowBars(swap) {
+      if (mcpMode !== 'stats') return;
+      mcpPage.querySelectorAll('.mcp-sbar').forEach(b => {
+        const f = b.firstElementChild, r = Number(getComputedStyle(b).getPropertyValue('--r')) || 0;
+        setTimeout(() => { if (mcpVisible && mcpMode === 'stats') f.style.width = (f.dataset.pct || 0) + '%'; }, (swap ? 150 : 450) + r * 40);
+      });
+    }
+    async function mcpSwap(mode) {
+      const outCls = MCP_BLOCK[mcpMode];
+      const outs = mcpPage.querySelectorAll(outCls);
+      outs.forEach(el => el.classList.add('mcp-out'));
+      await new Promise(r => setTimeout(r, 320));   /* old block fully faded out first */
+      mcpResetBars();
+      mcpPage.classList.add('mcp-swapin');
+      mcpSetMode(mode);   /* the incoming block becomes displayed -> its fade-in plays (no delay beyond the small row stagger) */
+      outs.forEach(el => el.classList.remove('mcp-out'));   /* now display:none, so dropping the class can't flash it back */
+      mcpGrowBars(true);
+    }
+    async function mcpShow(mode) {
+      mode = mode || 'items';
+      const feature = MCP_FEATURE[mode];
+      if (mcpVisible && mcpMode === mode && !mcpKept) return;
+      const j = u => fetch(buildUrl(u), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null);
+      /* buff counts: the built-in Dire API's post-match data (upstream /postdata), else the old Post-Info API */
+      const postP = j('/dire/api/postdata').then(r => (r && r.code === 0 && r.data) ? r : j('/api/postinfo-proxy'));
+      const dataP = Promise.all([j('/api/gamedata-proxy?fresh=1'), j('/match/state'), postP]);
+      await transitionTo(feature);
+      const [g, ms, pi] = await dataP;
+      const swapping = mcpKept && mcpVisible;
+      mcpKept = false;
+      if (activeFeature !== feature) return;   /* superseded: the newer transition's teardown already hid / kept the page */
+      let gd = g && g.data;
+      if (!gd || !(gd.camp_list || []).length) { if (!isPreviewFrame) { mctHdrHide(true); if (swapping) mcpHide(true); return; } gd = mcpSample(); }
+      mctFillHeader('mch', gd, ms || {});
+      await mcpApply(gd, pi && ((pi.data && (pi.data.data || pi.data)) || pi));   /* /postdata = { code, data: {…} } (sometimes data.data) */
+      if (swapping) {
+        await preloadMedia(mcpPage.querySelectorAll(MCP_BLOCK[mode] + '[src]'), 900);
+        if (activeFeature !== feature) return;
+        mcpFit();
+        await mcpSwap(mode);
+        return;
+      }
+      if (document.fonts && document.fonts.load) await Promise.race([Promise.all([document.fonts.load('800 58px "Monument Ext MCT"'), document.fonts.load('400 32px "Monument Ext MCT"'), document.fonts.load('700 20px "Source Han Sans MCT"')]), new Promise(r => setTimeout(r, 800))]);
+      await preloadMedia(mcpPage.querySelectorAll('img'), 1500);
+      if (activeFeature !== feature) return;
+      mcpVisible = true;
+      mcpSetMode(mode);
+      showSceneVideo(feature);
+      mcpPage.classList.add('mcp-on');
+      mctHdrShow();
+      mcpFit();
+      void mcpPage.offsetWidth;
+      mcpResetBars();
+      mcpPage.classList.remove('mcp-swapin');
+      mcpPage.classList.add('mcp-visible');
+      mcpGrowBars();
+      mcpStartSponsor();
+    }
+    function mcpHide(force) {
+      if (!mcpVisible) return Promise.resolve();
+      if (!force && mcpSibling(mctHdrNext)) { mcpKept = true; return Promise.resolve(); }   /* the sibling scene takes the page over */
+      mcpVisible = false; mcpKept = false;
+      clearTimeout(mcpSpTimer);
+      mctHdrHide(force);
+      mcpPage.classList.remove('mcp-visible');
+      return new Promise(resolve => setTimeout(() => { mcpPage.classList.remove('mcp-on'); hideSceneVideo(); resolve(); }, 420));
+    }
+    /* dashboard role change while on air: swap the cards + rows in place and re-grow the bars */
+    async function p2mRefresh() {
+      if (!p2mVisible) return;
+      const d = await p2mFetch();
+      if (!p2mVisible || activeFeature !== 'post_h2h') return;
+      if (!d.gd || !(d.gd.camp_list || []).length) { if (!isPreviewFrame) return; d.gd = p2mSample(); }
+      const rows = await p2mApply(d);
+      await preloadMedia(p2mPage.querySelectorAll('img'), 900);
+      p2mFit();
+      p2mGrow(rows, 60);
     }
 
     /* ════════════════════════════════════════════════
@@ -12374,6 +13684,7 @@
     }
 
     async function showPostH2H() {
+      if (mvIsMct()) return p2mShow();   /* MCT theme: #p2m-page (decided per show, so a theme switch applies on the next show) */
       const cfgPromise = fetchH2HConfig();
       const gdPromise  = fetchH2HGameData();
       const msPromise  = fetchH2HMatchState();
@@ -12421,6 +13732,7 @@
     }
 
     function hidePostH2H() {
+      if (p2mVisible) return p2mHide();
       if (!p2hVisible) return Promise.resolve();
       p2hVisible = false;
       p2hSponsorLoop.stop();
@@ -12461,6 +13773,7 @@
        instead of waiting for the next Show. Same pattern as
        hmLiveRefresh above. */
     async function p2hLiveRefresh() {
+      if (p2mVisible) return p2mRefresh();
       if (!p2hVisible) return;
       const [cfg, gameData, matchState, postInfo] = await Promise.all([fetchH2HConfig(), fetchH2HGameData(), fetchH2HMatchState(), p2hPageNum === 2 ? fetchH2HPostInfo() : Promise.resolve(null)]);
       if (!p2hVisible || activeFeature !== 'post_h2h') return;
@@ -13285,6 +14598,7 @@
     }
 
     async function showPostStats() {
+      if (mvIsMct()) return mcpShow('stats');   /* MCT theme: #mcp-page as Post Game Stats */
       if (psbVisible) return;
       await transitionTo('stats');
       await fetchStatsData();
@@ -13312,6 +14626,7 @@
     }
 
     function hidePostStats() {
+      if (mcpVisible) return mcpHide();
       if (!psbVisible) return Promise.resolve();
       psbVisible = false;
       PSB_CARD_CLASSES.forEach((cls, i) => {
@@ -14028,6 +15343,7 @@
           else if (scene.activeFeature === 'consolidated_post_2') showConsolidatedPost2();
           else if (scene.activeFeature === 'post4key') showPost4Key();
           else if (scene.activeFeature === 'golddistri') showPostGoldDistri();
+          else if (scene.activeFeature === 'goldgraph') showPostGoldGraph();
           else if (scene.activeFeature === 'killevents') showPostKillEvents();
           else if (scene.activeFeature === 'post_h2h') showPostH2H();
           else if (scene.activeFeature === 'post_carry') showPostCarry();
@@ -14065,6 +15381,7 @@
         if (feature === 'consolidated_post_2') showConsolidatedPost2();
         if (feature === 'post4key') showPost4Key();
         if (feature === 'golddistri') showPostGoldDistri();
+        if (feature === 'goldgraph') showPostGoldGraph();
         if (feature === 'killevents') showPostKillEvents();
         if (feature === 'heatmap') showPostHeatmap();
         if (feature === 'post_h2h') showPostH2H();
@@ -14091,6 +15408,7 @@
         if (event === 'post_items')    showPostItems();
         if (event === 'post4key')      showPost4Key();
         if (event === 'post_golddistri') showPostGoldDistri();
+        if (event === 'post_goldgraph')  showPostGoldGraph();
         if (event === 'post_killevents') showPostKillEvents();
         if (event === 'post_stats')    showPostStats();
         if (event === 'post_heatmap')  showPostHeatmap();
@@ -14218,6 +15536,7 @@
         post_carry:          { fn: 'showPostCarry',         label: 'Post Carry',           active: 'post_carry' },
         post4key:            { fn: 'showPost4Key',          label: 'Post 4 Key',           active: 'post4key' },
         post_golddistri:     { fn: 'showPostGoldDistri',    label: 'Post Gold Distribution', active: 'golddistri' },
+        post_goldgraph:      { fn: 'showPostGoldGraph',     label: 'Post Gold Graph',        active: 'goldgraph' },
         post_killevents:     { fn: 'showPostKillEvents',    label: 'Post Kill Events',       active: 'killevents' },
         consolidated_post:   { fn: 'showConsolidatedPost',  label: 'Consolidated Post',    active: 'consolidated_post' },
         consolidated_post_2: { fn: 'showConsolidatedPost2', label: 'Consolidated Post 2',  active: 'consolidated_post_2' },

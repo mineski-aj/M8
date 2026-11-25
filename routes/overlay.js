@@ -730,15 +730,22 @@ router.get('/overlay/post_itemline/hide', (req, res) => {
 
 // GET /overlay/post_emblems/show
 router.get('/overlay/post_emblems/show', (req, res) => {
-  state.mplfsScene.matchboard = true;
-  state.mplfsScene.middleboard = true;
-  state.mplfsScene.playerboard = true;
+  // MCT theme: Post Emblem is "Post Game Emblem" on its own top bar — no Matchboard/Middleboard/Playerboard (broadcasting them made the
+  // M8 boards flash in for a moment before the MCT scene's teardown hid them again).
+  const mct = require('../lib/theme').getTheme() === 'mct';
+  if (!mct) {
+    state.mplfsScene.matchboard = true;
+    state.mplfsScene.middleboard = true;
+    state.mplfsScene.playerboard = true;
+  }
   state.mplfsScene.activeFeature = 'emblems';
   state.overlayClients.forEach(c => {
     try {
-      c.write('event: matchboard\ndata: {"action":"show"}\n\n');
-      c.write('event: middleboard\ndata: {"action":"show"}\n\n');
-      c.write('event: playerboard\ndata: {"action":"show"}\n\n');
+      if (!mct) {
+        c.write('event: matchboard\ndata: {"action":"show"}\n\n');
+        c.write('event: middleboard\ndata: {"action":"show"}\n\n');
+        c.write('event: playerboard\ndata: {"action":"show"}\n\n');
+      }
       c.write('event: post_emblems\ndata: {"action":"show"}\n\n');
     } catch {}
   });
@@ -778,15 +785,20 @@ router.get('/overlay/post_items/hide', (req, res) => {
 
 // GET /overlay/post_stats/show
 router.get('/overlay/post_stats/show', (req, res) => {
-  state.mplfsScene.matchboard = true;
-  state.mplfsScene.middleboard = true;
-  state.mplfsScene.playerboard = true;
+  const mct = require('../lib/theme').getTheme() === 'mct';   // MCT: "Post Game Stats" on its own top bar — no boards (see post_emblems)
+  if (!mct) {
+    state.mplfsScene.matchboard = true;
+    state.mplfsScene.middleboard = true;
+    state.mplfsScene.playerboard = true;
+  }
   state.mplfsScene.activeFeature = 'stats';
   state.overlayClients.forEach(c => {
     try {
-      c.write('event: matchboard\ndata: {"action":"show"}\n\n');
-      c.write('event: middleboard\ndata: {"action":"show"}\n\n');
-      c.write('event: playerboard\ndata: {"action":"show"}\n\n');
+      if (!mct) {
+        c.write('event: matchboard\ndata: {"action":"show"}\n\n');
+        c.write('event: middleboard\ndata: {"action":"show"}\n\n');
+        c.write('event: playerboard\ndata: {"action":"show"}\n\n');
+      }
       c.write('event: post_stats\ndata: {"action":"show"}\n\n');
     } catch {}
   });
@@ -985,6 +997,23 @@ router.get('/overlay/post_golddistri/hide', (req, res) => {
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 
+// GET /overlay/post_goldgraph/show — Post Gold Graph (postgame.html): full-screen gold curve + both teams' summaries
+// (its own header, no matchboard — same board handling as post_heatmap: the page's transitionTo() hides the boards).
+router.get('/overlay/post_goldgraph/show', (req, res) => {
+  state.mplfsScene.activeFeature = 'goldgraph';
+  state.overlayClients.forEach(c => {
+    try { c.write('event: post_goldgraph\ndata: {"action":"show"}\n\n'); } catch {}
+  });
+  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
+});
+
+// GET /overlay/post_goldgraph/hide
+router.get('/overlay/post_goldgraph/hide', (req, res) => {
+  state.mplfsScene.activeFeature = null;
+  state.overlayClients.forEach(c => { try { c.write('event: post_goldgraph\ndata: {"action":"hide"}\n\n'); } catch {} });
+  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
+});
+
 // GET /overlay/post_killevents/show — Post Kill Events (postgame.html). Same board
 // handling as post4key / post_golddistri.
 router.get('/overlay/post_killevents/show', (req, res) => {
@@ -1078,6 +1107,7 @@ const KILL_EVENT_PRIORITIES = {
   'firstblood.webm': 1, 'doublekill.webm': 2, 'triplekill.webm': 3,
   'maniac.webm': 4, 'savage.webm': 5,
   'lordslain.webm': 1, 'turtleslain.webm': 1, 'wipedout.webm': 3,
+  'lordsteal.webm': 1, 'turtlesteal.webm': 1, 'perfectturtle.webm': 1, 'perfectlord.webm': 1,
 };
 router.get('/overlay/killevent', (req, res) => {
   const video = req.query.video;

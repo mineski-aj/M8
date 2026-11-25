@@ -50,7 +50,7 @@ function killEventTeamLogoSrc(camp, tricodeOverride) {
    shows for these videos, popping in alongside the photo. */
 /* Which logo (if any) goes with which video comes from the COUNTRY set this page was opened with (?set=ID …) — see
    overlay-eventsponsors.js; configured per set in the dashboard's Sponsors tab. No logo configured = the event runs unsponsored. */
-var KILL_EVENT_SPONSOR_SLOT = { 'doublekill.webm': 'doublekill', 'triplekill.webm': 'triplekill', 'turtleslain.webm': 'turtleslain' };
+var KILL_EVENT_SPONSOR_SLOT = { 'doublekill.webm': 'doublekill', 'triplekill.webm': 'triplekill', 'turtleslain.webm': 'turtleslain' };   /* MCT adds no new slots: the other MCT events run unsponsored */
 function killEventConfiguredLogo(video) {
   var u = KILL_EVENT_SPONSOR_SLOT[video] ? EventSponsors.get(KILL_EVENT_SPONSOR_SLOT[video]) : '';
   return (u && u !== 'builtin') ? u : null;
@@ -63,6 +63,12 @@ function killEventIsPlayoffs() {
   return document.documentElement.getAttribute('data-theme') === 'playoffs';
 }
 function killEventSponsorLogo(video) {
+  /* MCT: the sponsor pill shows on every event that has a player popup (the reference has it on Triple Kill AND Lord Slain); an event with its own
+     slot uses it, everything else falls back to the Triple Kill sponsor. */
+  if (killEventIsMct()) {
+    var mu = EventSponsors.get(KILL_EVENT_SPONSOR_SLOT[video] || 'triplekill') || EventSponsors.get('triplekill');
+    return (mu && mu !== 'builtin') ? mu : null;
+  }
   /* Playoffs — the updated kill-event webms no longer have the sponsor baked in (the previous ones had Smart / Visa
      painted on the bar), so the same three events get the same logos from the overlay element instead; see
      killEventApplySponsorFit for the per-logo sizing. */
@@ -133,6 +139,7 @@ var KILL_EVENT_PAUSE = {
 function killEventPauseCfg(video) {
   var cfg = KILL_EVENT_PAUSE[video];
   if (!cfg) return cfg;
+  if (killEventIsMct()) return null;   /* MCT videos are timed as delivered — no freeze-and-hold */
   var theme = document.documentElement.getAttribute('data-theme');
   /* Playoffs — the new webms are already longer; no freeze-and-hold. */
   if (theme === '10th_anniversary' || theme === 'playoffs') {
@@ -154,6 +161,7 @@ function killEventPauseCfg(video) {
    KILL_POP_DELAY_MS, so the hold timer = PLAYOFFS_POP_OUT_AT_MS - delay. */
 var KILL_PLAYOFFS_POP_OUT_AT_MS = 2650;
 function killEventHoldExtensionMs(video) {
+  if (killEventIsMct()) return KILL_MCT_HOLD_MS - KILL_POP_HOLD_MS;   /* popup stays up until ~3.2 s of the 4 s clip */
   if (killEventIsPlayoffs()) {
     return KILL_PLAYOFFS_POP_OUT_AT_MS - KILL_POP_DELAY_MS - KILL_POP_HOLD_MS;
   }
@@ -172,7 +180,22 @@ var KILL_EVENT_PLAYOFFS_VIDEO = {
   'turtleslain.webm': '7_TURTLE_SLAIN_1920x1080.webm',
   'wipedout.webm':    '8_WIPED_OUT_1920x1080.webm',
 };
+/* ── MCT theme ── own videos in assets/webm/motion/mct/ (C07..C17). Double Kill and Perfect Lord have no MCT video yet, so they are skipped. */
+function killEventIsMct() { return document.documentElement.getAttribute('data-theme-name') === 'mct'; }
+var KILL_EVENT_MCT_VIDEO = {
+  'firstblood.webm':   'C07-FIRST BLOOD.webm',
+  'triplekill.webm':   'C09-TRIPLE KILL.webm',
+  'maniac.webm':       'C10-MANIAC.webm',
+  'savage.webm':       'C11-SAVAGE.webm',
+  'wipedout.webm':     'C12-WIPE OUT.webm',
+  'turtleslain.webm':  'C13-TURTLE SLAIN.webm',
+  'lordslain.webm':    'C14-LORD SLAIN.webm',
+  'perfectturtle.webm':'C15-PERFECT TURTLE.webm',
+  'lordsteal.webm':    'C16-LORD STEAL.webm',
+  'turtlesteal.webm':  'C17-TURTLE STEAL.webm',
+};
 function killEventVideoPath(video) {
+  if (killEventIsMct() && KILL_EVENT_MCT_VIDEO[video]) return 'assets/webm/motion/mct/' + encodeURIComponent(KILL_EVENT_MCT_VIDEO[video]);
   if (killEventIsPlayoffs() && KILL_EVENT_PLAYOFFS_VIDEO[video]) {
     return 'assets/overlay/ingame/playoffs/motion/' + KILL_EVENT_PLAYOFFS_VIDEO[video];
   }
@@ -238,6 +261,7 @@ killVideoEl.addEventListener('timeupdate', function() {
    then pops back down. KILL_POP_EXIT_MS must track the exit transition
    duration in mploverlay_v7.css so the overlay hide (below) never cuts
    the pop-down transition short. */
+var KILL_MCT_HOLD_MS = 2600;   /* MCT: how long the popup holds after popping in */
 var KILL_POP_DELAY_MS = 300;
 var KILL_POP_HOLD_MS  = 1300;
 var KILL_POP_EXIT_MS  = 300;
@@ -418,8 +442,204 @@ function showKillEventTeamLogo(camp, extraHoldMs, tricodeOverride) {
   killPopCycleEndsAt = Date.now() + KILL_POP_DELAY_MS + KILL_POP_HOLD_MS + teamLogoExtra + extraHoldMs + KILL_POP_EXIT_MS;
 }
 
+
+/* ═══════════════ MCT kill-event popup ═══════════════
+   Placement from the MCT reference frames (Triple Kill / Wiped Out): the player's signature photo pops up above the bar's left part, and the
+   plate baked into the video's bottom edge gets [team logo][role tile][name]. Wiped Out has no player — its small centre plate gets the wiping
+   team's logo + tricode. A "SPONSORED BY" pill (event sponsor of the page's ?set=, see overlay-eventsponsors.js) sits right of the plate.
+   All pieces are real DOM children of #ket-root (own ids) and pop with the same timing as the classic popup. */
+var ketEls = null;
+function ketInit() {
+  if (ketEls) return ketEls;
+  ketEls = {
+    photoClip: document.getElementById('ket-photo-clip'), photo: document.getElementById('ket-photo'),
+    logo: document.getElementById('ket-plate-logo'), role: document.getElementById('ket-plate-role'), roleGlyph: document.getElementById('ket-plate-role-glyph'),
+    name: document.getElementById('ket-plate-name'),
+    sponsor: document.getElementById('ket-sponsor'), sponsorImg: document.getElementById('ket-sponsor-img'),
+    wo: document.getElementById('ket-wo'), woLogo: document.getElementById('ket-wo-logo'), woTri: document.getElementById('ket-wo-tri'),
+  };
+  ketEls.photo.onerror = function() { ketEls.photo.style.visibility = 'hidden'; };
+  return ketEls;
+}
+function ketAllIn(on) {
+  var e = ketInit();
+  [e.photoClip, e.logo, e.role, e.name, e.sponsor, e.wo].forEach(function(n) { if (n) n.classList.toggle('ket-in', !!on); });
+}
+function ketSnapHide() {
+  var e = ketInit();
+  var nodes = [e.photoClip, e.logo, e.role, e.name, e.sponsor, e.wo];
+  nodes.forEach(function(n) { n.style.transition = 'none'; n.classList.remove('ket-in'); });
+  void e.photoClip.offsetWidth;
+  nodes.forEach(function(n) { n.style.transition = ''; });
+}
+/* white team logo (<TAG>_3.png) when the team has one, else the normal logo (normal = true: always the normal logo) */
+function ketSetTeamLogo(img, tricode, normal) {
+  if (!tricode) { img.removeAttribute('src'); img.style.visibility = 'hidden'; return; }
+  var t = encodeURIComponent(String(tricode).toUpperCase());
+  img.style.visibility = '';
+  img.onerror = function() { img.onerror = function() { img.style.visibility = 'hidden'; }; img.src = '/assets/team/logos/' + t + '.png'; };
+  img.src = '/assets/team/logos/' + t + (normal ? '.png' : '_3.png');
+}
+function ketTricodeOf(camp) {
+  if (!lastData || !lastData.camp_list) return '';
+  var c = lastData.camp_list.find(function(cc) { return cc.campid === (camp === 'red' ? 2 : 1); });
+  return c && c.team_simple_name ? String(c.team_simple_name).toUpperCase().trim() : '';
+}
+/* role glyph: cut out of the middle of the MCT ingame Item Check row art, smoothed (8x up-sample + blur + threshold) — same trick as the MVP scene */
+var ketGlyphCache = {};
+function ketRoleGlyph(roleNum) {
+  var lane = ['exp', 'jungle', 'mid', 'roam', 'gold'][(roleNum || 0) - 1];
+  if (!lane) return Promise.resolve('');
+  if (ketGlyphCache[lane]) return ketGlyphCache[lane];
+  return (ketGlyphCache[lane] = new Promise(function(res) {
+    var im = new Image();
+    im.onload = function() {
+      try {
+        /* keeps the glyph's own light-cyan -> blue gradient: colour from a plain 8x up-sample, shape (alpha) from a blurred + thresholded copy
+           so the outline is smooth */
+        var K = 8, W = 52, H = 52;
+        var col = document.createElement('canvas'); col.width = W * K; col.height = H * K;
+        var cx = col.getContext('2d', { willReadFrequently: true });
+        cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+        cx.drawImage(im, 516, 0, W, H, 0, 0, W * K, H * K);
+        var shp = document.createElement('canvas'); shp.width = W * K; shp.height = H * K;
+        var sx = shp.getContext('2d', { willReadFrequently: true });
+        sx.imageSmoothingEnabled = true; sx.imageSmoothingQuality = 'high'; sx.filter = 'blur(' + (K * 0.45) + 'px)';
+        sx.drawImage(im, 516, 0, W, H, 0, 0, W * K, H * K); sx.filter = 'none';
+        var cd = cx.getImageData(0, 0, W * K, H * K), sd = sx.getImageData(0, 0, W * K, H * K).data, px = cd.data;
+        for (var i = 0; i < px.length; i += 4) {
+          var a = Math.max(0, Math.min(1, (sd[i + 1] - 105) / 26));
+          /* push the colour towards the bright cyan inside the glyph so no dark background halo bleeds into the edge */
+          px[i + 3] = Math.round(a * 255);
+        }
+        cx.putImageData(cd, 0, 0); res(col.toDataURL());
+      } catch (err) { res(''); }
+    };
+    im.onerror = function() { res(''); };
+    im.src = '/assets/overlay/M8/Ingame/mct_item' + lane + '.png';
+  }));
+}
+/* sponsor art is a full 1920x1080 canvas with the logo somewhere on it — crop to the logo's own bounding box so it fits the pill */
+var ketCropCache = {};
+function ketCropArt(url) {
+  if (ketCropCache[url]) return ketCropCache[url];
+  return (ketCropCache[url] = new Promise(function(res) {
+    var im = new Image();
+    im.onload = function() {
+      try {
+        var c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+        var x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0);
+        var d = x.getImageData(0, 0, c.width, c.height).data, x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
+        for (var yy = 0; yy < c.height; yy += 2) for (var xx = 0; xx < c.width; xx += 2) if (d[(yy * c.width + xx) * 4 + 3] > 20) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
+        if (x1 <= x0 || y1 <= y0) { res(url); return; }
+        var o = document.createElement('canvas'); o.width = x1 - x0 + 2; o.height = y1 - y0 + 2;
+        o.getContext('2d').drawImage(im, x0, y0, o.width, o.height, 0, 0, o.width, o.height); res(o.toDataURL());
+      } catch (err) { res(url); }
+    };
+    im.onerror = function() { res(url); };
+    im.src = url;
+  }));
+}
+function ketFitText(el, maxW, maxPx, minPx) {
+  var px = maxPx; el.style.fontSize = px + 'px';
+  while (el.scrollWidth > (maxW || el.clientWidth) && px > minPx) { px -= 0.5; el.style.fontSize = px + 'px'; }
+}
+
+
+/* The bar's light-blue wave is drawn OVER the player photo in the reference (photo above the navy band, below the wave). The video can't be layered
+   in between, so the photo sits above the video and gets a mask cut from the wave itself: one frame of each video (steady state, ~1.8 s) is read
+   and every light-blue pixel left of the title text becomes transparent in the mask. Built once per video and cached (pre-warmed after load). */
+var KET_CLIP = { x: 650, y: 790, w: 400, h: 210 };   /* must match #ket-photo-clip in mploverlay_v7.css */
+var ketMaskCache = {};
+function ketMaskFor(video) {
+  if (ketMaskCache[video]) return ketMaskCache[video];
+  return (ketMaskCache[video] = new Promise(function(res) {
+    var v = document.createElement('video');
+    v.muted = true; v.preload = 'auto'; v.crossOrigin = 'anonymous';
+    v.onerror = function() { res(''); };
+    v.onloadedmetadata = function() { v.currentTime = Math.min(1.8, (v.duration || 4) * 0.45); };
+    v.onseeked = function() {
+      try {
+        var c = document.createElement('canvas'); c.width = KET_CLIP.w; c.height = KET_CLIP.h;
+        var x = c.getContext('2d', { willReadFrequently: true });
+        x.drawImage(v, KET_CLIP.x, KET_CLIP.y, KET_CLIP.w, KET_CLIP.h, 0, 0, KET_CLIP.w, KET_CLIP.h);
+        var d = x.getImageData(0, 0, c.width, c.height), px = d.data;
+        for (var yy = 0; yy < c.height; yy++) for (var xx = 0; xx < c.width; xx++) {
+          var i = (yy * c.width + xx) * 4, pageX = KET_CLIP.x + xx;
+          var w = 0;
+          if (pageX < 965) {   /* the title text starts right of this; only the wave lives to its left */
+            var a = px[i + 3] / 255, g = px[i + 1], b = px[i + 2], r = px[i];
+            w = a * Math.max(0, Math.min(1, (g - 120) / 50)) * Math.max(0, Math.min(1, (b - 170) / 40)) * (r < 200 ? 1 : 0);
+          }
+          px[i] = px[i + 1] = px[i + 2] = 0; px[i + 3] = Math.round((1 - w) * 255);
+        }
+        x.putImageData(d, 0, 0); res(c.toDataURL());
+      } catch (err) { res(''); }
+    };
+    v.src = killEventVideoPath(video);
+  }));
+}
+function ketApplyMask(video) {
+  var e = ketInit();
+  ketMaskFor(video).then(function(m) {
+    var v = m ? 'url(' + m + ')' : 'none';
+    e.photoClip.style.webkitMaskImage = e.photoClip.style.maskImage = v;
+    e.photoClip.style.webkitMaskSize = e.photoClip.style.maskSize = '100% 100%';
+  });
+}
+if (killEventIsMct()) {
+  window.addEventListener('load', function() {
+    setTimeout(function() { Object.keys(KILL_EVENT_MCT_VIDEO).forEach(function(v, i) { setTimeout(function() { ketMaskFor(v); }, i * 400); }); }, 3000);
+  });
+}
+
+function ketShowPlayer(playerName, role, camp, sponsorLogo, extraHoldMs) {
+  var e = ketInit();
+  extraHoldMs = extraHoldMs || 0;
+  clearKillTimers();
+  ketSnapHide();
+  ketApplyMask(killEventCurrent);
+  killShowTimer = setTimeout(function() {
+    killShowTimer = null;
+    e.photo.style.visibility = '';
+    e.photo.src = 'assets/photo/hires/FRONT_web/' + encodeURIComponent(playerName) + '_FRONT.webp';   /* MCT uses the FRONT pose */
+    e.name.textContent = playerName;
+    e.name.style.display = 'block'; ketFitText(e.name, 0, 14, 8);
+    ketSetTeamLogo(e.logo, ketTricodeOf(camp));
+    ketRoleGlyph(role).then(function(g) { e.roleGlyph.style.backgroundImage = g ? 'url(' + g + ')' : 'none'; });
+    var showSponsor = function(src) { if (src) { e.sponsorImg.src = src; e.sponsor.classList.add('ket-in'); } };
+    e.wo.classList.remove('ket-in');
+    [e.photoClip, e.logo, e.role, e.name].forEach(function(n) { n.classList.add('ket-in'); });
+    if (sponsorLogo) ketCropArt(sponsorLogo).then(showSponsor);
+    killBounceTimer = setTimeout(function() {
+      killBounceTimer = null; e.photo.classList.remove('ke-bounce'); void e.photo.offsetWidth; e.photo.classList.add('ke-bounce');
+    }, KILL_POP_ENTER_MS);
+    killHoldTimer = setTimeout(function() { killHoldTimer = null; ketAllIn(false); }, KILL_POP_HOLD_MS + extraHoldMs);
+  }, KILL_POP_DELAY_MS);
+  killPopCycleEndsAt = Date.now() + KILL_POP_DELAY_MS + KILL_POP_HOLD_MS + extraHoldMs + KILL_POP_EXIT_MS;
+}
+/* Wiped Out: `camp` = the team that did the wiping ('blue'/'red'), tricodeOverride = manual test */
+function ketShowTeam(camp, extraHoldMs, tricodeOverride) {
+  var e = ketInit();
+  extraHoldMs = extraHoldMs || 0;
+  clearKillTimers();
+  ketSnapHide();
+  killShowTimer = setTimeout(function() {
+    killShowTimer = null;
+    var tri = tricodeOverride ? String(tricodeOverride).toUpperCase() : ketTricodeOf(camp);
+    if (!tri) return;
+    e.woTri.textContent = tri;
+    ketSetTeamLogo(e.woLogo, tri, true);   /* on the light plate the normal (colour) logo reads better than the white one */
+    e.wo.classList.add('ket-in');
+    killHoldTimer = setTimeout(function() { killHoldTimer = null; ketAllIn(false); }, KILL_POP_HOLD_MS + extraHoldMs);
+  }, KILL_POP_DELAY_MS);
+  killPopCycleEndsAt = Date.now() + KILL_POP_DELAY_MS + KILL_POP_HOLD_MS + extraHoldMs + KILL_POP_EXIT_MS;
+}
+function ketHide() { if (ketEls) ketAllIn(false); }
+
 function hideKillEventPlayer() {
   clearKillTimers();
+  ketHide();
   killPhotoClipEl.classList.remove('ke-in');
   killNametagClipEl.classList.remove('ke-in');
   killSponsorLogoClipEl.classList.remove('ke-in');
@@ -492,7 +712,12 @@ function playNextKillEvent() {
      mean "no popup at all", so it needs its own check ahead of the
      generic playerName branch below. */
   var isAnniversaryTheme = document.documentElement.getAttribute('data-theme') === '10th_anniversary' || killEventIsPlayoffs(); /* team-logo Wipe Out: anniversary + playoffs */
-  if (entry.video === 'wipedout.webm' && isAnniversaryTheme && (entry.camp || entry.teamTricode)) {
+  if (killEventIsMct()) {
+    if (/^perfect(turtle|lord)\.webm$/.test(entry.video)) hideKillEventPlayer();   /* Perfect Turtle / Lord: just the webm, no player popup */
+    else if (entry.video === 'wipedout.webm' && (entry.camp || entry.teamTricode)) ketShowTeam(entry.camp, killEventHoldExtensionMs(entry.video), entry.teamTricode);
+    else if (entry.playerName) ketShowPlayer(entry.playerName, entry.role, entry.camp, killEventSponsorLogo(entry.video), killEventHoldExtensionMs(entry.video));
+    else hideKillEventPlayer();
+  } else if (entry.video === 'wipedout.webm' && isAnniversaryTheme && (entry.camp || entry.teamTricode)) {
     showKillEventTeamLogo(entry.camp, killEventHoldExtensionMs(entry.video), entry.teamTricode);
   } else if (entry.playerName) {
     showKillEventPlayer(entry.playerName, entry.role, entry.camp, killEventSponsorLogo(entry.video), killEventHoldExtensionMs(entry.video));
@@ -518,6 +743,13 @@ window.addEventListener('message', function(e) {
 
 function enqueueKillEvent(video, priority, playerIdx, playerName, role, camp, teamTricode) {
   if (!featureEnabled.killevents) return;
+  if (killEventIsMct()) {
+    if (!KILL_EVENT_MCT_VIDEO[video]) return;                   /* no MCT video for this one (Double Kill, Perfect Lord) */
+  } else {
+    if (video === 'perfectturtle.webm' || video === 'perfectlord.webm') return;   /* MCT-only */
+    if (video === 'lordsteal.webm') video = 'lordslain.webm';  /* other themes: a steal is just a normal slain */
+    if (video === 'turtlesteal.webm') video = 'turtleslain.webm';
+  }
   /* deduplicate: don't queue if same video is already playing or already queued */
   if (killEventCurrent === video) return;
   if (killEventQueue.some(function(e) { return e.video === video; })) return;

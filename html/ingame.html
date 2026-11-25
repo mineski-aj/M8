@@ -21,6 +21,8 @@
 
   <!-- [FEATURE: kill-events] -->
   <div id="kill-event-overlay">
+    <!-- MCT: the player photo sits BEHIND the webm so the bar's waves/band draw over it (see ket* CSS) -->
+    <div id="ket-photo-clip"><img id="ket-photo" alt=""></div>
     <video id="kill-event-video" preload="auto" muted></video>
     <div id="kill-event-photo-clip">
       <img id="kill-event-photo" alt="">
@@ -44,6 +46,15 @@
          overlay-killevents.js. -->
     <div id="kill-event-teamlogo-clip">
       <img id="kill-event-teamlogo" alt="">
+    </div>
+    <!-- MCT kill-event popup (overlay-killevents.js ket*): photo above the bar, [team logo][role tile][name] on the plate baked into the video,
+         Wiped Out team logo + tricode, sponsor pill. Hidden unless data-theme-name="mct". -->
+    <div id="ket-root">
+      <img id="ket-plate-logo" alt="">
+      <div id="ket-plate-role"><div id="ket-plate-role-glyph"></div></div>
+      <div id="ket-plate-name"></div>
+      <div id="ket-sponsor"><span id="ket-sponsor-txt">SPONSORED BY</span><img id="ket-sponsor-img" alt=""></div>
+      <div id="ket-wo"><img id="ket-wo-logo" alt=""><span id="ket-wo-tri"></span></div>
     </div>
   </div>
 

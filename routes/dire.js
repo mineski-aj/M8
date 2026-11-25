@@ -5,6 +5,7 @@
 //   POST /dire/api/judge     { judgeId } — change the judge ID used by Refresh (saved in data/dire_config.json)
 //   GET /dire/api/status     { running, isDebug, battleId, lastUpdated, lastError, ... }
 //   GET /dire/api/battledata the raw upstream payload (for inspecting)
+//   GET /dire/api/postdata   upstream post-match data (/postdata) for the current battle (?battleid= for another) — buff counts etc.
 const express = require('express');
 const router  = express.Router();
 const dire    = require('../lib/dire');
@@ -27,6 +28,10 @@ router.get('/dire/api/battledata', (req, res) => {
 router.post('/dire/api/judge', (req, res) => {
   try { const judgeId = dire.setJudgeId((req.body || {}).judgeId); noStore(res).json({ success: true, judgeId }); }
   catch (e) { fail(res, e); }
+});
+// Post-match data (upstream /postdata) for the current battle, or ?battleid=. Orange/purple buff counts etc. — postgame.html's MCT scenes.
+router.get('/dire/api/postdata', async (req, res) => {
+  try { const d = await dire.fetchPostData(req.query.battleid); noStore(res).json(d); } catch (e) { fail(res, e); }
 });
 router.get('/dire/api/status', (req, res) => noStore(res).json(dire.status()));
 router.get('/dire/api/refresh', async (req, res) => { try { noStore(res).json({ success: true, data: await dire.refresh() }); } catch (e) { fail(res, e); } });

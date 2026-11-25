@@ -3721,3 +3721,29 @@ html[data-theme-name="mct"] #sidekdadistri-check-clip,
 html[data-theme-name="mct"] #bpmmeter-clip,
 html[data-theme-name="mct"] #stolengold-overlay,
 html[data-theme-name="mct"] #fight-overlay { display: none !important; }
+
+/* ── MCT kill events (overlay-killevents.js ket*) — 1920x1080 canvas coordinates from the C09 Triple Kill / C12 Wipe Out references ── */
+@font-face { font-family: 'Source Han Sans MCT'; font-weight: 400; font-display: block; src: url('/assets/fonts/MCT/SourceHanSans/SourceHanSansCN-Regular.otf') format('opentype'); }
+#ket-root { display: none; position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; z-index: 55; }
+html[data-theme-name="mct"] #ket-root { display: block; }
+html[data-theme-name="mct"] #kill-event-photo-clip, html[data-theme-name="mct"] #kill-event-nametag-clip, html[data-theme-name="mct"] #kill-event-sponsor-logo-clip, html[data-theme-name="mct"] #kill-event-teamlogo-clip { display: none !important; }
+#ket-root > * { position: absolute; opacity: 0; transition: opacity 220ms ease-in, transform 300ms cubic-bezier(.55,0,1,.45); transform: translateY(14px); }
+#ket-root > .ket-in { opacity: 1; transform: none; transition: opacity 300ms ease-out 70ms, transform 480ms cubic-bezier(.16,1,.3,1) 70ms; }
+/* the photo sits above the navy band (z 3 > video 2) but is masked by the webm's light-blue wave (ketApplyMask), so the wave reads as drawn over it */
+#ket-photo-clip { display: none; position: absolute; left: 650px; top: 790px; width: 400px; height: 210px; overflow: hidden; z-index: 3; pointer-events: none; }
+html[data-theme-name="mct"] #ket-photo-clip { display: block; }
+html[data-theme-name="mct"] #kill-event-video { position: relative; z-index: 2; }
+#ket-photo { position: absolute; left: 50px; top: 2px; width: 285px; height: 285px; object-fit: contain; transform: translateY(calc(100% + 12px)); opacity: 0;
+  transition: transform 300ms cubic-bezier(.55,0,1,.45), opacity 220ms ease-in; }
+#ket-photo-clip.ket-in #ket-photo { transform: translateY(0); opacity: 1; transition: transform 480ms cubic-bezier(.16,1,.3,1), opacity 300ms ease-out; }
+#ket-photo.ke-bounce { animation: kill-photo-bounce 400ms ease-out; }
+#ket-plate-logo { left: 727px; top: 1001px; width: 26px; height: 26px; object-fit: contain; }
+#ket-plate-role { left: 757px; top: 1001px; width: 26px; height: 26px; overflow: hidden; }   /* no tile of its own: the plate baked into the webm is the background */
+#ket-plate-role-glyph { position: absolute; left: -7px; top: -6px; width: 40px; height: 38px; background: center / contain no-repeat; }
+#ket-plate-name { left: 796px; top: 1001px; width: 160px; height: 26px; line-height: 26px; white-space: nowrap; overflow: hidden; font: 800 14px/26px 'Monument Ext MCT', sans-serif; color: #050a16; }   /* reference: black, wide heavy face */
+#ket-sponsor { left: 986px; top: 998px; width: 191px; height: 29px; border-radius: 0 0 9px 9px; background: #050d1c; }   /* hangs from the bar: flat top, rounded bottom corners, no border (measured from the reference) */
+#ket-sponsor-txt { position: absolute; left: 19px; top: 0; line-height: 29px; font: 600 10.5px/29px 'General Sans', sans-serif; color: #fff; white-space: nowrap; letter-spacing: .8px; }
+#ket-sponsor-img { position: absolute; left: 116px; top: 5.5px; width: 54px; height: 18px; object-fit: contain; object-position: left center; }
+#ket-wo { left: 868px; top: 998px; width: 184px; height: 29px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+#ket-wo-logo { height: 24px; max-width: 34px; object-fit: contain; }
+#ket-wo-tri { font: 800 15px/29px 'Monument Ext MCT', sans-serif; color: #050a16; text-transform: uppercase; white-space: nowrap; }

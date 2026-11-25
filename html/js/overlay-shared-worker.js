@@ -37,7 +37,7 @@ const KNOWN_EVENTS = [
   'golddiffcheck', 'goldgraphcheck', 'heatmap_config', 'heatmap_style', 'heatmappage', 'headlineticker', 'highlights', 'hrm', 'itemcheck', 'fullscreen', 'ytchat', 'killevent', 'l3lobby', 'lowerthird', 'led_draftpred',
   'led_fight', 'led_health', 'led_side', 'led_win', 'livewinrate', 'mapdetailv2', 'mapselection', 'mapselecttag',
   'match', 'matchboard', 'matchcard', 'meter', 'middleboard', 'mvp', 'p2hpage', 'playerboard', 'playerh2h', 'playerui', 'potm',
-  'h2h_config', 'post_carry', 'post_emblems', 'post_golddistri', 'post_h2h', 'post_heatmap', 'post_hearts', 'post_itemline', 'post_killevents', 'post_itemline_itemin',
+  'h2h_config', 'post_carry', 'post_emblems', 'post_golddistri', 'post_goldgraph', 'post_h2h', 'post_heatmap', 'post_hearts', 'post_itemline', 'post_killevents', 'post_itemline_itemin',
   'post4key', 'post_itemline_itemout', 'post_items', 'post_richguy', 'post_stats', 'reload',
   'scoreboard', 'seat_arrangement', 'sidecheck', 'standings', 'stolengold', 'stylepatch', 'teamfightcheck', 'team_hexagon', 'team_lineup_blue',
   'team_lineup_red', 'theme', 'today_schedule', 'tomorrow_schedule', 'waiting_lobby',

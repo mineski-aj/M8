@@ -8004,7 +8004,7 @@
       "height": "83px"
     },
     "#mvm-hero": {
-      "left": "701px",
+      "left": "681px",
       "top": "-48px",
       "width": "1155.2px",
       "height": "1300px"
@@ -8199,6 +8199,13 @@
       "top": "900px",
       "width": "200px",
       "height": "90px"
+    },
+    "#hmm-photo": {
+      "left": "813px"
+    },
+    "#hmm-hero": {
+      "left": "551px",
+      "top": "-28px"
     }
   }
 }
