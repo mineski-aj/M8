@@ -293,6 +293,12 @@ const featureEnabled = {
   stolengold: true,
   ggc_v2: false, // Gold Graph Check source: false = V1, true = V2 (Gold Info API)
 };
+/* MCT theme: only the overlays/effects that have an MCT look run; the rest are switched off here (their panels are hidden in
+   mploverlay_v7.css too). Kill events are kept (still on the old look). Decided at page load, like every other theme lookup. */
+const MCT_OFF_FEATURES = ['items', 'skypiercer', 'lordadv', 'swap', 'lvl15', 'conceal', 'fights', 'objectivespawn', 'stolengold'];
+if (document.documentElement.getAttribute('data-theme-name') === 'mct') {
+  MCT_OFF_FEATURES.forEach(k => Object.defineProperty(featureEnabled, k, { get: () => false, set: () => {}, enumerable: true, configurable: true }));
+}
 fetch('/overlay/features').then(r => r.json()).then(d => {
   if (d && typeof d === 'object') Object.assign(featureEnabled, d);
 }).catch(() => {});
@@ -341,6 +347,7 @@ async function masterPoll() {
     }
     if (bid) prevBattleId = bid;
     preloadHeroImages(data);
+    if (window.SideSim) window.SideSim.apply(data);   /* debug-bar side-check simulation offsets (no-op unless used) */
     lastData = data;
     pollHandlers.forEach(fn => { try { fn(data); } catch(e) {} });
   } catch(e) {

@@ -1,0 +1,91 @@
+{
+  "talents": [
+    "Odin",
+    "Thea",
+    "Denisse",
+    "Naisou",
+    "Athena",
+    "Hans",
+    "Renmar",
+    "Uomi",
+    "Rockhart",
+    "Brigida",
+    "Midnight",
+    "Qwerty",
+    "Leo",
+    "Joshycakes",
+    "Wolf",
+    "Burrito",
+    "Santie"
+  ],
+  "seatOrder": {
+    "EXP LANER": 1,
+    "JUNGLER": 2,
+    "MID LANER": 3,
+    "ROAMER": 4,
+    "GOLD LANER": 5
+  },
+  "teams": {
+    "ESB": {
+      "name": "ESB TITANS",
+      "tag": "ESB",
+      "coach": ""
+    },
+    "189": {
+      "name": "189 ESPORTS",
+      "tag": "189",
+      "coach": ""
+    },
+    "SGP": {
+      "name": "SAIGON PHANTOM",
+      "tag": "SGP",
+      "coach": ""
+    },
+    "TEN": {
+      "name": "TENACITY",
+      "tag": "TEN",
+      "coach": ""
+    },
+    "EV": {
+      "name": "TEAM EVIL",
+      "tag": "EV",
+      "coach": ""
+    },
+    "3V": {
+      "name": "VENI VIDI VICI",
+      "tag": "3V",
+      "coach": ""
+    },
+    "FCON": {
+      "name": "FALCON ESPORTS",
+      "tag": "FCON",
+      "coach": ""
+    },
+    "BAC": {
+      "name": "BACON TIME",
+      "tag": "BAC",
+      "coach": ""
+    },
+    "VGR": {
+      "name": "VIGOR APEX",
+      "tag": "VGR",
+      "coach": ""
+    },
+    "FLCA": {
+      "name": "TEAM FALCONS ACADEMY",
+      "tag": "FLCA",
+      "coach": ""
+    },
+    "BTRA": {
+      "name": "BIGETRON ACADEMY",
+      "tag": "BTRA",
+      "coach": ""
+    },
+    "SRGA": {
+      "name": "SELANGOR RED GIANTS ACADEMY",
+      "tag": "SRGA",
+      "coach": ""
+    }
+  },
+  "players": {}
+}

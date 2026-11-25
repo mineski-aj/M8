@@ -14,5 +14,8 @@ const sgcPanel = createSideCheck({
   formatStat: seat => sidecheckFormatK(seat && seat.gold),
 });
 
-function sgcAnimateIn()  { sgcPanel.animateIn(); }
-function sgcAnimateOut() { sgcPanel.animateOut(); }
+/* MCT: same "Players" list as Players Damage (createMctPlayersPanel, overlay-sidedamagecheck.js — loads first), only the header art differs. */
+const sgmPanel = createMctPlayersPanel({ rootId: 'sgm-root', titleFile: 'titlegold', statField: 'gold' });
+let sgcActiveMct = false;
+function sgcAnimateIn()  { sgcActiveMct = sdcIsMct(); (sgcActiveMct ? sgmPanel : sgcPanel).animateIn(); }
+function sgcAnimateOut() { (sgcActiveMct ? sgmPanel : sgcPanel).animateOut(); }

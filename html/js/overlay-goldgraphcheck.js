@@ -380,7 +380,9 @@ function ggcRowY(id, fallback) {
   return Number.isFinite(v) ? v : fallback;
 }
 
+let ggcMct = false;   /* true while the MCT panel (overlay-goldgraphmct.js) is the one on air */
 function ggcRenderChart(fullSeries, fullEvents) {
+  if (ggcMct) { ggmPanel.render(fullSeries); return; }
   const svg = document.getElementById('ggc-chart');
   if (!svg) return;
   if (!fullSeries.length) return; /* nothing recorded yet — leave the persistent elements at whatever (blank, pre-first-render) state they're already in */
@@ -709,13 +711,15 @@ function ggcPlayHeaderFlourish() {
 
 function ggcAnimateIn() {
   ggcShouldShow = true;
+  ggcMct = ggmIsMct();
   clearTimeout(ggcOutTimer);
   clearTimeout(ggcRevealTimer);
   clearTimeout(ggcEventsRevealTimer);
   const clip    = document.getElementById('gold-graph-check-clip');
   const overlay = document.getElementById('gold-graph-check-overlay');
   const svg     = document.getElementById('ggc-chart');
-  clip.style.display = 'block';
+  clip.style.display = ggcMct ? 'none' : 'block';
+  if (ggcMct) ggmPanel.show();
 
   /* Arm the event-icon left-to-right fade-in for this show — see the big
      comment on ggcEventsRevealArmed above. The very next ggcRenderChart()
@@ -746,7 +750,7 @@ function ggcAnimateIn() {
   clearInterval(ggcPollTimer);
   ggcPollTimer = setInterval(ggcFetchData, 500);
 
-  requestAnimationFrame(() => requestAnimationFrame(() => {
+  if (!ggcMct) requestAnimationFrame(() => requestAnimationFrame(() => {
     overlay.classList.add('ggc-in');
   }));
 
@@ -761,6 +765,7 @@ function ggcAnimateIn() {
 
 function ggcAnimateOut() {
   ggcShouldShow = false;
+  if (ggcMct) ggmPanel.hide();
   clearInterval(ggcPollTimer);
   ggcPollTimer = null;
   clearTimeout(ggcRevealTimer);

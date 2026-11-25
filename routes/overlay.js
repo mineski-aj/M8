@@ -215,6 +215,41 @@ router.get('/overlay/fights/hide', (req, res) => {
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 
+
+// ── Postgame: chosen MVP + scene-background toggle ───────────────────────
+// MVP pick (MCT MVP scene): which of the 10 players the dashboard chose — { camp: 1|2, seat: 1..5 }, persisted. Read at scene-show time.
+const MVP_PICK_FILE = path.join(__dirname, '..', 'data', 'mvp_pick.json');
+// two independent picks: 'mvp' and 'potm' (Player of the Match). debug = show the built-in sample player (no game / no photos needed)
+let picks = { mvp: { camp: 1, seat: 1, debug: false }, potm: { camp: 1, seat: 1, debug: false } };
+try {
+  const j = JSON.parse(fs.readFileSync(MVP_PICK_FILE, 'utf8'));
+  const ok = x => x && (x.camp === 1 || x.camp === 2) && x.seat >= 1 && x.seat <= 5;
+  if (ok(j)) picks.mvp = { camp: j.camp, seat: j.seat, debug: !!j.debug };                 // old single-pick file
+  ['mvp', 'potm'].forEach(k => { if (ok(j[k])) picks[k] = { camp: j[k].camp, seat: j[k].seat, debug: !!j[k].debug }; });
+} catch (e) {}
+const pickKind = req => ((req.query && req.query.kind) || (req.body && req.body.kind)) === 'potm' ? 'potm' : 'mvp';
+router.get('/api/mvp-pick', (req, res) => res.set('Cache-Control', 'no-store').json(picks[pickKind(req)]));
+router.post('/api/mvp-pick', (req, res) => {
+  const k = pickKind(req), cur = picks[k];
+  const b = req.body || {}, camp = b.camp != null ? parseInt(b.camp, 10) : cur.camp, seat = b.seat != null ? parseInt(b.seat, 10) : cur.seat;
+  if (!(camp === 1 || camp === 2) || !(seat >= 1 && seat <= 5)) return res.status(400).json({ ok: false, error: 'camp 1|2, seat 1-5' });
+  picks[k] = { camp, seat, debug: b.debug != null ? !!b.debug : cur.debug };
+  try { fs.writeFileSync(MVP_PICK_FILE, JSON.stringify(picks)); } catch (e) {}
+  res.set('Cache-Control', 'no-store').json({ ok: true, pick: picks[k] });
+});
+// Scene background: true = each postgame scene's installed background (loop video etc.), false = transparent. Same for M8 and MCT.
+const FS_BG_FILE = path.join(__dirname, '..', 'data', 'fs_background.json');
+let fsBackground = true;
+try { fsBackground = JSON.parse(fs.readFileSync(FS_BG_FILE, 'utf8')).on !== false; } catch (e) {}
+router.get('/api/fs-bg', (req, res) => res.set('Cache-Control', 'no-store').json({ on: fsBackground }));
+['on', 'off'].forEach(v => router.get('/overlay/fs-bg/' + v, (req, res) => {
+  fsBackground = v === 'on';
+  try { fs.writeFileSync(FS_BG_FILE, JSON.stringify({ on: fsBackground })); } catch (e) {}
+  const line = 'event: fsbg\ndata: ' + JSON.stringify({ on: fsBackground }) + '\n\n';
+  state.overlayClients.forEach(c => { try { c.write(line); } catch {} });
+  res.set('Cache-Control', 'no-store').json({ ok: true, on: fsBackground });
+}));
+
 // GET /overlay/check-overlays — current shown/hidden state of the
 // sliding "check" overlays, so the dashboard toggle can restore its
 // position on load instead of guessing.
@@ -222,10 +257,40 @@ router.get('/overlay/check-overlays', (req, res) => {
   res.set({ 'Cache-Control': 'no-store' }).json(state.checkOverlays);
 });
 
+// ── Ingame quadrants ─────────────────────────────────────────────────────
+// Panels that share a quadrant of the Ingame screen must never overlap: showing one first plays the quadrant's current panel OUT
+// (its own normal hide event, so every page + the dashboard toggle follow), then sends the new panel's show after the exit animation.
+// Player UI (spans every quadrant), the scoreboard (alone in the top quadrant) and the automatic effects (kill events, Trinity, Level 4 ...)
+// are not part of this. Keys not listed here are unaffected.
+const QUADRANTS = {
+  bottom: ['itemcheck', 'emblemcheck', 'goldgraphcheck', 'golddiffcheck', 'livewinrate', 'teamfightcheck'],
+  right:  ['sideexpcheck', 'sidetakencheck', 'sidedamagecheck', 'sidegoldcheck', 'sidegolddistricheck', 'sidekdadistricheck'],
+};
+const QUADRANT_EXIT_MS = 800;   // longest panel exit animation (MCT item/emblem hide timer is 750 ms)
+function broadcastCheck(key, action) {
+  const sideKey = QUADRANTS.right.includes(key);
+  const line = sideKey
+    ? 'event: sidecheck\ndata: ' + JSON.stringify({ check: key, action }) + '\n\n'
+    : 'event: ' + key + '\ndata: {"action":"' + action + '"}\n\n';
+  state.overlayClients.forEach(c => { try { c.write(line); } catch {} });
+}
+// Mark `key` shown and broadcast its show — after exiting whatever else is up in the same quadrant.
+function quadrantShow(key) {
+  let delay = 0;
+  Object.keys(QUADRANTS).forEach(q => {
+    if (!QUADRANTS[q].includes(key)) return;
+    QUADRANTS[q].forEach(k => {
+      if (k !== key && state.checkOverlays[k]) { state.checkOverlays[k] = false; broadcastCheck(k, 'hide'); delay = QUADRANT_EXIT_MS; }
+    });
+  });
+  state.checkOverlays[key] = true;
+  if (!delay) { broadcastCheck(key, 'show'); return; }
+  setTimeout(() => { if (state.checkOverlays[key]) broadcastCheck(key, 'show'); }, delay);   // skipped if it was hidden again meanwhile
+}
+
 // GET /overlay/itemcheck/show
 router.get('/overlay/itemcheck/show', (req, res) => {
-  state.checkOverlays.itemcheck = true;
-  state.overlayClients.forEach(c => { try { c.write('event: itemcheck\ndata: {"action":"show"}\n\n'); } catch {} });
+  quadrantShow('itemcheck');
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
 });
 
@@ -238,8 +303,7 @@ router.get('/overlay/itemcheck/hide', (req, res) => {
 
 // GET /overlay/teamfightcheck/show — Live Team Fight damage bar (mploverlay_v7)
 router.get('/overlay/teamfightcheck/show', (req, res) => {
-  state.checkOverlays.teamfightcheck = true;
-  state.overlayClients.forEach(c => { try { c.write('event: teamfightcheck\ndata: {"action":"show"}\n\n'); } catch {} });
+  quadrantShow('teamfightcheck');
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
 });
 
@@ -252,8 +316,7 @@ router.get('/overlay/teamfightcheck/hide', (req, res) => {
 
 // GET /overlay/emblemcheck/show
 router.get('/overlay/emblemcheck/show', (req, res) => {
-  state.checkOverlays.emblemcheck = true;
-  state.overlayClients.forEach(c => { try { c.write('event: emblemcheck\ndata: {"action":"show"}\n\n'); } catch {} });
+  quadrantShow('emblemcheck');
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
 });
 
@@ -266,8 +329,7 @@ router.get('/overlay/emblemcheck/hide', (req, res) => {
 
 // GET /overlay/golddiffcheck/show
 router.get('/overlay/golddiffcheck/show', (req, res) => {
-  state.checkOverlays.golddiffcheck = true;
-  state.overlayClients.forEach(c => { try { c.write('event: golddiffcheck\ndata: {"action":"show"}\n\n'); } catch {} });
+  quadrantShow('golddiffcheck');
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
 });
 
@@ -281,8 +343,7 @@ router.get('/overlay/golddiffcheck/hide', (req, res) => {
 
 // GET /overlay/livewinrate/show
 router.get('/overlay/livewinrate/show', (req, res) => {
-  state.checkOverlays.livewinrate = true;
-  state.overlayClients.forEach(c => { try { c.write('event: livewinrate\ndata: {"action":"show"}\n\n'); } catch {} });
+  quadrantShow('livewinrate');
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
 });
 
@@ -295,8 +356,7 @@ router.get('/overlay/livewinrate/hide', (req, res) => {
 
 // GET /overlay/goldgraphcheck/show
 router.get('/overlay/goldgraphcheck/show', (req, res) => {
-  state.checkOverlays.goldgraphcheck = true;
-  state.overlayClients.forEach(c => { try { c.write('event: goldgraphcheck\ndata: {"action":"show"}\n\n'); } catch {} });
+  quadrantShow('goldgraphcheck');
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
 });
 
@@ -387,9 +447,7 @@ router.get('/overlay/hrm/:slot/hide', (req, res) => {
 const SIDE_CHECK_KEYS = ['sideexpcheck', 'sidetakencheck', 'sidedamagecheck', 'sidegoldcheck', 'sidegolddistricheck', 'sidekdadistricheck'];
 SIDE_CHECK_KEYS.forEach((key) => {
   router.get(`/overlay/${key}/show`, (req, res) => {
-    state.checkOverlays[key] = true;
-    const payload = JSON.stringify({ check: key, action: 'show' });
-    state.overlayClients.forEach(c => { try { c.write(`event: sidecheck\ndata: ${payload}\n\n`); } catch {} });
+    quadrantShow(key);
     res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
   });
 
@@ -516,6 +574,20 @@ router.get('/overlay/mvp/show', (req, res) => {
 router.get('/overlay/mvp/hide', (req, res) => {
   state.mplfsScene.activeFeature = null;
   state.overlayClients.forEach(c => { try { c.write('event: mvp\ndata: {"action":"hide"}\n\n'); } catch {} });
+  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
+});
+
+// GET /overlay/potm/show — Player of the Match (same scene as the MCT MVP, POTM title)
+router.get('/overlay/potm/show', (req, res) => {
+  state.mplfsScene.activeFeature = 'potm';
+  state.overlayClients.forEach(c => { try { c.write('event: potm\ndata: {"action":"show"}\n\n'); } catch {} });
+  res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "show" });
+});
+
+// GET /overlay/potm/hide
+router.get('/overlay/potm/hide', (req, res) => {
+  state.mplfsScene.activeFeature = null;
+  state.overlayClients.forEach(c => { try { c.write('event: potm\ndata: {"action":"hide"}\n\n'); } catch {} });
   res.set({ "Cache-Control": "no-store" }).json({ ok: true, action: "hide" });
 });
 

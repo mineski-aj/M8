@@ -1,71 +1,71 @@
 {
   "home": {
-    "teamId": "10845",
-    "name": "Aurora Gaming PH",
-    "short": "RORA",
+    "teamId": "189",
+    "name": "189 ESPORTS",
+    "short": "189",
     "score": 0,
     "lineup": [
       {
         "role": "EXP LANER",
-        "ign": "Nathzz",
-        "id": "2093991492"
+        "ign": "",
+        "id": ""
       },
       {
         "role": "JUNGLER",
-        "ign": "Koyl",
-        "id": "1478121246"
+        "ign": "",
+        "id": ""
       },
       {
         "role": "MID LANER",
-        "ign": "Yue",
-        "id": "1373200860"
+        "ign": "",
+        "id": ""
       },
       {
         "role": "ROAMER",
-        "ign": "Light",
-        "id": "1478121262"
+        "ign": "",
+        "id": ""
       },
       {
         "role": "GOLD LANER",
-        "ign": "Domeng",
-        "id": "1373200918"
+        "ign": "",
+        "id": ""
       }
     ],
-    "coach": "Master The Basics"
+    "coach": ""
   },
   "away": {
-    "teamId": "10764",
-    "name": "ONIC PH",
-    "short": "ONIC",
+    "teamId": "FCON",
+    "name": "FALCON ESPORTS",
+    "short": "FCON",
     "score": 0,
     "lineup": [
       {
         "role": "EXP LANER",
-        "ign": "Kirk",
-        "id": "1373201033"
+        "ign": "",
+        "id": ""
       },
       {
         "role": "JUNGLER",
-        "ign": "K1NGKONG",
-        "id": "1373201049"
+        "ign": "",
+        "id": ""
       },
       {
         "role": "MID LANER",
-        "ign": "SuperFrince",
-        "id": "1271650280"
+        "ign": "",
+        "id": ""
       },
       {
         "role": "ROAMER",
-        "ign": "Brusko",
-        "id": "1582754254"
+        "ign": "",
+        "id": ""
       },
       {
         "role": "GOLD LANER",
-        "ign": "Savero",
-        "id": "1722728882"
+        "ign": "",
+        "id": ""
       }
     ],
-    "coach": "PHEWW"
+    "coach": ""
   },
   "series": "BO1",
   "game": 1,

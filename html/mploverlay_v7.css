@@ -3670,3 +3670,54 @@ html[data-theme-name="mct"] .ecc-mrune { position: absolute; width: 40px; height
   opacity: 0; transform: scale(.4); transition: opacity 120ms ease-in var(--xd), transform 120ms ease-in var(--xd); }
 html[data-theme-name="mct"] #emblem-check-overlay.ecc-in .ecc-mrune { opacity: 1; transform: none;
   transition: opacity 200ms ease-out calc(var(--d) + var(--id)), transform 420ms cubic-bezier(.34,1.7,.64,1) calc(var(--d) + var(--id)); }
+
+/* ── MCT "Players Damage" side check (overlay-sidedamagecheck.js, #sdm-root) — 1920x1080 canvas coordinates from the C20 reference ── */
+@font-face { font-family: 'Built Titling'; font-weight: 700; font-display: block; src: url('/assets/fonts/MCT/BuiltTitling/built-titling-bd-7.ttf') format('truetype'); }
+@font-face { font-family: 'Source Han Sans MCT'; font-weight: 500; font-display: block; src: url('/assets/fonts/MCT/SourceHanSans/SourceHanSansCN-Medium.otf') format('opentype'); }
+@font-face { font-family: 'Source Han Sans MCT'; font-weight: 900; font-display: block; src: url('/assets/fonts/MCT/SourceHanSans/SourceHanSansCN-Heavy.otf') format('opentype'); }
+#sdm-root, #sgm-root { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; z-index: 500; display: none; overflow: hidden; }
+#sdm-root > *, #sgm-root > * { position: absolute; will-change: transform, opacity; }
+.sdm-herobg { left: 1583px; top: 256px; width: 53px; height: 540px; }
+.sdm-bg { left: 1636px; top: 256px; width: 284px; height: 540px; }
+.sdm-titlebacker { left: 1565px; top: 187px; width: 355px; height: 69px; }
+.sdm-title { left: 1665px; top: 197px; width: 188px; height: 48px; }
+#sgm-root .sdm-title { width: 247px; height: 49px; }
+.sdm-row { left: 1583px; width: 337px; height: 54px; }
+.sdm-row > * { position: absolute; top: 0; line-height: 54px; white-space: nowrap; }
+.sdm-disc { left: 1584px; top: 260.5px; width: 45px; height: 45px; border-radius: 50%; background: #000; }   /* ring centre = (1606.5, 283), measured from mct_playerdamage_herobg.png */
+.sdm-portrait { left: 1px; top: 4px !important; width: 46px; height: 46px; border-radius: 50%; object-fit: cover; line-height: 0; }
+.sdm-rank { left: 70px; font: 900 20px/54px 'Source Han Sans MCT', sans-serif; color: #43fff0; }
+.sdm-num  { left: 119px; font: 700 30px/54px 'Built Titling', 'Anton', sans-serif; color: #fff; letter-spacing: .5px; }
+.sdm-name { left: 197px; width: 132px; font: 500 21px/54px 'Source Han Sans MCT', sans-serif; color: #fff; overflow: hidden; }
+.sdm-row.sdm-first .sdm-rank, .sdm-row.sdm-first .sdm-num { color: #04101e; }
+.sdm-row.sdm-first .sdm-name { color: #04101e; font-weight: 900; }
+
+/* ── MCT "Real Time Gold Graph" (overlay-goldgraphmct.js, #ggm-root) — canvas coords from mct_ingamegoldcurve_reference.png ── */
+@font-face { font-family: 'Monument Ext MCT'; font-weight: 800; font-display: block; src: url('/assets/fonts/MCT/MonumentExtended-Ultrabold.otf') format('opentype'); }
+@font-face { font-family: 'Source Han Sans MCT'; font-weight: 700; font-display: block; src: url('/assets/fonts/MCT/SourceHanSans/SourceHanSansCN-Bold.otf') format('opentype'); }
+#ggm-root { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; z-index: 40; display: none; overflow: hidden; }
+#ggm-root > * { position: absolute; }
+#ggm-backer { left: 610px; top: 748px; width: 701px; height: 309px; }
+#ggm-chart { left: 610px; top: 748px; width: 701px; height: 309px; overflow: visible; }
+#ggm-title { left: 610px; top: 748px; width: 566px; height: 36px; line-height: 36px; text-align: center; white-space: nowrap;
+  font: 800 23.5px/36px 'Monument Ext MCT', sans-serif; color: #7efff0; }
+#ggm-icon { left: 635px; top: 800px; width: 20px; height: 20px; }
+#ggm-mark1, #ggm-mark2 { left: 1157px; width: 12px; height: 12px; }
+#ggm-mark1 { top: 790px; background: #43fff0; }
+#ggm-mark2 { top: 926px; background: #ffe100; }
+.ggm-logo { left: 1193px; width: 100px; height: 100px; object-fit: contain; }
+#ggm-logo1 { top: 802px; }
+#ggm-logo2 { top: 940px; }
+#ggm-chart text { font: 700 13px 'Source Han Sans MCT', sans-serif; fill: #f4eaea; }
+
+/* ── MCT theme: ingame overlays that have no MCT look yet are hidden (kill events stay). See also MCT_OFF_FEATURES in overlay-core.js ── */
+html[data-theme-name="mct"] #teamfight-check-clip,
+html[data-theme-name="mct"] #golddiff-check-clip,
+html[data-theme-name="mct"] #live-winrate-clip,
+html[data-theme-name="mct"] #sideexp-check-clip,
+html[data-theme-name="mct"] #sidetaken-check-clip,
+html[data-theme-name="mct"] #sidegolddistri-check-clip,
+html[data-theme-name="mct"] #sidekdadistri-check-clip,
+html[data-theme-name="mct"] #bpmmeter-clip,
+html[data-theme-name="mct"] #stolengold-overlay,
+html[data-theme-name="mct"] #fight-overlay { display: none !important; }

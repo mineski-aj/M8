@@ -193,7 +193,7 @@
 
   /* ── LOAD ── */
   function loadRoster() {
-    return fetch('/data/mainroster.json', { cache: 'no-store' })
+    return fetch('/api/roster', { cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         roster = data;
@@ -420,6 +420,19 @@
     renderTeams();
   });
 })();
+
+  /* Each theme (M8 / MCT) has its own team database (/api/roster) — reload it when the theme is switched while this page stays mounted. */
+  (function () {
+    var last = null;
+    function chk() {
+      fetch('/api/theme', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (t) {
+        var th = t && t.theme === 'mct' ? 'mct' : 'm8';
+        if (last !== null && th !== last && typeof loadRoster === 'function') loadRoster();
+        last = th;
+      }).catch(function () {});
+    }
+    chk(); setInterval(chk, 4000);
+  })();
 </script>
 </body>
 </html>

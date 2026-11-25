@@ -472,7 +472,7 @@ const LOGOS_DIR = path.join(__dirname, '..', 'assets', 'team', 'logos');
 router.get('/api/team-logos', (req, res) => {
   try {
     const tricodes = fs.readdirSync(LOGOS_DIR)
-      .filter(f => f.endsWith('.png'))
+      .filter(f => f.endsWith('.png') && !/_[23]\.png$/.test(f))   // <TAG>_2 / _3 = black / white variants, not tricodes
       .map(f => f.slice(0, -'.png'.length));
     res.set('Cache-Control', 'no-store').json({ tricodes });
   } catch (e) {

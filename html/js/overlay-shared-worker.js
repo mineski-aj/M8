@@ -33,10 +33,10 @@
 // and will silently never learn the new event otherwise.
 const KNOWN_EVENTS = [
   'bpmmeter', 'bpmmeter_tag', 'bracket', 'consolidated_post', 'consolidated_post_2', 'cp2page', 'credits', 'debugmode', 'debugoff', 'draft', 'draftindex', 'draftphotomode',
-  'draftpredict3', 'draftrecap', 'draftstats', 'emblemcheck', 'featuretoggle', 'fights', 'final_team', 'fs_debugoff', 'fs_hide',
+  'draftpredict3', 'draftrecap', 'draftstats', 'emblemcheck', 'featuretoggle', 'fights', 'fsbg', 'final_team', 'fs_debugoff', 'fs_hide',
   'golddiffcheck', 'goldgraphcheck', 'heatmap_config', 'heatmap_style', 'heatmappage', 'headlineticker', 'highlights', 'hrm', 'itemcheck', 'fullscreen', 'ytchat', 'killevent', 'l3lobby', 'lowerthird', 'led_draftpred',
   'led_fight', 'led_health', 'led_side', 'led_win', 'livewinrate', 'mapdetailv2', 'mapselection', 'mapselecttag',
-  'match', 'matchboard', 'matchcard', 'meter', 'middleboard', 'mvp', 'p2hpage', 'playerboard', 'playerh2h', 'playerui',
+  'match', 'matchboard', 'matchcard', 'meter', 'middleboard', 'mvp', 'p2hpage', 'playerboard', 'playerh2h', 'playerui', 'potm',
   'h2h_config', 'post_carry', 'post_emblems', 'post_golddistri', 'post_h2h', 'post_heatmap', 'post_hearts', 'post_itemline', 'post_killevents', 'post_itemline_itemin',
   'post4key', 'post_itemline_itemout', 'post_items', 'post_richguy', 'post_stats', 'reload',
   'scoreboard', 'seat_arrangement', 'sidecheck', 'standings', 'stolengold', 'stylepatch', 'teamfightcheck', 'team_hexagon', 'team_lineup_blue',

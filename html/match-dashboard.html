@@ -642,7 +642,7 @@
 
   /* ── ROSTER LOADING ── */
   function loadRoster() {
-    return fetch('/data/mainroster.json', { cache: 'no-store' })
+    return fetch('/api/roster', { cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (data) { roster = data; populateTeamDropdowns(); populateTalentSelects(); })
       .catch(function () { console.warn('Could not load mainroster.json'); });
@@ -1345,6 +1345,19 @@
   }
   pollTheme();
   setInterval(pollTheme, 4000);
+
+  /* Each theme (M8 / MCT) has its own team database (/api/roster) — reload it when the theme is switched while this page stays mounted. */
+  (function () {
+    var last = null;
+    function chk() {
+      fetch('/api/theme', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (t) {
+        var th = t && t.theme === 'mct' ? 'mct' : 'm8';
+        if (last !== null && th !== last && typeof loadRoster === 'function') loadRoster();
+        last = th;
+      }).catch(function () {});
+    }
+    chk(); setInterval(chk, 4000);
+  })();
   function matchTypeOf(m) { return m.matchType || (m.star ? 'clash' : 'regular'); }
 
   /* Auto match number: Swiss Stage runs 8 matches a day (Day 1 = 1-8, Day 2 = 9-16 ...); other stages start at 1 each day. */

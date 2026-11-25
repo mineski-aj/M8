@@ -80,9 +80,18 @@ app.get('/mapselection/state', function (req, res) {
   res.json(mapSelectionState.get());
 });
 
-// Team roster — mainroster.json. Reads go through the existing static
-// file serving (GET /mainroster.json, already no-cache'd below); this is
-// just the write side, same dashboard password as match/standings state.
+// Team roster — one database per theme: M8 (theme 'playoffs') = data/mainroster.json, MCT = data/mctroster.json.
+// GET /api/roster returns the current theme's file; POST writes to it (same dashboard password as match/standings state).
+function rosterFile() {
+  return path.join(__dirname, 'data', require('./lib/theme').getTheme() === 'mct' ? 'mctroster.json' : 'mainroster.json');
+}
+app.get('/api/roster', function (req, res) {
+  try {
+    res.set('Cache-Control', 'no-store').json(JSON.parse(fs.readFileSync(rosterFile(), 'utf8')));
+  } catch (e) {
+    res.status(500).json({ error: 'Could not read roster' });
+  }
+});
 app.post('/api/roster', function (req, res) {
   var body  = req.body || {};
   var token = body.token;
@@ -92,10 +101,10 @@ app.post('/api/roster', function (req, res) {
     return res.status(400).json({ error: 'Payload must include teams and players' });
   }
   try {
-    fs.writeFileSync(path.join(__dirname, 'data', 'mainroster.json'), JSON.stringify(data, null, 2));
+    fs.writeFileSync(rosterFile(), JSON.stringify(data, null, 2));
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: 'Could not write mainroster.json' });
+    res.status(500).json({ error: 'Could not write roster' });
   }
 });
 

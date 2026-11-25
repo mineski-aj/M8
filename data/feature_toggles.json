@@ -1,5 +1,5 @@
 {
-  "killevents": false,
+  "killevents": true,
   "items": false,
   "skypiercer": false,
   "lordadv": false,

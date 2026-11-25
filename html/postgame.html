@@ -1562,6 +1562,92 @@
        swapped by campid same as MVP Highlights above. Player data comes
        from the same game-mvp/view API (see hlFetchMvp/hlExtractPlayer);
        match/game number comes from /match/state instead. */
+
+    /* ── MCT MVP scene (#mvm-page) — 1920x1080 canvas coordinates from D01-MVP reference ── */
+    @font-face { font-family: 'Monument Ext MCT'; font-weight: 800; font-display: block; src: url('/assets/fonts/MCT/MonumentExtended-Ultrabold.otf') format('opentype'); }
+    @font-face { font-family: 'Monument Ext MCT'; font-weight: 400; font-display: block; src: url('/assets/fonts/MCT/MonumentExtended-Regular.ttf') format('truetype'); }
+    @font-face { font-family: 'Source Han Sans MCT'; font-weight: 400; font-display: block; src: url('/assets/fonts/MCT/SourceHanSans/SourceHanSansCN-Regular.otf') format('opentype'); }
+    #mvm-page { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: none; overflow: hidden; background: transparent; opacity: 0; transition: opacity 400ms ease; }
+    #mvm-page.mvm-on { display: block; }
+    #mvm-page.mvm-visible { opacity: 1; }
+    #mvm-page > * { position: absolute; }
+    #mvm-hud { z-index: 100; left: 47px; top: 50px; width: 1826px; height: 1017px; pointer-events: none; }
+    #mvm-hud .mvm-hs { position: absolute; background-image: url('/assets/overlay/MCT/postgame/mvp/mvp_hud.png'); background-size: 1826px 1017px; background-repeat: no-repeat; }
+    /* HUD build (same language as the Waiting screen): corner emblems spin/pop in, the footer lines draw outward from the "2026 SEA" text,
+       the end swooshes slide in from the edges, and the text rises letter-slice by letter-slice. */
+    #mvm-page.mvm-visible .mvm-hs-emb { animation: mvmHsEmb 700ms cubic-bezier(.34,1.56,.64,1) 300ms both, mvmHsEmbIdle 7s cubic-bezier(.65,0,.35,1) 2s infinite; }
+    #mvm-page.mvm-visible .mvm-hs-line-l { transform-origin: 100% 50%; animation: mvmHsLine 800ms cubic-bezier(.16,.84,.24,1) 600ms both, mvmHsGlow 3.6s ease-in-out 1.6s infinite; }
+    #mvm-page.mvm-visible .mvm-hs-line-r { transform-origin: 0% 50%; animation: mvmHsLine 800ms cubic-bezier(.16,.84,.24,1) 600ms both, mvmHsGlow 3.6s ease-in-out 1.6s infinite; }
+    #mvm-page.mvm-visible .mvm-hs-sw-l { animation: mvmHsSwL 600ms cubic-bezier(.16,.84,.24,1) 900ms both, mvmHsSwIdleL 5s ease-in-out 1.6s infinite; }
+    #mvm-page.mvm-visible .mvm-hs-sw-r { animation: mvmHsSwR 600ms cubic-bezier(.16,.84,.24,1) 900ms both, mvmHsSwIdleR 5s ease-in-out 1.6s infinite; }
+    #mvm-page.mvm-visible .mvm-hs-txt { animation: mvmHsTxt 520ms cubic-bezier(.16,.84,.24,1) calc(450ms + var(--i) * 40ms) both, mvmHsTrack 7.5s cubic-bezier(.45,0,.25,1) 2.4s infinite; }
+    /* idle motion (loops after the intro): emblems do a full spin every few seconds, footer lines pulse, swooshes drift, and the footer text opens its letter spacing
+       (tracking sweep, like the Waiting screen) every 7.5 s */
+    @keyframes mvmHsEmbIdle { 0%, 66% { transform: rotate(0); filter: drop-shadow(0 0 0 rgba(67,255,240,0)); } 78% { filter: drop-shadow(0 0 9px rgba(67,255,240,.9)); } 100% { transform: rotate(360deg); filter: drop-shadow(0 0 0 rgba(67,255,240,0)); } }
+    @keyframes mvmHsGlow { 0%, 100% { opacity: .7; filter: brightness(1); } 50% { opacity: 1; filter: brightness(1.7); } }
+    @keyframes mvmHsSwIdleL { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(7px); } }
+    @keyframes mvmHsSwIdleR { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-7px); } }
+    @keyframes mvmHsTrack { 0%, 55%, 100% { transform: translateX(0); } 75% { transform: translateX(calc((var(--i) - 4.5) * 5px)); } }
+    @keyframes mvmHsEmb { from { opacity: 0; transform: scale(.2) rotate(-120deg); } to { opacity: 1; transform: none; } }
+    @keyframes mvmHsLine { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
+    @keyframes mvmHsSwL { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
+    @keyframes mvmHsSwR { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+    @keyframes mvmHsTxt { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+    #mvm-logo { left: 129px; top: 29px; width: 219px; height: 71px; }
+    #mvm-container { left: 50px; top: 541px; width: 1898px; height: 500px;
+      /* fades out towards the right end (reference): solid to ~x1050, gone by ~x1450 on the canvas */
+      -webkit-mask-image: linear-gradient(90deg, #000 0, #000 1000px, transparent 1400px); mask-image: linear-gradient(90deg, #000 0, #000 1000px, transparent 1400px); }
+    #mvm-hero { left: 800px; top: 10px; width: 840px; height: 640px; object-fit: contain; object-position: 50% 0; }
+    #mvm-photo { left: 903px; top: 39px; width: 1550px; height: 1550px; object-fit: contain; }   /* 1000x1000 signature photo scaled so the head matches the reference (~450 px hair-to-chin, centred ~x1570,y295); the bottom/right overflow is cropped by the page */
+    #mvm-water { left: 785px; top: 0; width: 1135px; height: 1080px; pointer-events: none; }
+    #mvm-sign { left: 50px; top: 138px; width: 1048px; height: 252px; }
+    #mvm-teamlogo { left: 122px; top: 423px; width: 135px; height: 95px; object-fit: contain; }
+    #mvm-role { left: 272px; top: 437px; width: 66px; height: 66px; border-radius: 4px; background: #47fff0; overflow: hidden; }
+    #mvm-role-glyph { position: absolute; left: -14px; top: -13px; width: 93px; height: 90px; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    #mvm-name { left: 358px; top: 420px; width: 700px; height: 110px; line-height: 110px; white-space: nowrap; font: 800 96px/110px 'Monument Ext MCT', sans-serif; color: #43fff0; }
+    .mvm-label { font: 400 22px/26px 'Source Han Sans MCT', sans-serif; color: #43fff0; text-transform: uppercase; white-space: nowrap; }
+    #mvm-kda-label, #mvm-gpm-label, #mvm-kp-label { width: 360px; text-align: center; top: 564px; }
+    #mvm-kda-label { left: 83px; } #mvm-gpm-label { left: 453px; } #mvm-kp-label { left: 758px; }
+    .mvm-value { width: 400px; height: 80px; text-align: center; white-space: nowrap; font: 800 66px/80px 'Monument Ext MCT', sans-serif; color: #fff; top: 596px; }
+    #mvm-kda { left: 63px; } #mvm-gpm { left: 433px; } #mvm-kp { left: 738px; }
+    .mvm-title { color: #d8fffb; }
+    #mvm-spell-title { left: 104px; top: 708px; } #mvm-emblem-title { left: 282px; top: 708px; } #mvm-items-title { left: 98px; top: 862px; }
+    .mvm-icon { width: 88px; height: 88px; border-radius: 50%; box-sizing: border-box; border: 3px solid #f2cf2e; object-fit: cover; background: #10152c; }
+    #mvm-spell { left: 92px; top: 747px; }
+    #mvm-rune-0 { left: 282px; top: 747px; } #mvm-rune-1 { left: 378px; top: 747px; } #mvm-rune-2 { left: 472px; top: 747px; } #mvm-rune-3 { left: 568px; top: 747px; }
+    #mvm-item-0 { left: 92px; top: 899px; } #mvm-item-1 { left: 187px; top: 899px; } #mvm-item-2 { left: 282px; top: 899px; }
+    #mvm-item-3 { left: 378px; top: 899px; } #mvm-item-4 { left: 473px; top: 899px; } #mvm-item-5 { left: 569px; top: 899px; }
+    #mvm-sponsor-title { left: 760px; width: 400px; text-align: center; top: 863px; }
+    #mvm-sponsor { left: 860px; top: 900px; width: 200px; height: 90px; object-fit: contain; }
+    #mvm-sponsor:not([src]), #mvm-hero:not([src]), #mvm-teamlogo:not([src]), #mvm-photo:not([src]) { visibility: hidden; }
+    /* in: container/hud fade, sign + photo/hero slide, stats rise — one quick staggered build */
+    /* POTM (Player of the Match): same scene, the MVP sign swapped for a recreated POTM title (no art file) — gradient text, blue -> cyan
+       top to bottom, plus a yellow -> orange-red corner on the last letter, like the MVP sign */
+    #mvm-potm-title { left: 50px; top: 118px; width: max-content; height: 260px; white-space: nowrap; font: 800 300px/260px 'Monument Ext MCT', sans-serif; letter-spacing: -4px;
+      background: linear-gradient(115deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 77%, #f4e64a 87%, #ef4f28 100%), linear-gradient(180deg, #4a90e8 0%, #6fd6ea 55%, #78f8e8 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+    #mvm-potm-sub { left: 54px; top: 352px; width: 800px; height: 46px; white-space: nowrap; font: 400 40px/46px 'Monument Ext MCT', sans-serif; color: #fff; letter-spacing: 0; -webkit-text-stroke: 0.5px #fff; }   /* Monument Regular + a hair of stroke = the medium weight in the reference */
+    #mvm-page:not(.mvm-potm) #mvm-potm-title, #mvm-page:not(.mvm-potm) #mvm-potm-sub { display: none; }
+    #mvm-page.mvm-potm #mvm-sign { display: none; }
+    #mvm-page.mvm-visible #mvm-potm-title, #mvm-page.mvm-visible #mvm-potm-sub { animation: mvmFromLeft 600ms cubic-bezier(.16,.84,.24,1) 80ms both; }
+    #mvm-page.mvm-visible #mvm-container, #mvm-page.mvm-visible #mvm-hud { animation: mvmFade 500ms ease both; }
+    #mvm-page.mvm-visible #mvm-sign { animation: mvmFromLeft 600ms cubic-bezier(.16,.84,.24,1) 80ms both; }
+    #mvm-page.mvm-visible #mvm-hero { animation: mvmFade 600ms ease 150ms both; }
+    #mvm-page.mvm-visible #mvm-photo { animation: mvmFromRight 650ms cubic-bezier(.16,.84,.24,1) 120ms both; }
+    #mvm-page.mvm-visible #mvm-water { animation: mvmFade 700ms ease 250ms both; }
+    #mvm-page.mvm-visible #mvm-teamlogo, #mvm-page.mvm-visible #mvm-role, #mvm-page.mvm-visible #mvm-name { animation: mvmRise 520ms cubic-bezier(.16,.84,.24,1) 260ms both; }
+    #mvm-page.mvm-visible .mvm-label, #mvm-page.mvm-visible .mvm-value, #mvm-page.mvm-visible .mvm-icon, #mvm-page.mvm-visible #mvm-sponsor { animation: mvmRise 520ms cubic-bezier(.16,.84,.24,1) 340ms both; }
+    @keyframes mvmFade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes mvmFromLeft { from { opacity: 0; transform: translateX(-120px); } to { opacity: 1; transform: none; } }
+    @keyframes mvmFromRight { from { opacity: 0; transform: translateX(140px); } to { opacity: 1; transform: none; } }
+    @keyframes mvmRise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+    /* Scene background toggle (dashboard Control → Postgame → Scene Background): off = transparent, no installed background loop. */
+    #mct-bg { display: none; position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; object-fit: cover; z-index: 0; pointer-events: none; }
+    html[data-theme-name="mct"] #mct-bg { display: block; }
+    #mct-bg-video { display: none; position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; object-fit: cover; z-index: 0; pointer-events: none; }
+    html[data-theme-name="mct"] #mct-bg-video { display: block; }
+    html[data-theme-name="mct"] #bg-video, html[data-theme-name="mct"] #scene-video-0, html[data-theme-name="mct"] #scene-video-1 { display: none !important; }
+    html.fs-nobg #mct-bg, html.fs-nobg #mct-bg-video, html.fs-nobg #bg-video, html.fs-nobg #scene-video-0, html.fs-nobg #scene-video-1, html.fs-nobg #credits-bg-v2 { display: none !important; }
     #mvp-page {
       position: absolute;
       top: 0; left: 0;
@@ -5020,6 +5106,9 @@
          preload="auto" (default browser behavior without one) still renders
          its first frame as a static backdrop instead of a blank rectangle. -->
     <video id="bg-video" src="/assets/webm/bgloop.webm" loop muted playsinline></video>
+    <!-- MCT theme: background for every postgame scene (replaces the loop videos). A webm will replace this PNG later — swap the element or its src. -->
+    <img id="mct-bg" src="/assets/overlay/MCT/postgame/mvp/mvp_background.png" alt="">   <!-- still frame: idle / fallback while the loop below is paused -->
+    <video id="mct-bg-video" src="/assets/webm/MCT-FHD-BG%20LOOP.webm" loop muted playsinline preload="auto"></video>
     <!-- Shared background for the 5 video-backed scenes below (Waiting
          Screen TVC, Waiting Lobby, Team Hexagon, Today's Schedule,
          Standings) — two stacked layers (crossfade pattern, same idea as
@@ -5387,6 +5476,36 @@
         <div id="pc-visa-header-text">THE CARRY</div>
       </div>
     </div>
+    <!-- MCT MVP scene (mvmShow in the MVP block below): used instead of #mvp-page when data-theme-name="mct". Every element is its own absolute child so the Edit tab can move it. -->
+    <div id="mvm-page">
+      <img id="mvm-logo" src="/assets/overlay/MCT/postgame/mvp/mvp_logomct.png" alt="">
+      <img id="mvm-hero" src="" alt="">
+      <img id="mvm-container" src="/assets/overlay/MCT/postgame/mvp/mvp_container.png" alt="">
+      <img id="mvm-photo" src="" alt="">
+      <img id="mvm-water" src="/assets/overlay/MCT/postgame/mvp/mvp_frontwater.png" alt="">
+      <img id="mvm-sign" src="/assets/overlay/MCT/postgame/mvp/mvp_mvpsign.png" alt="">
+      <div id="mvm-potm-title">POTM</div>
+      <div id="mvm-potm-sub">PLAYER OF THE MATCH</div>
+      <img id="mvm-teamlogo" src="" alt="">
+      <div id="mvm-role"><div id="mvm-role-glyph"></div></div>
+      <div id="mvm-name"></div>
+      <div id="mvm-kda-label" class="mvm-label">KDA</div><div id="mvm-kda" class="mvm-value">-/-/-</div>
+      <div id="mvm-gpm-label" class="mvm-label">GPM</div><div id="mvm-gpm" class="mvm-value">-</div>
+      <div id="mvm-kp-label" class="mvm-label">KILL PARTICIPATION</div><div id="mvm-kp" class="mvm-value">-</div>
+      <div id="mvm-spell-title" class="mvm-label mvm-title">SPELL</div>
+      <img id="mvm-spell" class="mvm-icon" src="" alt="">
+      <div id="mvm-emblem-title" class="mvm-label mvm-title">EMBLEM</div>
+      <img id="mvm-rune-0" class="mvm-icon mvm-rune" src="" alt=""><img id="mvm-rune-1" class="mvm-icon mvm-rune" src="" alt="">
+      <img id="mvm-rune-2" class="mvm-icon mvm-rune" src="" alt=""><img id="mvm-rune-3" class="mvm-icon mvm-rune" src="" alt="">
+      <div id="mvm-items-title" class="mvm-label mvm-title">EQUIPMENT</div>
+      <img id="mvm-item-0" class="mvm-icon mvm-item" src="" alt=""><img id="mvm-item-1" class="mvm-icon mvm-item" src="" alt="">
+      <img id="mvm-item-2" class="mvm-icon mvm-item" src="" alt=""><img id="mvm-item-3" class="mvm-icon mvm-item" src="" alt="">
+      <img id="mvm-item-4" class="mvm-icon mvm-item" src="" alt=""><img id="mvm-item-5" class="mvm-icon mvm-item" src="" alt="">
+      <div id="mvm-sponsor-title" class="mvm-label mvm-title">SPONSORED BY</div>
+      <img id="mvm-sponsor" src="" alt="">
+      <!-- HUD (one PNG, cut into pieces so each animates on its own) — sits on top of everything -->
+      <div id="mvm-hud"><div class="mvm-hs mvm-hs-emb mvm-hs-emb-l" style="left:-3px;top:-4px;width:42px;height:42px;background-position:3px 4px;"></div><div class="mvm-hs mvm-hs-emb mvm-hs-emb-r" style="left:1787px;top:-4px;width:42px;height:42px;background-position:-1787px 4px;"></div><div class="mvm-hs mvm-hs-sw mvm-hs-sw-l" style="left:1px;top:996px;width:42px;height:22px;background-position:-1px -996px;"></div><div class="mvm-hs mvm-hs-line mvm-hs-line-l" style="left:43px;top:996px;width:768px;height:22px;background-position:-43px -996px;"></div><div class="mvm-hs mvm-hs-line mvm-hs-line-r" style="left:1015px;top:996px;width:770px;height:22px;background-position:-1015px -996px;"></div><div class="mvm-hs mvm-hs-sw mvm-hs-sw-r" style="left:1785px;top:996px;width:42px;height:22px;background-position:-1785px -996px;"></div><div class="mvm-hs mvm-hs-txt" style="left:833px;top:990px;width:16px;height:36px;background-position:-833px -990px;--i:0;"></div><div class="mvm-hs mvm-hs-txt" style="left:849px;top:990px;width:16px;height:36px;background-position:-849px -990px;--i:1;"></div><div class="mvm-hs mvm-hs-txt" style="left:865px;top:990px;width:16px;height:36px;background-position:-865px -990px;--i:2;"></div><div class="mvm-hs mvm-hs-txt" style="left:881px;top:990px;width:16px;height:36px;background-position:-881px -990px;--i:3;"></div><div class="mvm-hs mvm-hs-txt" style="left:897px;top:990px;width:16px;height:36px;background-position:-897px -990px;--i:4;"></div><div class="mvm-hs mvm-hs-txt" style="left:913px;top:990px;width:16px;height:36px;background-position:-913px -990px;--i:5;"></div><div class="mvm-hs mvm-hs-txt" style="left:929px;top:990px;width:16px;height:36px;background-position:-929px -990px;--i:6;"></div><div class="mvm-hs mvm-hs-txt" style="left:945px;top:990px;width:16px;height:36px;background-position:-945px -990px;--i:7;"></div><div class="mvm-hs mvm-hs-txt" style="left:961px;top:990px;width:16px;height:36px;background-position:-961px -990px;--i:8;"></div><div class="mvm-hs mvm-hs-txt" style="left:977px;top:990px;width:16px;height:36px;background-position:-977px -990px;--i:9;"></div></div>
+    </div>
     <div id="mvp-page">
       <video id="mv-broll" muted loop playsinline preload="auto"></video>
       <div id="mv-broll-tint"></div>
@@ -5638,6 +5757,8 @@
     function buildUrl(path) {
       return window.location.origin + path;
     }
+    /* scene background on/off (dashboard Control → Postgame → Scene Background) — restore on load, live via the 'fsbg' event */
+    fetch('/api/fs-bg', { cache: 'no-store' }).then(r => r.json()).then(d => document.documentElement.classList.toggle('fs-nobg', d && d.on === false)).catch(() => {});
 
 
     const urlStatus = document.getElementById('url-status');
@@ -5876,6 +5997,7 @@
       // several overlay browser sources/tabs open at once no longer eats
       // into the browser's shared connection pool per page.
       sseSource = createOverlaySSE();
+      sseSource.addEventListener('fsbg', (e) => { try { document.documentElement.classList.toggle('fs-nobg', JSON.parse(e.data).on === false); } catch (err) {} });
       sseSource.addEventListener('theme', (e) => { applyTheme(JSON.parse(e.data).theme); applyBgVideoTheme(); applyMvBoxBgTheme(); });
 
       sseSource.onopen = () => {
@@ -5947,6 +6069,14 @@
         if (msg.action === 'show') {
           document.getElementById('config-bar').classList.remove('debug-open');
           setTimeout(showHighlights, 100);
+        } else if (msg.action === 'hide') hideActiveFeature();
+      });
+
+      sseSource.addEventListener('potm', (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.action === 'show') {
+          document.getElementById('config-bar').classList.remove('debug-open');
+          setTimeout(showPotmScene, 100);
         } else if (msg.action === 'hide') hideActiveFeature();
       });
 
@@ -6945,7 +7075,13 @@
       el.style.transform = zoom ? 'scale(1.12)' : '';
     }
 
+    /* MCT theme: one shared background loop (assets/webm/MCT-FHD-BG LOOP.webm) for every postgame scene — plays while a scene is up, pauses
+       (frozen on its frame) shortly after the scene hides to save the GPU. The scene-video layers are hidden under MCT. */
+    let mctBgPauseTimer = null;
+    function mctBgPlay() { const v = document.getElementById('mct-bg-video'); clearTimeout(mctBgPauseTimer); if (v) v.play().catch(() => {}); }
+    function mctBgPauseSoon() { const v = document.getElementById('mct-bg-video'); clearTimeout(mctBgPauseTimer); mctBgPauseTimer = setTimeout(() => { if (v && !sceneVideoVisible) v.pause(); }, 500); }
     function showSceneVideo(feature) {
+      if (document.documentElement.getAttribute('data-theme-name') === 'mct') { sceneVideoVisible = true; mctBgPlay(); return; }
       if (feature === 'credits' && crOwnBg()) { hideSceneVideo(); return; }   // Credit Reel V2 (playoffs): background is creditsbg.png, nothing underneath
       const src = getSceneVideoSrc(feature);
       const clipPx = (feature === 'credits' && crUseV2()) ? 1440 : 0;
@@ -7009,6 +7145,7 @@
     }
 
     function hideSceneVideo() {
+      if (document.documentElement.getAttribute('data-theme-name') === 'mct') { sceneVideoVisible = false; mctBgPauseSoon(); return; }
       if (sceneVideoHandoff) return; /* incoming scene's showSceneVideo takes over — see sceneVideoHandoff */
       ++sceneVideoSwapToken; /* cancel any crossfade still in progress */
       sceneVideoVisible = false;
@@ -8196,11 +8333,137 @@
        after the trigger. */
     const MV_V2_ELEMENTS_DELAY_MS = 1000;
 
-    function showMvpScene()   { mvForce = null;  return mvShowImpl(); }
+    /* ════════════════════════════════════════════════
+       MCT MVP scene (#mvm-page) — shares the 'mvp' feature slot; mvShowImpl/hideMvpScene delegate here under the MCT theme.
+       Player = the one chosen in the dashboard (Control → Postgame → MVP Scene → MVP Player, /api/mvp-pick), read from the live game feed
+       (/api/gamedata-proxy). With the pick's "debug" flag on (or no feed at all in a preview) a built-in sample player is used instead, so the
+       scene can be tested without a game or player photos. A missing signature photo shows assets/photo/placeholder.png.
+       ════════════════════════════════════════════════ */
+    const mvmPage = document.getElementById('mvm-page');
+    const MVM_SAMPLE = { name: 'Kairi', heroid: 91, role: 'gold_laner', team_simple_name: 'RORA', skillid: 20080, rune_id: 20001, rune_map_1: 811, rune_map_2: 821, rune_map_3: 731,
+      kp: 75, extra_param: { kda: '20/1/20', gpm: 1082 }, equip_list: [{ value: 1002 }, { value: 2104 }, { value: 2105 }, { value: 2306 }, { value: 3105 }, { value: 3104 }] };
+    const mvmGlyphCache = {};
+    /* Role glyphs live in the middle of the MCT ingame Item Check rows (mct_item<lane>.png, 1084x52, glyph column x 516-568). Cut the glyph out
+       of the blue column by its brightness so it can be re-coloured and scaled up as a mask. */
+    function mvmRoleGlyph(roleStr) {
+      const lane = { 'GOLD LANER': 'gold', 'EXP LANER': 'exp', 'MID LANER': 'mid', 'ROAMER': 'roam', 'JUNGLER': 'jungle' }[roleFile(roleStr)] || '';
+      if (!lane) return Promise.resolve('');
+      if (mvmGlyphCache[lane]) return mvmGlyphCache[lane];
+      return (mvmGlyphCache[lane] = new Promise(res => {
+        const im = new Image();
+        im.onload = () => {
+          try {
+            /* "Redraw": the 52 px source glyph is up-sampled 8x with smoothing + a blur, then hard-thresholded on brightness, which turns the
+               pixel staircase into smooth vector-like contours (a plain scale-up of the raster looked jagged). */
+            const K = 8, W = 52, H = 52, c = document.createElement('canvas'); c.width = W * K; c.height = H * K;
+            const x = c.getContext('2d', { willReadFrequently: true });
+            x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.filter = 'blur(' + (K * 0.45) + 'px)';
+            x.drawImage(im, 516, 0, W, H, 0, 0, W * K, H * K);
+            x.filter = 'none';
+            const d = x.getImageData(0, 0, W * K, H * K), px = d.data;
+            for (let i = 0; i < px.length; i += 4) { const a = Math.max(0, Math.min(1, (px[i + 1] - 105) / 26)); px[i] = px[i + 1] = px[i + 2] = 255; px[i + 3] = Math.round(a * 255); }
+            x.putImageData(d, 0, 0); res(c.toDataURL());
+          } catch (e) { res(''); }
+        };
+        im.onerror = () => res('');
+        im.src = '/assets/overlay/M8/Ingame/mct_item' + lane + '.png';
+      }));
+    }
+    async function mvmFetchPlayer() {
+      let pick = { camp: 1, seat: 1, debug: false };
+      try { pick = await (await fetch(buildUrl('/api/mvp-pick?kind=' + (mvmPotm ? 'potm' : 'mvp')), { cache: 'no-store' })).json(); } catch (e) {}
+      if (pick.debug) return Object.assign({ campid: 1 }, MVM_SAMPLE);
+      try {
+        const raw = await (await fetch(buildUrl('/api/gamedata-proxy?fresh=1'), { cache: 'no-store' })).json();
+        const d = raw.data || raw;   /* wrapped as { code, data } */
+        const camp = (d.camp_list || []).find(c => c.campid === pick.camp);
+        const seat = camp && camp['seat_' + pick.seat];
+        if (seat && seat.name) return seat;
+      } catch (e) {}
+      return isPreviewFrame ? Object.assign({ campid: 1 }, MVM_SAMPLE) : null;   /* preview with no feed: sample; on air with no feed: nothing to show */
+    }
+    function mvmSetIcon(id, url) {
+      const el = document.getElementById(id);
+      el.onerror = () => { el.style.visibility = 'hidden'; };
+      el.style.visibility = url ? '' : 'hidden';
+      if (url) el.src = url; else el.removeAttribute('src');
+    }
+    function mvmFitName(el) {
+      let px = 96; el.style.fontSize = px + 'px';
+      while (el.scrollWidth > 700 && px > 40) { px -= 2; el.style.fontSize = px + 'px'; }
+    }
+    let mvmSponsorTimer = null;
+    function mvmStartSponsor() {
+      clearTimeout(mvmSponsorTimer);
+      const img = document.getElementById('mvm-sponsor');
+      fetch('/api/sponsors' + SponsorSet.qs()).then(r => r.json()).then(list => {
+        if (!list || !list.length) { img.removeAttribute('src'); return; }
+        let i = 0;
+        (function next() {
+          if (!mvmPage.classList.contains('mvm-on')) return;
+          const sp = list[i % list.length]; i++;
+          img.src = sp.src;
+          mvmSponsorTimer = setTimeout(next, Math.max(2500, sp.dur || 4000));
+        })();
+      }).catch(() => {});
+    }
+    async function mvmApply(pl) {
+      const ep = pl.extra_param || {};
+      document.getElementById('mvm-name').textContent = pl.name || '';
+      mvmSetIcon('mvm-hero', mvHeroImgUrl(pl.heroid));
+      /* team logo: the white version (<TAG>_3.png) like the reference, else the normal one */
+      { const tl = document.getElementById('mvm-teamlogo'), tag = pl.team_simple_name ? encodeURIComponent(String(pl.team_simple_name).toUpperCase()) : '';
+        tl.style.visibility = tag ? '' : 'hidden';
+        tl.onerror = () => { tl.onerror = () => { tl.style.visibility = 'hidden'; }; tl.src = '/assets/team/logos/' + tag + '.png'; };
+        if (tag) tl.src = '/assets/team/logos/' + tag + '_3.png'; else tl.removeAttribute('src'); }
+      /* signature photo, else the placeholder (no player photos yet) */
+      const ph = document.getElementById('mvm-photo');
+      ph.style.visibility = '';
+      ph.onerror = () => { ph.onerror = () => { ph.style.visibility = 'hidden'; }; ph.src = '/assets/photo/placeholder.png'; };
+      ph.src = hlPhotoUrl(pl.name) || '/assets/photo/placeholder.png';
+      const glyph = await mvmRoleGlyph(pl.role);
+      document.getElementById('mvm-role-glyph').style.webkitMaskImage = document.getElementById('mvm-role-glyph').style.maskImage = glyph ? 'url(' + glyph + ')' : 'none';
+      document.getElementById('mvm-kda').textContent = ep.kda || pl.kda || '-/-/-';
+      document.getElementById('mvm-gpm').textContent = ep.gpm != null ? String(ep.gpm) : (pl.gpm != null ? String(pl.gpm) : '-');
+      document.getElementById('mvm-kp').textContent = pl.kp != null ? Math.round(pl.kp) + '%' : '-';
+      mvmSetIcon('mvm-spell', ftSpellUrl(pl.skillid) || '');
+      const rm = pl.rune_map || {};
+      [pl.rune_id, pl.rune_map_1 || rm['1'], pl.rune_map_2 || rm['2'], pl.rune_map_3 || rm['3']].forEach((r, i) => mvmSetIcon('mvm-rune-' + i, mvRuneUrl(r)));
+      const items = pl.equip_list || [];
+      for (let i = 0; i < 6; i++) mvmSetIcon('mvm-item-' + i, items[i] && items[i].value ? '/assets/game/items/' + items[i].value + '.png' : '');
+    }
+    let mvmPotm = false;   /* true = Player of the Match title (showPotmScene), false = MVP */
+    function showPotmScene() { mvmPotm = true; return mvmShowImpl(); }
+    async function mvmShowImpl() {
+      mvmPage.classList.toggle('mvm-potm', mvmPotm);
+      const playerPromise = mvmFetchPlayer();
+      await transitionTo('mvp');
+      const pl = await playerPromise;
+      if (activeFeature !== 'mvp') return;
+      if (!pl) return;
+      await mvmApply(pl);
+      await preloadMedia(mvmPage.querySelectorAll('img'), 1500);
+      if (activeFeature !== 'mvp') return;
+      showSceneVideo('mvp');
+      mvmPage.classList.add('mvm-on');
+      mvmFitName(document.getElementById('mvm-name'));
+      if (mvmPotm) { const t = document.getElementById('mvm-potm-title'); let px = 300; t.style.fontSize = px + 'px'; while (t.offsetWidth > 1060 && px > 120) { px -= 4; t.style.fontSize = px + 'px'; } }
+      mvmStartSponsor();
+      void mvmPage.offsetWidth;
+      mvmPage.classList.add('mvm-visible');
+    }
+    function mvmHide() {
+      mvmPage.classList.remove('mvm-visible');
+      return new Promise(resolve => setTimeout(() => { mvmPage.classList.remove('mvm-on'); clearTimeout(mvmSponsorTimer); resolve(); }, 420));
+    }
+    function mvIsMct() { return document.documentElement.getAttribute('data-theme-name') === 'mct'; }
+
+    function showMvpScene()   { mvForce = null; mvmPotm = false; return mvShowImpl(); }
     function showMvpSceneV1() { mvForce = false; return mvShowImpl(); }
     function showMvpSceneV2() { mvForce = true;  return mvShowImpl(); }
 
     async function mvShowImpl() {
+      if (mvIsMct()) return mvmShowImpl();
       await mvFeaturesReady;
       const v2 = mvUseV2();
       const t0 = performance.now();
@@ -8234,7 +8497,8 @@
     function hideMvpScene() {
       activeFeature = null;
       mvPage.classList.remove('mv-visible');
-      return new Promise(resolve => {
+      const mvmDone = mvmHide();
+      return Promise.all([mvmDone, new Promise(resolve => {
         setTimeout(() => {
           mvPage.classList.remove('mv-on');
           hideSceneVideo();
@@ -8243,7 +8507,7 @@
           mvPage.classList.remove('mv-red');
           resolve();
         }, 420);
-      });
+      })]);
     }
 
     /* ════════════════════════════════════════════════
@@ -13770,6 +14034,7 @@
           else if (scene.activeFeature === 'richguy')  fetchAndShowRichguy();
           else if (scene.activeFeature === 'highlights') showHighlights();
           else if (scene.activeFeature === 'mvp')        showMvpScene();
+          else if (scene.activeFeature === 'potm')       showPotmScene();
           else if (scene.activeFeature === 'credits')    showCreditsScene();
           else if (scene.activeFeature === 'tomorrow') showTomorrowSchedule();
           else if (!scene.activeFeature)                hideActiveFeature();
@@ -13820,6 +14085,7 @@
         if (event === 'post_richguy')  fetchAndShowRichguy();
         if (event === 'highlights') showHighlights();
         if (event === 'mvp')        showMvpScene();
+        if (event === 'potm')       showPotmScene();
         if (event === 'tomorrow_schedule') showTomorrowSchedule();
         if (event === 'post_emblems')  showPostEmblems();
         if (event === 'post_items')    showPostItems();
@@ -13958,6 +14224,7 @@
         tomorrow_schedule:   { fn: 'showTomorrowSchedule',  label: "Tomorrow's Schedule",  active: 'tomorrow' },
         highlights:          { fn: 'showHighlights',        label: 'MVP Highlights',       active: 'highlights' },
         mvp:                 { fn: 'showMvpScene',          label: 'MVP Scene',            active: 'mvp' },
+        potm:                { fn: 'showPotmScene',         label: 'POTM',                 active: 'mvp' },
         credits:             { fn: 'showCreditsScene',      label: 'Credit Reel',          active: 'credits' },
         /* Resolve after the intro clip; the reveal itself is scheduled
            later, so no "is it active yet" check — only errors/timeouts. */

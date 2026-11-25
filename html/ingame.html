@@ -119,6 +119,8 @@
 
   <!-- [FEATURE: goldgraph-check] built dynamically via ggcBuildPanel().
        Same fixed-clip / sliding-inner pattern as item-check. -->
+  <!-- MCT Real Time Gold Graph (overlay-goldgraphmct.js) — used instead of #gold-graph-check-clip when data-theme-name="mct" -->
+  <div id="ggm-root"></div>
   <div id="gold-graph-check-clip">
     <div id="gold-graph-check-overlay"></div>
   </div>
@@ -142,6 +144,9 @@
   <div id="sidedamage-check-clip" class="sidecheck-clip">
     <div id="sidedamage-check-overlay" class="sidecheck-overlay"></div>
   </div>
+  <!-- MCT Players Damage panel (overlay-sidedamagecheck.js builds it; used instead of #sidedamage-check-clip when data-theme-name="mct") -->
+  <div id="sdm-root"></div>
+  <div id="sgm-root"></div>
   <div id="sidegold-check-clip" class="sidecheck-clip">
     <div id="sidegold-check-overlay" class="sidecheck-overlay"></div>
   </div>
@@ -226,6 +231,7 @@
       <button class="tab-btn"        data-tab="objectivespawn">OBJECTIVE SPAWN</button>
       <button class="tab-btn"        data-tab="stolengold">STOLEN GOLD</button>
       <button class="tab-btn"        data-tab="lordadv">LORD ADVANTAGE</button>
+      <button class="tab-btn"        data-tab="sidesim">SIDE CHECK</button>
     </div>
 
     <!-- Level 15 tab -->
@@ -294,6 +300,12 @@
       <div class="debug-team" id="lordadv-debug-btns"></div>
     </div>
 
+    <!-- Side check simulator: nudge damage/gold so players overtake each other (debug only) -->
+    <div id="tab-sidesim" class="tab-content">
+      <span class="section-note">SIMULATE OVERTAKES IN PLAYERS DAMAGE / GOLD — SHOW THE SIDE CHECK FROM THE DASHBOARD, THEN NUDGE VALUES HERE (LOCAL ONLY, RESET CLEARS)</span>
+      <div id="sidesim-ui" style="margin-top:6px;"></div>
+    </div>
+
     <!-- Kill events tab [FEATURE: kill-events] -->
     <div id="tab-killevents" class="tab-content">
       <span class="section-note">MANUALLY TRIGGER KILL EVENT VIDEOS</span>
@@ -347,8 +359,10 @@
 <script src="html/js/overlay-teamfightcheck.js"></script>
 <script src="html/js/overlay-emblemcheck.js"></script>
 <script src="html/js/overlay-golddiffcheck.js"></script>
+<script src="html/js/overlay-goldgraphmct.js"></script>
 <script src="html/js/overlay-goldgraphcheck.js"></script>
 <script src="html/js/overlay-livewinrate.js"></script>
+<script src="html/js/overlay-sidesim.js"></script>
 <script src="html/js/overlay-sidecheck-core.js"></script>
 <script src="html/js/overlay-sideexpcheck.js"></script>
 <script src="html/js/overlay-sidetakencheck.js"></script>

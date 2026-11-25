@@ -901,7 +901,7 @@
 <div id="copy-tooltip"></div>
 
 <header>
-  <h1>Overlay Dashboard</h1>
+  <h1 id="dash-title">MCT/M8 Dashboard</h1>
   <div id="server-status">
     <div class="status-dot" id="srv-dot"></div>
     <span id="srv-label">Checking server…</span>
@@ -914,10 +914,10 @@
   <button class="tab-btn" data-page="matchboard">Match Board</button>
   <button class="tab-btn" data-page="arrangement">Arrangement</button>
   <button class="tab-btn active" data-page="control">Control</button>
-  <button class="tab-btn" data-page="dynamic">Dynamic</button>
+  <button class="tab-btn" data-page="dynamic" style="display:none">Dynamic</button>
   <button class="tab-btn" data-page="roster">Roster</button>
   <button class="tab-btn" data-page="sponsors">Sponsors</button>
-  <button class="tab-btn" data-page="livecomments">Live Comments</button>
+  <button class="tab-btn" data-page="livecomments" style="display:none">Live Comments</button>
   <button class="tab-btn" data-page="edit">Edit</button>
   <button class="tab-btn" data-page="settings">Settings</button>
   <button class="tab-btn" data-page="logs" id="logs-tab-btn">Logs<span id="logs-tab-badge"></span></button>
@@ -1728,8 +1728,10 @@
   var currentTheme = 'playoffs';
 
   function applyThemeSelect(theme) {
+    var changed = theme !== currentTheme;
     currentTheme = theme;
     themeSelect.value = theme;
+    if (changed && window.__rebuildControlForTheme) window.__rebuildControlForTheme();
   }
 
   fetch('/api/theme').then(function(r){ return r.json(); }).then(function(d){
@@ -2155,6 +2157,7 @@
     team_hexagon:   'hexagon',
     highlights:     'highlights',
     mvp:            'mvp',
+    potm:           'potm',
     credits:        'credits',
     final_team:     'finalteam',
     team_lineup_blue: 'lineupblue',
@@ -2177,7 +2180,7 @@
     waiting: 'Waiting Screen TVC', lobby: 'Waiting Lobby',
     schedule: "Today's Schedule", tomorrow: "Tomorrow's Schedule",
     standings: 'Standings', hexagon: 'Team Hexagon', highlights: 'MVP Highlights',
-    mvp: 'MVP Scene', credits: 'Credit Reel', finalteam: 'Final Team',
+    mvp: 'MVP Scene', potm: 'POTM', credits: 'Credit Reel', finalteam: 'Final Team',
     lineupblue: 'Team Line-Up — Blue', lineupred: 'Team Line-Up — Red',
     consolidated_post: 'Consolidated Post', consolidated_post_2: 'Consolidated Post 2',
     post4key: 'Post 4 Key', golddistri: 'Post Gold Distribution', killevents: 'Post Kill Events', heatmap: 'Post Heatmap', post_h2h: 'Post H2H',
@@ -2658,17 +2661,19 @@
       file: 'postgame.html',
       globalHide: '/overlay/fs/hide',
       mplfsLiveIndicator: true,
+      sceneBgToggle: true,   /* Scene Background: installed background vs transparent, all postgame scenes (M8 + MCT) */
       heatmapControls: true,
       h2hControls: true,
       /* Control-tab grouping (collapsible sections, see buildFeatureList).
          Listed by feat.name; anything not listed lands in "Other" at the
          bottom — so a renamed/new feature is still visible, just ungrouped. */
+      /* MAIN broadcast: only these scenes are listed (everything else in `features` below is kept, just not shown). Order = this list. */
+      featureShown: ['MVP Scene', 'POTM', 'Post 4 Key', 'Consolidated Post 2' /* = the gold graph scene */, 'Post Heatmap', 'Post H2H', 'Post Gold Distribution'],
       featureSections: [
-        { name: 'Post Game', features: ['Matchboard', 'Post Timeline', 'Consolidated Post 2', 'MVP Scene', 'MVP Highlights', 'Post Carry', 'Post 4 Key', 'Post H2H', 'Post Heatmap', 'Post Gold Distribution', 'Post Kill Events', "Tomorrow's Schedule", 'Credit Reel'] },
-        /* Rarely used — still fully working, just tucked away (collapsed until opened). */
-        { name: 'Hidden', collapsed: true, features: ['Middleboard', 'Playerboard', 'Post Hearts', 'Post Emblem', 'Post Items', 'Post Stats', 'Rich Guy', 'Consolidated Post'] },
+        { name: 'Post Game', features: ['MVP Scene', 'POTM', 'Post 4 Key', 'Consolidated Post 2', 'Post Heatmap', 'Post H2H', 'Post Gold Distribution'] },
       ],
       features: [
+        { name: 'POTM', show: '/overlay/potm/show', hide: '/overlay/potm/hide', mvpPicker: 'potm' },   /* Player of the Match = the MCT MVP scene with a POTM title */
         { name: 'Matchboard',   show: '/overlay/matchboard/show',    hide: '/overlay/matchboard/hide'    },
         { name: 'Middleboard',   show: '/overlay/middleboard/show',   hide: '/overlay/middleboard/hide'   },
         { name: 'Playerboard',   show: '/overlay/playerboard/show',   hide: '/overlay/playerboard/hide'   },
@@ -2694,11 +2699,16 @@
         { name: 'MVP Highlights', show: '/overlay/highlights/show', hide: '/overlay/highlights/hide',
           nudges: [ { label: 'Photo', selector: '.hl-player-photo-wrap', fallback: 1360 } ],
           versionToggle: 'hl_v2' },
-        { name: 'MVP Scene', show: '/overlay/mvp/show', hide: '/overlay/mvp/hide',
+        { name: 'MVP Scene', show: '/overlay/mvp/show', hide: '/overlay/mvp/hide', mvpPicker: true,
           nudges: [
             { label: 'Hero',  selector: '#mv-hero-img', fallback: 953, topFallback: 74,
               v2: { toggle: 'mvp_v2', selector: 'html #mvp-page.mv-v2 #mv-hero-img', fallback: 860, topFallback: 90 } },
             { label: 'Photo', selector: '#mv-photo',    fallback: 953, topFallback: 74 },
+          ],
+          /* MCT theme: the MCT MVP scene has its own elements, and no V1/V2 versions */
+          mctNudges: [
+            { label: 'Hero',  selector: '#mvm-hero',  fallback: 800, topFallback: 10 },
+            { label: 'Photo', selector: '#mvm-photo', fallback: 903, topFallback: 39 },
           ],
           versionToggle: 'mvp_v2' },
         { name: 'Credit Reel', show: '/overlay/credits/show', hide: '/overlay/credits/hide', versionToggle: 'credits_v2' },
@@ -2733,6 +2743,7 @@
       id: 'livecomments',
       name: 'Live Comments',
       file: 'livecomments.html',
+      rebroadcastOnly: true,   /* listed in the Control sidebar only while Server Mode = REBROADCAST */
       /* the output canvas is sized from the Live Comments tab (Output canvas width x height) — the Control preview follows it */
       get previewSize() { return ytCanvasSize; },
       ytChatControls: true,   /* stream link + Connect / Disconnect in the Control card */
@@ -3616,10 +3627,76 @@
     ctlSearchInput.select();
   });
 
+  /* ── Postgame: Scene Background toggle (installed background vs transparent) — GET/SSE 'fsbg' ── */
+  var fsBgOn = true, fsBgBtns = [];
+  function applyFsBgBtns() {
+    fsBgBtns = fsBgBtns.filter(function (b) { return b.isConnected; });
+    fsBgBtns.forEach(function (b) {
+      b.textContent = fsBgOn ? '● Installed background' : '○ Transparent';
+      b.className = 'btn btn-toggle ' + (fsBgOn ? 'btn-toggle-on' : 'btn-toggle-off');
+    });
+  }
+  fetch('/api/fs-bg', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) { fsBgOn = !(d && d.on === false); applyFsBgBtns(); }).catch(function () {});
+  dashboardSSE.addEventListener('fsbg', function (e) { try { fsBgOn = JSON.parse(e.data).on !== false; applyFsBgBtns(); } catch (err) {} });
+  function buildSceneBgToggle(body) {
+    if (body.children.length) body.appendChild(el('div', 'divider'));
+    body.appendChild(el('div', 'features-label', 'Scene Background'));
+    var row = el('div', 'feature-row');
+    row.appendChild(el('div', 'feature-name', 'All postgame scenes'));
+    var b = el('button', 'btn btn-toggle btn-toggle-on', '');
+    b.addEventListener('click', function () { fetch('/overlay/fs-bg/' + (fsBgOn ? 'off' : 'on')).catch(function () {}); });   /* button flips from the SSE echo */
+    fsBgBtns.push(b); row.appendChild(b); body.appendChild(row);
+    applyFsBgBtns();
+  }
+  /* ── MVP Scene: choose the MVP player (+ debug sample) — /api/mvp-pick ── */
+  function buildMvpPicker(fr, kind) {
+    var wrap = el('div', 'pdebug-row');
+    wrap.style.cssText = 'flex-wrap:wrap;gap:6px;margin-top:6px;';
+    var lab = el('label', '', kind === 'potm' ? 'POTM Player' : 'MVP Player');
+    var sel = el('select', 'pdebug-select'); sel.style.minWidth = '190px';
+    var dbgLab = el('label', '', ''); dbgLab.style.cssText = 'display:flex;align-items:center;gap:5px;font-size:11px;';
+    var dbg = document.createElement('input'); dbg.type = 'checkbox';
+    dbgLab.appendChild(dbg); dbgLab.appendChild(document.createTextNode('Debug sample (no game / no photos)'));
+    var reload = el('button', 'pdebug-trigger', '↻'); reload.title = 'Reload players from the live feed'; reload.style.width = 'auto';
+    wrap.appendChild(lab); wrap.appendChild(sel); wrap.appendChild(reload); wrap.appendChild(dbgLab);
+    fr.appendChild(wrap);
+    var pick = { camp: 1, seat: 1, debug: false };
+    function post(d) { d.kind = kind; fetch('/api/mvp-pick', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }).catch(function () {}); }
+    function fill() {
+      Promise.all([
+        fetch('/api/mvp-pick?kind=' + kind, { cache: 'no-store' }).then(function (r) { return r.json(); }).catch(function () { return pick; }),
+        fetch('/api/gamedata-proxy?fresh=1', { cache: 'no-store' }).then(function (r) { return r.json(); }).catch(function () { return null; }),
+      ]).then(function (res) {
+        pick = res[0] || pick; dbg.checked = !!pick.debug;
+        sel.innerHTML = '';
+        var gd = res[1] && (res[1].data || res[1]);   /* /api/gamedata-proxy wraps the feed as { code, data } */
+        var camps = (gd && gd.camp_list) || [];
+        [1, 2].forEach(function (cid) {
+          var c = camps.filter(function (x) { return x.campid === cid; })[0];
+          for (var n = 1; n <= 5; n++) {
+            var seat = c && c['seat_' + n];
+            var o = document.createElement('option');
+            o.value = cid + ':' + n;
+            o.textContent = (cid === 1 ? 'Blue' : 'Red') + ' · ' + (seat && seat.name ? seat.name + (seat.hero_name ? ' (' + seat.hero_name + ')' : '') : 'seat ' + n + ' (no feed)');
+            sel.appendChild(o);
+          }
+        });
+        sel.value = pick.camp + ':' + pick.seat;
+      });
+    }
+    sel.addEventListener('change', function () { var p = sel.value.split(':'); pick.camp = +p[0]; pick.seat = +p[1]; post({ camp: pick.camp, seat: pick.seat }); });
+    dbg.addEventListener('change', function () { post({ debug: dbg.checked }); });
+    reload.addEventListener('click', fill);
+    fill();
+  }
+
   function buildFeatureList(ov, body, buildRow) {
     var favKey = 'ctl_favs_' + ov.id, colKey = 'ctl_collapsed_' + ov.id;
     var rows = {}, names = [];
-    ov.features.forEach(function (f) { rows[f.name] = buildRow(f); names.push(f.name); });
+    ov.features.forEach(function (f) {
+      if (ov.featureShown && ov.featureShown.indexOf(f.name) === -1) return;   /* not wanted in this broadcast mode */
+      rows[f.name] = buildRow(f); names.push(f.name);
+    });
     var favs = ctlLsGet(favKey, []).filter(function (n) { return rows[n]; });
     var collapsed = ctlLsGet(colKey, {});
     var dragName = null;
@@ -3766,6 +3843,12 @@
     render();
   }
 
+  /* MCT theme: Ingame only lists the overlays/effects that have an MCT look (kill events stay). Mirrors MCT_OFF_FEATURES + the hidden panels in the page. */
+  var MCT_HIDDEN_CHECKS   = ['teamfightcheck', 'golddiffcheck', 'livewinrate', 'sideexpcheck', 'sidetakencheck', 'sidegolddistricheck', 'sidekdadistricheck', 'bpmmeter', 'stolengold'];
+  var MCT_HIDDEN_FEATURES = ['items', 'skypiercer', 'lordadv', 'swap', 'lvl15', 'conceal', 'fights', 'objectivespawn', 'stolengold'];
+  function mctFilter(ov, list, keyName, hidden) {
+    return (currentTheme === 'mct' && ov.id === 'mploverlay7') ? list.filter(function (x) { return hidden.indexOf(x[keyName]) === -1; }) : list;
+  }
   function buildControlBody(ov) {
     if (_hrmSwapTimer)  { clearInterval(_hrmSwapTimer);  _hrmSwapTimer  = null; }
     if (_hmStatusTimer) { clearInterval(_hmStatusTimer); _hmStatusTimer = null; }
@@ -3970,10 +4053,11 @@
        on/off switch backed by server state, plus copy-icon buttons
        for the raw show/hide route URLs (still handy for OBS setups
        that fire these directly instead of through this dashboard). */
-    if (ov.checkToggles && ov.checkToggles.length) {
+    var shownChecks = ov.checkToggles ? mctFilter(ov, ov.checkToggles, 'key', MCT_HIDDEN_CHECKS) : [];
+    if (shownChecks.length) {
       if (body.children.length) body.appendChild(el('div', 'divider'));
       body.appendChild(el('div', 'features-label', ov.checkLabel || 'Check Overlays'));
-      ov.checkToggles.forEach(function (ct) {
+      shownChecks.forEach(function (ct) {
         var fr = el('div', 'feature-row');
         fr.appendChild(el('div', 'feature-name', ct.name));
 
@@ -4071,7 +4155,10 @@
         ['trinity', 'Trinity'],
         ['swap',    'Quick Swap'],
         ['conceal', 'Conceal'],
-      ].forEach(function(opt) {
+      ].filter(function(opt) {
+        /* MCT theme: only the effects that have an MCT look (Level 4, Trinity) */
+        return currentTheme !== 'mct' || opt[0] === 'lvl4' || opt[0] === 'trinity';
+      }).forEach(function(opt) {
         var o = document.createElement('option');
         o.value = opt[0]; o.textContent = opt[1];
         pdFeatSel.appendChild(o);
@@ -4177,6 +4264,8 @@
       body.appendChild(kePhotoRow);
     }
 
+    if (ov.sceneBgToggle) buildSceneBgToggle(body);
+
     /* Sub-features */
     if (ov.features && ov.features.length) {
       if (body.children.length) body.appendChild(el('div', 'divider'));
@@ -4186,6 +4275,7 @@
         fr.dataset.featName = feat.name;
         var fhead = el('div', 'feature-head');
         fhead.appendChild(el('div', 'feature-name', feat.name));
+        if (feat.comingSoon) { var cs = el('div', 'scene-status', 'coming soon'); cs.style.cssText = 'color:#777;font-size:11px;margin-left:auto;'; fhead.appendChild(cs); }
         fr.appendChild(fhead);
         /* Last load result for this scene (🟢/🟡/🔴), filled + kept current
            by the Logs-tab script at the bottom of this file. Keyed by the
@@ -4233,7 +4323,7 @@
           var featParts = featRoute.split('/');
           fb.appendChild(buildPreviewToggleBtn(featParts[featParts.length - 2]));
         }
-        if (feat.versionToggle) {
+        if (feat.versionToggle && !(feat.mctNudges && currentTheme === 'mct')) {
           /* Per-scene version switch (Team Line-Up V1/V2) — same feature toggle
              as the Feature Toggles list, just placed in this scene's own row. */
           var vt = el('button', 'btn btn-toggle btn-toggle-off', '');
@@ -4244,7 +4334,7 @@
           fb.appendChild(vt);
         }
         if (feat.nudges) {
-          feat.nudges.forEach(function (n) { fb.appendChild(buildNudgeControl(n)); });
+          (feat.mctNudges && currentTheme === 'mct' ? feat.mctNudges : feat.nudges).forEach(function (n) { fb.appendChild(buildNudgeControl(n)); });
         }
         if (feat.extraButtons) {
           feat.extraButtons.forEach(function (a) {
@@ -4259,6 +4349,7 @@
           });
         }
         fr.appendChild(fb);
+        if (feat.mvpPicker) buildMvpPicker(fr, feat.mvpPicker === 'potm' ? 'potm' : 'mvp');
         return fr;
       });
     }
@@ -4290,15 +4381,16 @@
        Overlays list above; the arm/disarm toggle for the AUTO pop-up
        lives in the Feature Toggles list below, same as every other
        Shape 2 auto-effect. */
-    if (ov.stolenGoldControls) {
+    if (ov.stolenGoldControls && currentTheme !== 'mct') {
       buildStolenGoldControls(body);
     }
 
     /* Feature toggles */
-    if (ov.featureToggles && ov.featureToggles.length) {
+    var shownFeatures = ov.featureToggles ? mctFilter(ov, ov.featureToggles, 'feature', MCT_HIDDEN_FEATURES) : [];
+    if (shownFeatures.length) {
       if (body.children.length) body.appendChild(el('div', 'divider'));
       body.appendChild(el('div', 'features-label', 'Feature Toggles'));
-      ov.featureToggles.forEach(function (ft) {
+      shownFeatures.forEach(function (ft) {
         var fr = el('div', 'feature-row');
         fr.appendChild(el('div', 'feature-name', ft.name));
         var tb = el('button', 'btn btn-toggle btn-toggle-on', '● Enabled');
@@ -4336,6 +4428,11 @@
 
   }
 
+  /* theme switched (Settings or SSE): re-list the Ingame Control cards for the new theme */
+  window.__rebuildControlForTheme = function () {
+    if (lastOverlay && lastOverlay.id === 'mploverlay7') buildControlBody(lastOverlay);
+  };
+
   /* sidebar order: Draft, Ingame, Postgame (OVERLAYS array order is unrelated) */
   var rebroadcastItems = [], mainItems = [];
   var CONTROL_ORDER = ['draft', 'mploverlay7', 'mplfs', 'fullscreen', 'lowerthirds', 'livecomments'];
@@ -4358,6 +4455,18 @@
   /* Server Mode gating: show REBROADCAST-only overlays only in that mode (also called live from the Settings toggle). */
   window.applyServerModeToSidebar = applyServerModeToSidebar;
   function applyServerModeToSidebar(mode) {
+    /* Dynamic + Live Comments tabs exist only in REBROADCAST mode */
+    ['dynamic', 'livecomments'].forEach(function (pg) {
+      var tb = document.querySelector('.tab-btn[data-page="' + pg + '"]');
+      if (!tb) return;
+      tb.style.display = mode === 'REBROADCAST' ? '' : 'none';
+      if (mode !== 'REBROADCAST' && tb.classList.contains('active')) {
+        var c = document.querySelector('.tab-btn[data-page="control"]'); if (c) c.click();
+      }
+    });
+    var ttl = (mode === 'REBROADCAST') ? 'MCT/M8 Dashboard - REBROADCAST MODE' : 'MCT/M8 Dashboard - MAIN BROADCAST MODE';
+    var h = document.getElementById('dash-title'); if (h) h.textContent = ttl;
+    document.title = ttl;
     rebroadcastItems.forEach(function (it) { it.style.display = mode === 'REBROADCAST' ? '' : 'none'; });
     mainItems.forEach(function (m) { m.item.style.display = mode === 'REBROADCAST' ? 'none' : ''; });
     /* if the overlay being viewed just got hidden, move to the first one that's still listed */
@@ -5069,6 +5178,80 @@
     '#mv-kp':           { left: 1555, top: 48,  width: 204,  height: 67, fontSize: 64 },
   };
 
+  /* ── MCT MVP scene (#mvm-page) — keep in sync with the #mvm-* CSS in postgame.html ── */
+  var MVM_DEFAULTS = {
+    '#mvm-hud': { left: 47, top: 50, width: 1826, height: 1017 },
+    '#mvm-logo': { left: 129, top: 29, width: 219, height: 71 },
+    '#mvm-container': { left: 50, top: 541, width: 1898, height: 500 },
+    '#mvm-hero': { left: 800, top: 10, width: 840, height: 640 },
+    '#mvm-photo': { left: 903, top: 39, width: 1550, height: 1550 },
+    '#mvm-water': { left: 785, top: 0, width: 1135, height: 1080 },
+    '#mvm-potm-title': { left: 50, top: 118, width: 1100, height: 260, fontSize: 300 },
+    '#mvm-potm-sub': { left: 54, top: 352, width: 800, height: 46, fontSize: 40 },
+    '#mvm-sign': { left: 50, top: 138, width: 1048, height: 252 },
+    '#mvm-teamlogo': { left: 122, top: 423, width: 135, height: 95 },
+    '#mvm-role': { left: 272, top: 437, width: 66, height: 66 },
+    '#mvm-name': { left: 358, top: 420, width: 700, height: 110, fontSize: 96 },
+    '#mvm-kda-label': { left: 83, top: 564, width: 360, height: 26, fontSize: 22 },
+    '#mvm-kda': { left: 63, top: 596, width: 400, height: 80, fontSize: 66 },
+    '#mvm-gpm-label': { left: 453, top: 564, width: 360, height: 26, fontSize: 22 },
+    '#mvm-gpm': { left: 433, top: 596, width: 400, height: 80, fontSize: 66 },
+    '#mvm-kp-label': { left: 758, top: 564, width: 360, height: 26, fontSize: 22 },
+    '#mvm-kp': { left: 738, top: 596, width: 400, height: 80, fontSize: 66 },
+    '#mvm-spell-title': { left: 104, top: 708, fontSize: 22 },
+    '#mvm-spell': { left: 92, top: 747, width: 88, height: 88 },
+    '#mvm-emblem-title': { left: 282, top: 708, fontSize: 22 },
+    '#mvm-rune-0': { left: 282, top: 747, width: 88, height: 88 },
+    '#mvm-rune-1': { left: 378, top: 747, width: 88, height: 88 },
+    '#mvm-rune-2': { left: 472, top: 747, width: 88, height: 88 },
+    '#mvm-rune-3': { left: 568, top: 747, width: 88, height: 88 },
+    '#mvm-items-title': { left: 98, top: 862, fontSize: 22 },
+    '#mvm-item-0': { left: 92, top: 899, width: 88, height: 88 },
+    '#mvm-item-1': { left: 187, top: 899, width: 88, height: 88 },
+    '#mvm-item-2': { left: 282, top: 899, width: 88, height: 88 },
+    '#mvm-item-3': { left: 378, top: 899, width: 88, height: 88 },
+    '#mvm-item-4': { left: 473, top: 899, width: 88, height: 88 },
+    '#mvm-item-5': { left: 569, top: 899, width: 88, height: 88 },
+    '#mvm-sponsor-title': { left: 760, top: 863, width: 400, height: 26, fontSize: 22 },
+    '#mvm-sponsor': { left: 860, top: 900, width: 200, height: 90 },
+  };
+  var MVM_ELEMENTS = [
+    { group: 'MCT MVP HUD (corners)', id: '#mvm-hud', name: 'HUD (corners)' },
+    { group: 'MCT MVP SEA Logo', id: '#mvm-logo', name: 'SEA Logo' },
+    { group: 'MCT MVP Stats Container', id: '#mvm-container', name: 'Stats Container' },
+    { group: 'MCT MVP MVP Hero Art', id: '#mvm-hero', name: 'MVP Hero Art' },
+    { group: 'MCT MVP Player Photo', id: '#mvm-photo', name: 'Player Photo' },
+    { group: 'MCT MVP Front Water', id: '#mvm-water', name: 'Front Water' },
+    { group: 'MCT POTM Title', id: '#mvm-potm-title', name: 'POTM Title' },
+    { group: 'MCT POTM Subtitle', id: '#mvm-potm-sub', name: 'POTM Subtitle' },
+    { group: 'MCT MVP MVP Sign', id: '#mvm-sign', name: 'MVP Sign' },
+    { group: 'MCT MVP Team Logo', id: '#mvm-teamlogo', name: 'Team Logo' },
+    { group: 'MCT MVP Role Tile', id: '#mvm-role', name: 'Role Tile' },
+    { group: 'MCT MVP Player Name', id: '#mvm-name', name: 'Player Name' },
+    { group: 'MCT MVP KDA Label', id: '#mvm-kda-label', name: 'KDA Label' },
+    { group: 'MCT MVP KDA Value', id: '#mvm-kda', name: 'KDA Value' },
+    { group: 'MCT MVP GPM Label', id: '#mvm-gpm-label', name: 'GPM Label' },
+    { group: 'MCT MVP GPM Value', id: '#mvm-gpm', name: 'GPM Value' },
+    { group: 'MCT MVP KP Label', id: '#mvm-kp-label', name: 'KP Label' },
+    { group: 'MCT MVP KP Value', id: '#mvm-kp', name: 'KP Value' },
+    { group: 'MCT MVP Spell Label', id: '#mvm-spell-title', name: 'Spell Label' },
+    { group: 'MCT MVP Spell Icon', id: '#mvm-spell', name: 'Spell Icon' },
+    { group: 'MCT MVP Emblem Label', id: '#mvm-emblem-title', name: 'Emblem Label' },
+    { group: 'MCT MVP Emblem 1', id: '#mvm-rune-0', name: 'Emblem 1' },
+    { group: 'MCT MVP Emblem 2', id: '#mvm-rune-1', name: 'Emblem 2' },
+    { group: 'MCT MVP Emblem 3', id: '#mvm-rune-2', name: 'Emblem 3' },
+    { group: 'MCT MVP Emblem 4', id: '#mvm-rune-3', name: 'Emblem 4' },
+    { group: 'MCT MVP Equipment Label', id: '#mvm-items-title', name: 'Equipment Label' },
+    { group: 'MCT MVP Item 1', id: '#mvm-item-0', name: 'Item 1' },
+    { group: 'MCT MVP Item 2', id: '#mvm-item-1', name: 'Item 2' },
+    { group: 'MCT MVP Item 3', id: '#mvm-item-2', name: 'Item 3' },
+    { group: 'MCT MVP Item 4', id: '#mvm-item-3', name: 'Item 4' },
+    { group: 'MCT MVP Item 5', id: '#mvm-item-4', name: 'Item 5' },
+    { group: 'MCT MVP Item 6', id: '#mvm-item-5', name: 'Item 6' },
+    { group: 'MCT MVP Sponsored By Label', id: '#mvm-sponsor-title', name: 'Sponsored By Label' },
+    { group: 'MCT MVP Sponsor Logo', id: '#mvm-sponsor', name: 'Sponsor Logo' },
+  ];
+
   var MV_ELEMENTS = [
     { group: 'MVP Video', id: '#mv-box-bg',       name: 'MVP Text Video' },
     { group: 'Hero Image', id: '#mv-hero-img',    name: 'Hero Image' },
@@ -5721,6 +5904,15 @@
       elements:    P2H_ELEMENTS,
       defaults:    P2H_DEFAULTS,
       showFn:      'showPostH2H',
+    },
+    mplfs_mvp_mct: {
+      label:       'MVP Scene · MCT · Postgame',
+      file:        'postgame.html',
+      styleFile:   'mplfs',
+      defaultsKey: 'sb_edit_defaults_mplfs_mvp_mct',
+      elements:    MVM_ELEMENTS,
+      defaults:    MVM_DEFAULTS,
+      showFn:      'showMvpScene',
     },
     mplfs_mvp: {
       label:       'MVP Scene · Postgame',
