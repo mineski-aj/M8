@@ -22,6 +22,8 @@
     @font-face { font-family: 'Source Han Sans'; font-weight: 700; font-display: block;
       src: url('/assets/fonts/MCT/SourceHanSans/SourceHanSansCN-Bold.otf') format('opentype'); }
 
+    @font-face { font-family: 'Built Titling'; font-weight: 600; font-display: block;
+      src: url('/assets/fonts/MCT/BuiltTitling/built-titling-sb-5.ttf') format('truetype'); }
     html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
     /* 1920x1080 transparent stage. Every lower-third element is its own absolutely-positioned child of #stage. */
     #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; }
@@ -54,6 +56,71 @@
       font-weight: 700; font-size: 15px; line-height: 20px; color: #8fd4ff; opacity: 0; will-change: transform, opacity; }
     #ac-text { left: 803px; top: 926px; width: 670px; height: 60px; overflow: hidden; font-family: 'Source Han Sans', 'General Sans', sans-serif; font-weight: 500;
       font-size: 17px; line-height: 20px; color: #fff; hyphens: auto; -webkit-hyphens: auto; overflow-wrap: anywhere; opacity: 0; will-change: transform, opacity; }
+    /* ───────── COUNTDOWN BUG (top-left; TOP quadrant — every other lower third is the bottom quadrant) ─────────
+       Reference: assets/overlay/MCT/L3/countdown bug/mctl3_bug_reference.png. Live match from the Match Board + its own clock (state.bugTimer,
+       Match Board "Bug Timer"). At 0:00 the timer, its navy strip and the DRAFT PICK marquee hide. Every element its own absolute child. */
+    #cb-sea { left: 50px; top: 49px; width: 113px; height: 32px; opacity: 0; will-change: transform, opacity; }
+    #cb-grouper { left: 168px; top: 57px; width: 288px; height: 26px; opacity: 0; will-change: transform, opacity; }
+    #cb-stage { left: 250px; top: 57px; width: 197px; height: 26px; overflow: hidden; text-align: right; white-space: pre; font-family: 'Monument Extended', sans-serif;
+      font-weight: 800; font-size: 16.6px; line-height: 26px; color: #f4eded; }
+    #cb-main { left: 50px; top: 83px; width: 406px; height: 92px; opacity: 0; will-change: transform, opacity; }
+    .cb-plate { top: 175px; width: 99px; height: 27px; opacity: 0; will-change: transform, opacity; }
+    #cb-plate1 { left: 50px; } #cb-plate2 { left: 357px; }
+    #cb-plate2.cb-mirror { transform: scaleX(-1); }
+    #cb-tbg { left: 149px; top: 175px; width: 208px; height: 27px; background: #11286c; opacity: 0; will-change: opacity; }
+    #cb-marq { left: 149px; top: 175px; width: 208px; height: 27px; overflow: hidden; opacity: 0; will-change: opacity; }
+    #cb-marq-strip { position: absolute; left: 0; top: 0; height: 27px; white-space: pre; font-family: 'Built Titling', sans-serif; font-weight: 600; font-size: 29.7px;
+      line-height: 30px; color: #2b3f8a; animation: cbMarq 9s linear infinite; }
+    @keyframes cbMarq { from { transform: translateX(0); } to { transform: translateX(-50%); } }   /* strip = the phrase twice -> seamless loop */
+    #cb-timer { left: 149px; top: 175px; width: 208px; height: 27px; overflow: hidden; text-align: center; white-space: pre; font-family: 'Monument Extended', sans-serif;
+      font-weight: 800; font-size: 24px; line-height: 28px; color: #fff; }
+    .cb-tri { top: 175px; width: 99px; height: 27px; overflow: hidden; text-align: center; white-space: pre; font-family: 'Monument Extended', sans-serif;
+      font-weight: 400; font-size: 19px; line-height: 28px; color: #16266a; }
+    #cb-tri1 { left: 50px; } #cb-tri2 { left: 357px; }
+    .cb-flag { top: 85px; width: 24px; height: 24px; object-fit: contain; opacity: 0; will-change: transform, opacity; }
+    #cb-flag1 { left: 88px; } #cb-flag2 { left: 395px; }
+    .cb-logo { width: 66px; height: 50px; object-fit: contain; opacity: 0; will-change: transform, opacity; }
+    #cb-logo1 { left: 68px; top: 115px; } #cb-logo2 { left: 373px; top: 113px; }
+    .cb-flag:not([src]), .cb-logo:not([src]) { visibility: hidden; }
+    .cb-score { top: 92px; width: 80px; height: 78px; overflow: hidden; text-align: center; white-space: pre; font-family: 'Monument Extended', sans-serif;
+      font-weight: 800; font-size: 72px; line-height: 78px; color: #fff; }
+    #cb-score1 { left: 139.5px; } #cb-score2 { left: 288.75px; }
+    #cb-vs { left: 214px; top: 116px; width: 80px; height: 26px; text-align: center; white-space: pre; font-family: 'Monument Extended', sans-serif; font-weight: 800;
+      font-size: 21px; line-height: 26px; color: #43fff0; opacity: 0; will-change: transform, opacity; }
+    .cb-small { width: 100px; height: 14px; text-align: center; white-space: pre; font-family: 'Source Han Sans', sans-serif; font-weight: 700; font-size: 11px;
+      line-height: 14px; color: #7ff3e9; text-transform: uppercase; opacity: 0; will-change: transform, opacity; }
+    #cb-match { left: 203px; top: 89px; } #cb-bo { left: 203px; top: 155px; }
+    #cb-timer .ch, #cb-stage .ch, .cb-tri .ch, .cb-score .ch { display: inline-block; will-change: transform; transform: translateY(115%); }
+    /* ───────── TALENT PREDICT (casters' series-score picks — Match Board talents + Prediction dropdowns) ─────────
+       Reference: assets/overlay/MCT/L3/predict/mct_talentpredict_guide.png. Every element is its own absolute child. Cards k = 0..2 at x 839 + k*257. */
+    #tp-wave { left: 257px; top: 895px; width: 256px; height: 142px; opacity: 0; will-change: transform, opacity; }
+    #tp-main { left: 363px; top: 905px; width: 447px; height: 125px; opacity: 0; will-change: transform, opacity; }
+    .tp-title { left: 439px; width: 380px; height: 42px; overflow: hidden; white-space: pre; font-family: 'Monument Extended', sans-serif; font-weight: 800;
+      font-size: 45.5px; line-height: 42px; color: #f4eded; }
+    #tp-t1 { top: 914px; } #tp-t2 { top: 956px; }
+    .tp-title .ch, .tp-score .ch, .tp-name .ch { display: inline-block; will-change: transform; transform: translateY(115%); }
+    #tp-sea { left: 680px; top: 922px; width: 107px; height: 30px; opacity: 0; will-change: transform, opacity; }
+    #tp-match { left: 583px; top: 1002px; width: 200px; height: 20px; text-align: right; white-space: pre; font-family: 'Source Han Sans', sans-serif; font-weight: 500;
+      font-size: 14.4px; line-height: 20px; color: #7ff3e9; opacity: 0; will-change: transform, opacity; }
+    .tp-corner { width: 20px; height: 21px; opacity: 0; will-change: transform, opacity; }
+    #tp-corner1 { left: 799px; top: 896px; } #tp-corner2 { left: 799px; top: 1019px; }
+    .tp-card { top: 905px; width: 247px; height: 125px; opacity: 0; will-change: transform, opacity; }
+    .tp-photo { top: 838px; width: 150px; height: 170px; object-fit: contain; object-position: -20px 100%; opacity: 0; will-change: transform, opacity; }   /* bottom = the card's strip (y 1008); shifted left so the shoulder meets the card's left edge — the box starts at that edge, so anything further left is cropped */
+    .tp-photo:not([src]) { visibility: hidden; }
+    .tp-front { top: 926px; width: 100px; height: 81px; opacity: 0; will-change: transform, opacity; }
+    .tp-flag { width: 24px; height: 24px; object-fit: contain; opacity: 0; will-change: transform, opacity; }   /* square flag art, flag centred */
+    .tp-logo { width: 46px; height: 34px; object-fit: contain; opacity: 0; will-change: transform, opacity; }
+    .tp-flag:not([src]), .tp-logo:not([src]) { visibility: hidden; }
+    .tp-score { width: 60px; height: 40px; overflow: hidden; text-align: center; white-space: pre; font-family: 'Monument Extended', sans-serif; font-weight: 800;
+      font-size: 39px; line-height: 40px; color: #fff; }
+    .tp-name { width: 141px; height: 20px; overflow: hidden; text-align: center; white-space: pre; font-family: 'Source Han Sans', sans-serif; font-weight: 500;
+      font-size: 14.5px; line-height: 20px; color: #0a1426; text-transform: uppercase; }
+    #tp-card0 { left: 839px; } #tp-photo0 { left: 839px; } #tp-front0 { left: 839px; } #tp-flagA0 { left: 942px; top: 919px; } #tp-flagB0 { left: 942px; top: 970px; }
+    #tp-logoA0 { left: 974px; top: 914px; } #tp-logoB0 { left: 972px; top: 965px; } #tp-scA0 { left: 1021px; top: 912px; } #tp-scB0 { left: 1021px; top: 962px; } #tp-name0 { left: 839px; top: 1009px; }
+    #tp-card1 { left: 1096px; } #tp-photo1 { left: 1096px; } #tp-front1 { left: 1096px; } #tp-flagA1 { left: 1199px; top: 919px; } #tp-flagB1 { left: 1199px; top: 970px; }
+    #tp-logoA1 { left: 1231px; top: 914px; } #tp-logoB1 { left: 1229px; top: 965px; } #tp-scA1 { left: 1278px; top: 912px; } #tp-scB1 { left: 1278px; top: 962px; } #tp-name1 { left: 1096px; top: 1009px; }
+    #tp-card2 { left: 1353px; } #tp-photo2 { left: 1353px; } #tp-front2 { left: 1353px; } #tp-flagA2 { left: 1456px; top: 919px; } #tp-flagB2 { left: 1456px; top: 970px; }
+    #tp-logoA2 { left: 1488px; top: 914px; } #tp-logoB2 { left: 1486px; top: 965px; } #tp-scA2 { left: 1535px; top: 912px; } #tp-scB2 { left: 1535px; top: 962px; } #tp-name2 { left: 1353px; top: 1009px; }
   </style>
 </head>
 <body>
@@ -66,6 +133,34 @@
   <div id="ac-title"></div>
   <div id="ac-name"></div>
   <div id="ac-text"></div>
+  <img id="cb-main" src="/assets/overlay/MCT/L3/countdown%20bug/mctl3_mainplate.png" alt="">
+  <img id="cb-grouper" src="/assets/overlay/MCT/L3/countdown%20bug/mctl3_grouper.png" alt=""><div id="cb-stage"></div>
+  <img id="cb-sea" src="/assets/overlay/MCT/L3/predict/mct_predictsealogo.png" alt="">
+  <img id="cb-plate1" class="cb-plate" src="/assets/overlay/MCT/L3/countdown%20bug/mctl3_nameplate.png" alt=""><img id="cb-plate2" class="cb-plate cb-mirror" src="/assets/overlay/MCT/L3/countdown%20bug/mctl3_nameplate.png" alt="">
+  <div id="cb-tbg"></div><div id="cb-marq"><div id="cb-marq-strip"></div></div><div id="cb-timer"></div>
+  <div id="cb-tri1" class="cb-tri"></div><div id="cb-tri2" class="cb-tri"></div>
+  <img id="cb-flag1" class="cb-flag" alt=""><img id="cb-flag2" class="cb-flag" alt="">
+  <img id="cb-logo1" class="cb-logo" alt=""><img id="cb-logo2" class="cb-logo" alt="">
+  <div id="cb-score1" class="cb-score"></div><div id="cb-vs">VS</div><div id="cb-score2" class="cb-score"></div>
+  <div id="cb-match" class="cb-small"></div><div id="cb-bo" class="cb-small"></div>
+  <img id="tp-main" src="/assets/overlay/MCT/L3/predict/mct_maincontpredict.png" alt="">
+  <img id="tp-wave" src="/assets/overlay/MCT/L3/predict/mct_predictdesign.png" alt="">   <!-- the wave curls over the container's left end -->
+  <div id="tp-t1" class="tp-title"></div><div id="tp-t2" class="tp-title"></div>
+  <img id="tp-sea" src="/assets/overlay/MCT/L3/predict/mct_predictsealogo.png" alt="">
+  <div id="tp-match"></div>
+  <img id="tp-corner1" class="tp-corner" src="/assets/overlay/MCT/L3/predict/mct_predictthing.png" alt=""><img id="tp-corner2" class="tp-corner" src="/assets/overlay/MCT/L3/predict/mct_predictthing.png" alt="">
+  <img id="tp-card0" class="tp-card" src="/assets/overlay/MCT/L3/predict/mct_predictcontainer.png" alt=""><img id="tp-photo0" class="tp-photo" alt=""><img id="tp-front0" class="tp-front" src="/assets/overlay/MCT/L3/predict/mct_talentfront.png" alt="">
+  <img id="tp-flagA0" class="tp-flag" alt=""><img id="tp-logoA0" class="tp-logo" alt=""><div id="tp-scA0" class="tp-score"></div>
+  <img id="tp-flagB0" class="tp-flag" alt=""><img id="tp-logoB0" class="tp-logo" alt=""><div id="tp-scB0" class="tp-score"></div>
+  <div id="tp-name0" class="tp-name"></div>
+  <img id="tp-card1" class="tp-card" src="/assets/overlay/MCT/L3/predict/mct_predictcontainer.png" alt=""><img id="tp-photo1" class="tp-photo" alt=""><img id="tp-front1" class="tp-front" src="/assets/overlay/MCT/L3/predict/mct_talentfront.png" alt="">
+  <img id="tp-flagA1" class="tp-flag" alt=""><img id="tp-logoA1" class="tp-logo" alt=""><div id="tp-scA1" class="tp-score"></div>
+  <img id="tp-flagB1" class="tp-flag" alt=""><img id="tp-logoB1" class="tp-logo" alt=""><div id="tp-scB1" class="tp-score"></div>
+  <div id="tp-name1" class="tp-name"></div>
+  <img id="tp-card2" class="tp-card" src="/assets/overlay/MCT/L3/predict/mct_predictcontainer.png" alt=""><img id="tp-photo2" class="tp-photo" alt=""><img id="tp-front2" class="tp-front" src="/assets/overlay/MCT/L3/predict/mct_talentfront.png" alt="">
+  <img id="tp-flagA2" class="tp-flag" alt=""><img id="tp-logoA2" class="tp-logo" alt=""><div id="tp-scA2" class="tp-score"></div>
+  <img id="tp-flagB2" class="tp-flag" alt=""><img id="tp-logoB2" class="tp-logo" alt=""><div id="tp-scB2" class="tp-score"></div>
+  <div id="tp-name2" class="tp-name"></div>
 </div>
 
 <script>
@@ -378,13 +473,256 @@
     };
   })();
 
+  /* ═════════ TALENT PREDICT ═════════
+     Data (Match Board, /match/state): talents = casters[0..2] (Panel Host, Caster 1, Caster 2; "None" = card left out), their picks =
+     predictions[0..2] ('3-0', HOME-AWAY, blank = "-"), the live match = home / away (row 1 / row 2: country flag, white team logo, score),
+     "MATCH n - GAME g" (g = series score so far + 1). Talent photos: assets/photo/TALENTS/Middle/<NAME>_MIDDLE.webp (missing = no photo).
+     In: container + wave fade up, corners pop, title letters rise, then each card (photo slides in left→right from behind the card edge, behind its front wave, flags/logos fade in,
+     the picked scores roll up, name letters rise), left to right. Out: the same in reverse, faster. Live edits swap only what changed. */
+  var TalentPredict = (function () {
+    var EASE = 'cubic-bezier(.16,.84,.24,1)', EASE_IN = 'cubic-bezier(.55,0,.75,.2)', BACK = 'cubic-bezier(.34,1.45,.64,1)';
+    var visible = false, busy = Promise.resolve(), data = null, shown = null, roster = null;
+    function anim(el, frames, opts) { return el.animate(frames, Object.assign({ fill: 'both' }, opts)).finished.catch(function () {}); }
+    function up(el, d, dy) { return anim(el, [{ opacity: 0, transform: 'translateY(' + (dy || 18) + 'px)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: d, easing: EASE }); }
+    function down(el, d) { return anim(el, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(12px)' }], { duration: 220, delay: d, easing: EASE_IN }); }
+    function chars(el, text) { el.innerHTML = ''; return String(text).split('').map(function (ch) { var s = document.createElement('span'); s.className = 'ch'; s.textContent = ch; el.appendChild(s); return s; }); }
+    function rise(spans, d, step) { return Promise.all(spans.map(function (s, i) { return anim(s, [{ transform: 'translateY(115%)' }, { transform: 'translateY(0)' }], { duration: 380, delay: d + i * (step || 18), easing: EASE }); })); }
+    function sink(spans, d) { return Promise.all(spans.map(function (s, i) { return anim(s, [{ transform: 'translateY(0)' }, { transform: 'translateY(-115%)' }], { duration: 180, delay: d + i * 6, easing: EASE_IN }); })); }
+    function kids(el) { return Array.prototype.slice.call(el.children); }
+    function setImg(img, src, fallback) {
+      if (!src) { img.removeAttribute('src'); return; }
+      img.onerror = function () { img.onerror = function () { img.removeAttribute('src'); }; if (fallback) img.src = fallback; else img.removeAttribute('src'); };
+      img.src = src;
+    }
+    function loadRoster() { return roster || (roster = fetch('/api/roster', { cache: 'no-store' }).then(function (r) { return r.json(); }).catch(function () { return null; })); }
+    function flagFor(tri) {
+      return loadRoster().then(function (ro) {
+        var t = ro && ro.teams && Object.keys(ro.teams).map(function (k) { return ro.teams[k]; }).filter(function (x) { return String(x.tag || '').toUpperCase() === tri; })[0];
+        return t && t.name ? '/assets/flags/' + encodeURIComponent(t.name + '_FLAG') + '.webp' : '';
+      });
+    }
+    function cardsOf(d) {                                   // [{name, a, b}] for the 3 slots ('' name = slot unused)
+      return [0, 1, 2].map(function (i) {
+        var p = String((d.preds[i] || '')).split('-');
+        return { name: d.names[i], a: p.length === 2 ? p[0] : '-', b: p.length === 2 ? p[1] : '-' };
+      });
+    }
+    function fillStatic(d) {                                // teams / flags / logos / match line (no animation)
+      $('tp-match').textContent = d.matchLine;
+      [0, 1, 2].forEach(function (k) {
+        [['A', d.home], ['B', d.away]].forEach(function (r) {
+          var tri = r[1], logo = $('tp-logo' + r[0] + k), flag = $('tp-flag' + r[0] + k);
+          setImg(logo, tri ? '/assets/team/logos/' + encodeURIComponent(tri) + '_3.png' : '', tri ? '/assets/team/logos/' + encodeURIComponent(tri) + '.png' : '');
+          if (tri) flagFor(tri).then(function (u) { setImg(flag, u); }); else flag.removeAttribute('src');
+        });
+      });
+    }
+    /* talent photo = assets/photo/TALENTS/Middle/<NAME>_MIDDLE.webp (360 px copies of the 600 px PNGs; name upper-cased, e.g. Uomi -> UOMI_MIDDLE) */
+    function setPhoto(k, name) {
+      var base = name ? '/assets/photo/TALENTS/Middle/' + encodeURIComponent(String(name).trim().toUpperCase() + '_MIDDLE') : '';
+      setImg($('tp-photo' + k), base ? base + '.webp' : '', base ? base + '.png' : '');
+    }
+    /* talent photo slides in LEFT -> RIGHT from behind the card's left edge: the image moves inside its box (object-position), the box
+       itself stays put and clips at that edge. Rest position = the -20px shift in .tp-photo. */
+    function photoIn(el, d) { return anim(el, [{ opacity: 0, objectPosition: '-90px 100%' }, { opacity: 1, objectPosition: '-20px 100%' }], { duration: 600, delay: d, easing: EASE }); }
+    function photoOut(el, d) { return anim(el, [{ opacity: 1, objectPosition: '-20px 100%' }, { opacity: 0, objectPosition: '-80px 100%' }], { duration: 260, delay: d, easing: EASE_IN }); }
+    function cardEls(k) { return ['tp-card', 'tp-photo', 'tp-front', 'tp-flagA', 'tp-logoA', 'tp-flagB', 'tp-logoB'].map(function (p) { return $(p + k); }); }
+    function playIn(d) {
+      shown = d;
+      fillStatic(d);
+      var ps = [up($('tp-main'), 0, 22),
+        anim($('tp-wave'), [{ opacity: 0, transform: 'translate(-46px, 14px) rotate(-6deg)' }, { opacity: 1, transform: 'none' }], { duration: 620, delay: 60, easing: BACK }),
+        anim($('tp-corner1'), [{ opacity: 0, transform: 'scale(.3) rotate(-90deg)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 260, easing: BACK }),
+        anim($('tp-corner2'), [{ opacity: 0, transform: 'scale(.3) rotate(90deg)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 320, easing: BACK }),
+        rise(chars($('tp-t1'), 'TALENT'), 200), rise(chars($('tp-t2'), 'PREDICTION'), 290),
+        up($('tp-sea'), 380, 10), up($('tp-match'), 440, 8)];
+      cardsOf(d).forEach(function (c, k) {
+        var t = 420 + k * 120, e = cardEls(k);
+        if (!c.name) { e.forEach(function (x) { x.style.visibility = 'hidden'; }); return; }
+        e.forEach(function (x) { x.style.visibility = ''; });
+        setPhoto(k, c.name);
+        ps.push(up(e[0], t, 24),
+          photoIn(e[1], t + 120),
+          up(e[2], t + 80, 10), up(e[3], t + 200, 6), up(e[4], t + 220, 6), up(e[5], t + 260, 6), up(e[6], t + 280, 6),
+          rise(chars($('tp-scA' + k), c.a), t + 300), rise(chars($('tp-scB' + k), c.b), t + 360),
+          rise(chars($('tp-name' + k), c.name.toUpperCase()), t + 260, 12));
+      });
+      return Promise.all(ps);
+    }
+    function playOut() {
+      var ps = [];
+      [2, 1, 0].forEach(function (k, j) {
+        var t = j * 60;
+        ps.push(sink(kids($('tp-scA' + k)), t), sink(kids($('tp-scB' + k)), t), sink(kids($('tp-name' + k)), t));
+        cardEls(k).forEach(function (x, i) { ps.push(i === 1 ? photoOut(x, t + 40) : down(x, t + 60 + i * 10)); });
+      });
+      ps.push(sink(kids($('tp-t1')), 120), sink(kids($('tp-t2')), 150), down($('tp-sea'), 140), down($('tp-match'), 140),
+        down($('tp-corner1'), 160), down($('tp-corner2'), 160), down($('tp-main'), 260),
+        anim($('tp-wave'), [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translate(-30px, 8px) rotate(-4deg)' }], { duration: 300, delay: 280, easing: EASE_IN }));
+      return Promise.all(ps).then(function () { shown = null; ['tp-t1', 'tp-t2'].concat([0, 1, 2].reduce(function (a, k) { return a.concat(['tp-scA' + k, 'tp-scB' + k, 'tp-name' + k]); }, [])).forEach(function (id) { $(id).innerHTML = ''; }); });
+    }
+    function swap(d) {                                       // live edit while on air: re-roll only what changed
+      var old = shown; shown = d;
+      fillStatic(d);
+      var oc = cardsOf(old), nc = cardsOf(d), ps = [];
+      nc.forEach(function (c, k) {
+        if (!!c.name !== !!oc[k].name) {                     // a talent added / removed: card fades in / out
+          var e = cardEls(k);
+          if (c.name) { setPhoto(k, c.name); e.forEach(function (x, i) { x.style.visibility = ''; ps.push(i === 1 ? photoIn(x, 60) : up(x, i * 20, 14)); });
+            ps.push(rise(chars($('tp-scA' + k), c.a), 150), rise(chars($('tp-scB' + k), c.b), 190), rise(chars($('tp-name' + k), c.name.toUpperCase()), 120, 12)); }
+          else { ps.push(sink(kids($('tp-scA' + k)), 0), sink(kids($('tp-scB' + k)), 0), sink(kids($('tp-name' + k)), 0)); e.forEach(function (x, i) { ps.push(i === 1 ? photoOut(x, 0) : down(x, 40)); }); }
+          return;
+        }
+        if (!c.name) return;
+        [['tp-scA', 'a'], ['tp-scB', 'b']].forEach(function (f) {
+          if (c[f[1]] === oc[k][f[1]]) return;
+          var el = $(f[0] + k);
+          ps.push(sink(kids(el), 0).then(function () { return rise(chars(el, c[f[1]]), 0); }));
+        });
+        if (c.name !== oc[k].name) { setPhoto(k, c.name); var nm = $('tp-name' + k); ps.push(sink(kids(nm), 0).then(function () { return rise(chars(nm, c.name.toUpperCase()), 0, 12); })); }
+      });
+      if (d.matchLine !== old.matchLine) ps.push(anim($('tp-match'), [{ opacity: .2 }, { opacity: 1 }], { duration: 300 }));
+      return Promise.all(ps);
+    }
+    function key(d) { return d ? JSON.stringify(d) : ''; }
+    function queue(fn) { busy = busy.then(fn, fn); return busy; }
+    return {
+      setData: function (d) { data = d; if (visible) queue(function () { if (!visible) return null; if (!shown) return playIn(data); return key(shown) !== key(data) ? swap(data) : null; }); },   /* restored on air before the data arrived -> plays in now */
+      show: function () { if (visible) return; visible = true; queue(function () { return data ? playIn(data) : null; }); },
+      hide: function () { if (!visible) return; visible = false; queue(function () { return shown ? playOut() : null; }); },
+      isVisible: function () { return visible; }
+    };
+  })();
   function parseCasters(st) {
     var c = (st && st.casters) || [];
     return [0, 1, 2].map(function (i) { var v = String(c[i] == null ? '' : c[i]).trim(); return /^none$/i.test(v) ? '' : v; });
   }
+  /* ═════════ COUNTDOWN BUG (top quadrant) ═════════
+     Data (Match Board): stage, match, series (BO n), home / away (white logo <TRI>_3.png, flag via /api/roster name, tricode, series score),
+     and its own countdown state.bugTimer {running, endAt, remaining} (Match Board "Bug Timer", server clock — serverNow cancels skew).
+     At 0 the timer + its navy strip + the DRAFT PICK marquee fade out; they come back when the clock is set above 0 again.
+     In: plate drops in, grouper slides from the left, logo pops, nameplates / strip fade up, then the text rises (letters / digits).
+     Out: reverse, faster. Live edits re-roll only what changed. */
+  var CountdownBug = (function () {
+    var EASE = 'cubic-bezier(.16,.84,.24,1)', EASE_IN = 'cubic-bezier(.55,0,.75,.2)', BACK = 'cubic-bezier(.34,1.45,.64,1)';
+    var visible = false, busy = Promise.resolve(), data = null, shown = null, roster = null, tick = null, timerOn = null, lastTxt = '';
+    $('cb-marq-strip').textContent = 'DRAFT PICK  •  DRAFT PICK  •  DRAFT PICK  •  DRAFT PICK  •  ';
+    function anim(el, frames, opts) { return el.animate(frames, Object.assign({ fill: 'both' }, opts)).finished.catch(function () {}); }
+    function fade(el, d, from, to, ms) { return anim(el, [Object.assign({ opacity: 0 }, from || {}), Object.assign({ opacity: 1, transform: (to || 'none') }, {})], { duration: ms || 420, delay: d, easing: EASE }); }
+    function gone(el, d) { return anim(el, [{ opacity: 1 }, { opacity: 0, transform: 'translateY(-8px)' }], { duration: 200, delay: d, easing: EASE_IN }); }
+    function chars(el, text) { el.innerHTML = ''; return String(text).split('').map(function (ch) { var x = document.createElement('span'); x.className = 'ch'; x.textContent = ch; el.appendChild(x); return x; }); }
+    function rise(sp, d, step) { return Promise.all(sp.map(function (x, i) { return anim(x, [{ transform: 'translateY(115%)' }, { transform: 'translateY(0)' }], { duration: 360, delay: d + i * (step || 16), easing: EASE }); })); }
+    function sink(sp, d) { return Promise.all(sp.map(function (x, i) { return anim(x, [{ transform: 'translateY(0)' }, { transform: 'translateY(-115%)' }], { duration: 170, delay: d + i * 5, easing: EASE_IN }); })); }
+    function kids(el) { return Array.prototype.slice.call(el.children); }
+    function setImg(img, src, fb) { if (!src) { img.removeAttribute('src'); return; } img.onerror = function () { img.onerror = function () { img.removeAttribute('src'); }; if (fb) img.src = fb; else img.removeAttribute('src'); }; img.src = src; }
+    function loadRoster() { return roster || (roster = fetch('/api/roster', { cache: 'no-store' }).then(function (r) { return r.json(); }).catch(function () { return null; })); }
+    function flag(img, tri) {
+      if (!tri) { img.removeAttribute('src'); return; }
+      loadRoster().then(function (ro) {
+        var t = ro && ro.teams && Object.keys(ro.teams).map(function (k) { return ro.teams[k]; }).filter(function (x) { return String(x.tag || '').toUpperCase() === tri; })[0];
+        setImg(img, t && t.name ? '/assets/flags/' + encodeURIComponent(t.name + '_FLAG') + '.webp' : '');
+      });
+    }
+    function remain(d) {
+      var t = d.timer || {};
+      return (t.running && t.endAt) ? Math.max(0, Math.round((t.endAt - (Date.now() + d.offset)) / 1000)) : Math.max(0, Math.round(t.remaining || 0));
+    }
+    function fmt(sec) { return String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0'); }
+    function fillArt(d) {
+      [[1, d.home], [2, d.away]].forEach(function (r) {
+        var tri = r[1];
+        setImg($('cb-logo' + r[0]), tri ? '/assets/team/logos/' + encodeURIComponent(tri) + '_3.png' : '', tri ? '/assets/team/logos/' + encodeURIComponent(tri) + '.png' : '');
+        flag($('cb-flag' + r[0]), tri);
+      });
+      $('cb-match').textContent = d.match; $('cb-bo').textContent = d.bo;
+    }
+    /* timer block on/off (0:00 hides the timer, its strip and the marquee) */
+    function timerBlock(on, instant) {
+      if (on === timerOn) return; timerOn = on;
+      [$('cb-tbg'), $('cb-marq'), $('cb-timer')].forEach(function (el) {
+        el.getAnimations().forEach(function (a) { if (a.effect && a.effect.getKeyframes().some(function (k) { return 'opacity' in k && !('transform' in k); })) a.cancel(); });
+        anim(el, [{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], { duration: instant ? 1 : 350, easing: on ? EASE : EASE_IN });
+      });
+    }
+    function startTick() {
+      clearInterval(tick);
+      tick = setInterval(function () {
+        if (!shown || !data) return;
+        var r = remain(data), txt = fmt(r);
+        if (txt !== lastTxt) { lastTxt = txt; var sp = kids($('cb-timer')); if (sp.length === txt.length) txt.split('').forEach(function (ch, i) { sp[i].textContent = ch; }); else { chars($('cb-timer'), txt).forEach(function (x) { x.style.transform = 'none'; }); } }
+        timerBlock(r > 0);
+      }, 200);
+    }
+    function playIn(d) {
+      shown = d; fillArt(d);
+      var r = remain(d); lastTxt = fmt(r); timerOn = null;
+      var ps = [
+        fade($('cb-main'), 0, { transform: 'translateY(-16px)' }),
+        fade($('cb-grouper'), 80, { transform: 'translateX(-28px)' }, 'none', 460),
+        anim($('cb-sea'), [{ opacity: 0, transform: 'scale(.4)' }, { opacity: 1, transform: 'none' }], { duration: 480, delay: 140, easing: BACK }),
+        fade($('cb-plate1'), 200, { transform: 'translateY(10px)' }), anim($('cb-plate2'), [{ opacity: 0, transform: 'scaleX(-1) translateY(10px)' }, { opacity: 1, transform: 'scaleX(-1)' }], { duration: 420, delay: 240, easing: EASE }),
+        fade($('cb-flag1'), 300, { transform: 'translateY(6px)' }), fade($('cb-flag2'), 330, { transform: 'translateY(6px)' }),
+        fade($('cb-logo1'), 300, { transform: 'scale(.85)' }), fade($('cb-logo2'), 330, { transform: 'scale(.85)' }),
+        anim($('cb-vs'), [{ opacity: 0, transform: 'scale(.5)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 420, easing: BACK }),
+        fade($('cb-match'), 440, { transform: 'translateY(6px)' }), fade($('cb-bo'), 470, { transform: 'translateY(-6px)' }),
+        rise(chars($('cb-stage'), d.stage), 220, 14),
+        rise(chars($('cb-score1'), d.s1), 380), rise(chars($('cb-score2'), d.s2), 420),
+        rise(chars($('cb-tri1'), d.home || ''), 360), rise(chars($('cb-tri2'), d.away || ''), 400)];
+      timerOn = r > 0;
+      if (timerOn) ps.push(fade($('cb-tbg'), 260), fade($('cb-marq'), 320), rise(chars($('cb-timer'), lastTxt), 460, 30));
+      startTick();
+      return Promise.all(ps);
+    }
+    function playOut() {
+      clearInterval(tick);
+      var ps = [sink(kids($('cb-timer')), 0), sink(kids($('cb-score1')), 0), sink(kids($('cb-score2')), 20), sink(kids($('cb-tri1')), 0), sink(kids($('cb-tri2')), 20), sink(kids($('cb-stage')), 40)];
+      ['cb-vs', 'cb-match', 'cb-bo', 'cb-flag1', 'cb-flag2', 'cb-logo1', 'cb-logo2', 'cb-marq', 'cb-tbg', 'cb-plate1', 'cb-sea'].forEach(function (id, i) { ps.push(gone($(id), 60 + i * 12)); });
+      ps.push(anim($('cb-plate2'), [{ opacity: 1, transform: 'scaleX(-1)' }, { opacity: 0, transform: 'scaleX(-1) translateY(-8px)' }], { duration: 200, delay: 140, easing: EASE_IN }),
+        anim($('cb-grouper'), [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(-24px)' }], { duration: 240, delay: 200, easing: EASE_IN }),
+        anim($('cb-main'), [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-14px)' }], { duration: 260, delay: 240, easing: EASE_IN }));
+      return Promise.all(ps).then(function () { shown = null; timerOn = null; ['cb-timer', 'cb-score1', 'cb-score2', 'cb-tri1', 'cb-tri2', 'cb-stage'].forEach(function (id) { $(id).innerHTML = ''; }); });
+    }
+    function swap(d) {
+      var o = shown; shown = d; fillArt(d);
+      var ps = [];
+      [['cb-score1', 's1'], ['cb-score2', 's2'], ['cb-tri1', 'home'], ['cb-tri2', 'away'], ['cb-stage', 'stage']].forEach(function (f) {
+        if (o[f[1]] === d[f[1]]) return;
+        var el = $(f[0]);
+        ps.push(sink(kids(el), 0).then(function () { return rise(chars(el, d[f[1]] || ''), 0); }));
+      });
+      return Promise.all(ps);
+    }
+    function key(d) { return d ? JSON.stringify([d.stage, d.match, d.bo, d.home, d.away, d.s1, d.s2]) : ''; }   // the timer ticks on its own
+    function queue(fn) { busy = busy.then(fn, fn); return busy; }
+    return {
+      setData: function (d) {
+        data = d;
+        if (visible) queue(function () { if (!visible) return null; if (!shown) return playIn(data); return key(shown) !== key(data) ? swap(data) : null; });
+      },
+      show: function () { if (visible) return; visible = true; queue(function () { return data ? playIn(data) : null; }); },
+      hide: function () { if (!visible) return; visible = false; queue(function () { return shown ? playOut() : null; }); }
+    };
+  })();
+  function bugData(st) {
+    var h = st.home || {}, a = st.away || {}, bo = String(st.series || 'BO3').toUpperCase().replace(/^BO\s*/, 'BO ');
+    return { stage: String(st.stage || '').toUpperCase(), match: 'MATCH ' + (parseInt(st.match, 10) || 1), bo: bo,
+      home: String(h.short || '').toUpperCase(), away: String(a.short || '').toUpperCase(), s1: String(Number(h.score) || 0), s2: String(Number(a.score) || 0),
+      timer: st.bugTimer || { running: false, remaining: 0 }, offset: typeof st.serverNow === 'number' ? st.serverNow - Date.now() : 0 };
+  }
+  window.__lt = { TalentPredict: TalentPredict, CountdownBug: CountdownBug };   /* test hook (headless checks drive it directly) */
+  function talentData(st, c) {
+    var h = st.home || {}, a = st.away || {}, sc = (Number(h.score) || 0) + (Number(a.score) || 0);
+    var names = c.map(function (n, i) { return n || (isPreview ? ['PANEL HOST', 'CASTER 1', 'CASTER 2'][i] : ''); });
+    var preds = Array.isArray(st.predictions) ? st.predictions : [];
+    return { names: names, preds: [0, 1, 2].map(function (i) { return String(preds[i] || ''); }),
+      home: String(h.short || '').toUpperCase(), away: String(a.short || '').toUpperCase(),
+      matchLine: 'MATCH ' + (parseInt(st.match, 10) || 1) + ' - GAME ' + (sc + 1) };
+  }
   function pollMatch() {
     fetch('/match/state', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (st) {
       var c = parseCasters(st);
+      TalentPredict.setData(talentData(st, c));
+      CountdownBug.setData(bugData(st));
       if (c.join('\u0001') === pollMatch.last) return;
       pollMatch.last = c.join('\u0001');
       NameTag.setCasters(c);
@@ -432,12 +770,14 @@
         else if (d.action === 'show') AudienceComment.show(); else AudienceComment.hide();
         return;
       }
+      if (d.name === 'countdownbug') { if (d.action === 'show') CountdownBug.show(); else CountdownBug.hide(); return; }
+      if (d.name === 'talentpredict') { if (d.action === 'show') TalentPredict.show(); else TalentPredict.hide(); return; }
       if (d.name !== 'headline') return;
       if (d.action === 'show') show(); else Headline.hide();
     } catch (err) {}
   });
   fetch('/overlay/lowerthird-state', { cache: 'no-store' }).then(function (r) { return r.json(); })
-    .then(function (s) { if (!s) return; if (s.headline) show(); [1, 2, 3].forEach(function (n) { if (s['nametag' + n]) NameTag.show(n); }); }).catch(function () {});
+    .then(function (s) { if (!s) return; if (s.countdownbug) CountdownBug.show(); if (s.talentpredict) TalentPredict.show(); if (s.headline) show(); [1, 2, 3].forEach(function (n) { if (s['nametag' + n]) NameTag.show(n); }); }).catch(function () {});
   fetch('/api/audience-comment', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (a) {
     if (a && a.active) { AudienceComment.setRow(a.row); AudienceComment.show(); }
   }).catch(function () {});

@@ -67,8 +67,8 @@ router.get('/overlay/draft-state', (req, res) => {
   res.set({ 'Cache-Control': 'no-store' }).json({ active: state.draftActive });
 });
 
-// Fullscreen.html scenes (REBROADCAST) — currently just 'waiting' (Waiting Screen). SSE event 'fullscreen' {name, action}.
-const FULLSCREENS = ['waiting'];
+// Fullscreen.html scenes (REBROADCAST): 'waiting' (Waiting Screen), 'lobby' (Waiting Lobby). One on air at a time. SSE event 'fullscreen' {name, action}.
+const FULLSCREENS = ['waiting', 'lobby'];
 router.get('/overlay/fullscreen-state', (req, res) => {
   res.set({ 'Cache-Control': 'no-store' }).json(state.fullscreens || {});
 });
@@ -76,6 +76,9 @@ router.get('/overlay/fullscreen-state', (req, res) => {
   router.get('/overlay/fullscreen/:name/' + action, (req, res) => {
     const name = req.params.name;
     if (!FULLSCREENS.includes(name)) return res.status(404).json({ ok: false, error: 'unknown fullscreen scene' });
+    if (action === 'show') FULLSCREENS.forEach(k => {   // full-screen scenes replace each other: the other one plays out
+      if (k !== name && state.fullscreens[k]) { state.fullscreens[k] = false; state.overlayClients.forEach(c => { try { c.write('event: fullscreen\ndata: ' + JSON.stringify({ name: k, action: 'hide' }) + '\n\n'); } catch {} }); }
+    });
     state.fullscreens[name] = action === 'show';
     state.overlayClients.forEach(c => { try { c.write('event: fullscreen\ndata: ' + JSON.stringify({ name, action }) + '\n\n'); } catch {} });
     res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, name, action });
@@ -84,7 +87,12 @@ router.get('/overlay/fullscreen-state', (req, res) => {
 
 // Lower Thirds — one named lower third at a time per key (currently just 'headline'). SSE event 'lowerthird' {name, action}.
 const audienceComment = require('../lib/audienceComment');   // Audience Comment lower third: rolls through the Community Responses sheet
-const LOWER_THIRDS = ['headline', 'nametag1', 'nametag2', 'nametag3', 'audiencecomment'];   // nametag1 = panel host, 2 = casters 1+2, 3 = host + casters 1+2 (one tag layout on air at a time)
+const LOWER_THIRDS = ['headline', 'nametag1', 'nametag2', 'nametag3', 'audiencecomment', 'talentpredict', 'countdownbug'];   // nametag1 = panel host, 2 = casters 1+2, 3 = host + casters 1+2; talentpredict = casters' series picks; countdownbug = top-left countdown bug
+// Quadrant rule (same idea as the Ingame quadrants below): lower thirds that share a screen quadrant never overlap — showing one first plays
+// the quadrant's current one OUT (its own hide event, so every page + the dashboard toggle follow), then sends the new show after the exit.
+const LT_QUADRANTS = { top: ['countdownbug'], bottom: ['headline', 'nametag1', 'nametag2', 'nametag3', 'audiencecomment', 'talentpredict'] };
+const LT_EXIT_MS = 750;   // longest lower-third exit animation
+function ltBroadcast(name, action) { state.overlayClients.forEach(c => { try { c.write('event: lowerthird\ndata: ' + JSON.stringify({ name, action }) + '\n\n'); } catch {} }); }
 router.get('/overlay/lowerthird-state', (req, res) => {
   res.set({ 'Cache-Control': 'no-store' }).json(state.lowerThirds || {});
 });
@@ -92,10 +100,24 @@ router.get('/overlay/lowerthird-state', (req, res) => {
   router.get('/overlay/lowerthird/:name/' + action, (req, res) => {
     const name = req.params.name;
     if (!LOWER_THIRDS.includes(name)) return res.status(404).json({ ok: false, error: 'unknown lower third' });
+    let delay = 0;
+    if (action === 'show') {
+      const quad = Object.keys(LT_QUADRANTS).find(q => LT_QUADRANTS[q].includes(name));
+      (LT_QUADRANTS[quad] || []).forEach(k => {
+        if (k === name || !state.lowerThirds[k]) return;
+        state.lowerThirds[k] = false;
+        ltBroadcast(k, 'hide');
+        if (k === 'audiencecomment') audienceComment.stop();
+        delay = LT_EXIT_MS;
+      });
+    }
     state.lowerThirds[name] = action === 'show';
-    if (action === 'show' && name.startsWith('nametag')) ['nametag1', 'nametag2', 'nametag3'].forEach(k => { if (k !== name) state.lowerThirds[k] = false; });
-    state.overlayClients.forEach(c => { try { c.write('event: lowerthird\ndata: ' + JSON.stringify({ name, action }) + '\n\n'); } catch {} });
-    if (name === 'audiencecomment') { if (action === 'show') audienceComment.start(); else audienceComment.stop(); }   // owns the rolling cursor while on air
+    const send = () => {
+      if (action === 'show' && !state.lowerThirds[name]) return;   // hidden again during the wait
+      ltBroadcast(name, action);
+      if (name === 'audiencecomment') { if (action === 'show') audienceComment.start(); else audienceComment.stop(); }   // owns the rolling cursor while on air
+    };
+    if (delay) setTimeout(send, delay); else send();
     res.set({ 'Cache-Control': 'no-store' }).json({ ok: true, name, action });
   });
 });

@@ -65,9 +65,10 @@ app.post('/match/timer', function (req, res) {
   var body  = req.body || {};
   var token = body.token;
   if (!token || token !== getMatchPassword()) return res.status(401).json({ error: 'Unauthorized' });
-  if      (body.action === 'start') matchState.startTimer();
-  else if (body.action === 'pause') matchState.pauseTimer();
-  else if (body.action === 'set')   matchState.setTimerRemaining(body.seconds);
+  var which = body.which === 'bug' ? 'bug' : 'main';   // 'bug' = the Countdown Bug's own clock (state.bugTimer)
+  if      (body.action === 'start') matchState.startTimer(which);
+  else if (body.action === 'pause') matchState.pauseTimer(which);
+  else if (body.action === 'set')   matchState.setTimerRemaining(body.seconds, which);
   else return res.status(400).json({ error: 'Unknown action' });
   res.json({ ok: true, state: matchState.get() });
 });

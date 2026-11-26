@@ -2030,6 +2030,8 @@
         .then(function(r){ return r.json(); }).then(function(d){
           renderServerMode(d && d.mode);
           if (window.applyServerModeToSidebar) window.applyServerModeToSidebar(d && d.mode);
+          /* tell the Match Board iframe right away (it also re-checks every 3 s) */
+          try { var mbf = document.getElementById('matchboard-iframe'); if (mbf && mbf.contentWindow) mbf.contentWindow.postMessage({ type: 'server-mode', mode: d && d.mode }, location.origin); } catch (e) {}
           smStatus.textContent = 'Saved ✓'; smStatus.style.color = '#44cc88';
           setTimeout(function(){ smStatus.textContent = ''; }, 2000);
         }).catch(function(){ smStatus.textContent = 'Error'; smStatus.style.color = '#ff4455'; });
@@ -2742,6 +2744,7 @@
     },
     {
       id: 'fullscreen',
+      sceneBgToggle: 'Waiting Screen + Waiting Lobby',   /* looping background behind the fullscreen scenes (same Scene Background setting as Postgame) */
       name: 'Fullscreen',
       file: 'Fullscreen.html',
       rebroadcastOnly: true,   /* listed in the Control sidebar only while Server Mode = REBROADCAST */
@@ -2749,6 +2752,7 @@
       /* one card per Fullscreen scene (state key fs_<name>, synced from the 'fullscreen' SSE event); the Control preview follows the real on-air state */
       checkToggles: [
         { name: 'Waiting Screen', key: 'fs_waiting', show: '/overlay/fullscreen/waiting/show', hide: '/overlay/fullscreen/waiting/hide' },
+        { name: 'Waiting Lobby', key: 'fs_lobby', show: '/overlay/fullscreen/lobby/show', hide: '/overlay/fullscreen/lobby/hide' },
       ],
     },
     {
@@ -2774,6 +2778,8 @@
         { name: 'Name Tag 2 · Casters 1 + 2', key: 'lt_nametag2', show: '/overlay/lowerthird/nametag2/show', hide: '/overlay/lowerthird/nametag2/hide' },
         { name: 'Name Tag 3 · Host + Casters', key: 'lt_nametag3', show: '/overlay/lowerthird/nametag3/show', hide: '/overlay/lowerthird/nametag3/hide' },
         /* Audience Comment: rolls through the Community Responses sheet; card also carries "Start from line" + "Seconds per comment" */
+        { name: 'Countdown Bug', key: 'lt_countdownbug', show: '/overlay/lowerthird/countdownbug/show', hide: '/overlay/lowerthird/countdownbug/hide' },
+        { name: 'Talent Predict', key: 'lt_talentpredict', show: '/overlay/lowerthird/talentpredict/show', hide: '/overlay/lowerthird/talentpredict/hide' },
         { name: 'Audience Comment', key: 'lt_audiencecomment', show: '/overlay/lowerthird/audiencecomment/show', hide: '/overlay/lowerthird/audiencecomment/hide', audienceControls: true },
       ],
     },
@@ -3619,11 +3625,11 @@
   }
   fetch('/api/fs-bg', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) { fsBgOn = !(d && d.on === false); applyFsBgBtns(); }).catch(function () {});
   dashboardSSE.addEventListener('fsbg', function (e) { try { fsBgOn = JSON.parse(e.data).on !== false; applyFsBgBtns(); } catch (err) {} });
-  function buildSceneBgToggle(body) {
+  function buildSceneBgToggle(body, ov) {
     if (body.children.length) body.appendChild(el('div', 'divider'));
     body.appendChild(el('div', 'features-label', 'Scene Background'));
     var row = el('div', 'feature-row');
-    row.appendChild(el('div', 'feature-name', 'All postgame scenes'));
+    row.appendChild(el('div', 'feature-name', typeof ov.sceneBgToggle === 'string' ? ov.sceneBgToggle : 'All postgame scenes'));
     var b = el('button', 'btn btn-toggle btn-toggle-on', '');
     b.addEventListener('click', function () { fetch('/overlay/fs-bg/' + (fsBgOn ? 'off' : 'on')).catch(function () {}); });   /* button flips from the SSE echo */
     fsBgBtns.push(b); row.appendChild(b); body.appendChild(row);
@@ -4257,7 +4263,7 @@
       body.appendChild(kePhotoRow);
     }
 
-    if (ov.sceneBgToggle) buildSceneBgToggle(body);
+    if (ov.sceneBgToggle) buildSceneBgToggle(body, ov);
 
     /* Sub-features */
     if (ov.features && ov.features.length) {
@@ -5294,6 +5300,8 @@
 
   /* ── MCT postgame top bar + HUD (#mct-hdr) — shared by Post Gold Graph and MCT Post H2H (one set of positions for both). ── */
   var MCH_DEFAULTS = {
+    '#mch-flag1': { left: 81, top: 102, width: 60, height: 60 },
+    '#mch-flag2': { left: 1779, top: 102, width: 60, height: 60 },
     '#mch-hud': { left: 47, top: 50, width: 1826, height: 1017 },
     '#mch-tile1': { left: 156, top: 50, width: 162, height: 162 },
     '#mch-logo1': { left: 168, top: 62, width: 138, height: 138 },
@@ -5312,6 +5320,8 @@
     '#mch-matchgame': { left: 710, top: 239, width: 500, height: 30, fontSize: 21 },
   };
   var MCH_ELEMENTS = [
+    { group: 'MCT Top Bar Left Flag', id: '#mch-flag1', name: 'Left Country Flag' },
+    { group: 'MCT Top Bar Right Flag', id: '#mch-flag2', name: 'Right Country Flag' },
     { group: 'MCT Top Bar HUD', id: '#mch-hud', name: 'HUD (corners)' },
     { group: 'MCT Top Bar Left Logo Tile', id: '#mch-tile1', name: 'Left Logo Tile' },
     { group: 'MCT Top Bar Left Logo', id: '#mch-logo1', name: 'Left Team Logo' },

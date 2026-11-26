@@ -216,6 +216,14 @@ function sbTopbarSrc() {
     '<path d="M19 11a1 1 0 0 0-2 0 5 5 0 0 1-10 0 1 1 0 0 0-2 0 7 7 0 0 0 6 6.92V20H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2h-2v-2.08A7 7 0 0 0 19 11z"/>' +
     '</svg><span class="sb-mi-casters-text"></span>';
   overlay.appendChild(miCasters);
+  /* MAIN BROADCAST: no caster names on the scoreboard (hidden unless the server mode is REBROADCAST) */
+  miCasters.style.display = 'none';
+  /* re-read every 5 s so a mode switch applies without reloading the browser source (both ways) */
+  (function sbServerMode() {
+    fetch('/api/server-mode', { cache: 'no-store' }).then(function (r) { return r.json(); })
+      .then(function (d) { miCasters.style.display = (d && d.mode === 'REBROADCAST') ? '' : 'none'; }).catch(function () {});
+    setTimeout(sbServerMode, 5000);
+  })();
 
   /* Map box — background art + logo + map name, pulled from the match
      board (/match/state). Map name shrinks to fit via sbFitText since

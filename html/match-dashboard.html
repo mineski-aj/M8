@@ -182,10 +182,21 @@
     .preview-score { font-size: 44px; font-weight: 800; line-height: 1; margin-top: 4px; }
     .preview-score.blue { color: #4a8fff; }
     .preview-score.red  { color: #ff5566; }
+    /* score +/- live in the Live Preview, beside each team's score (they act on the team shown on that side, swap-aware) */
+    .pv-score-row { display: flex; align-items: center; gap: 12px; }
+    .pv-score-row .preview-score { min-width: 40px; text-align: center; }
+    .btn.pv-score-btn { width: 34px; padding: 0; font-size: 18px; line-height: 30px; margin-top: 4px; }
+    .btn.pv-reset { font-size: 11px; padding: 5px 12px; }
+    /* the older score controls (Teams panel score row + Details-tab reset) are replaced by the ones in the Live Preview */
+    .score-section, #reset-btn { display: none !important; }
     .preview-vs { font-size: 13px; color: #333; }
     .preview-meta { font-size: 11px; color: #444; text-align: center; margin-top: 8px; }
 
     /* ── Panel tabs ── */
+    /* REBROADCAST talent predictions (under each caster field) */
+    .pred-label { margin-top: 8px; }
+    .pred-sel { width: 100%; }
+    .bug-timer-key { margin-left: 28px; }   /* Bug Timer sits right of the main Timer, same row */
     .panel-tab-bar { display: flex; margin: -4px 0 14px; border-bottom: 1px solid #1e1e2e; }
     .panel-tab { padding: 7px 16px; font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; border: none; background: transparent; color: #444; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s, border-color .15s; }
     .panel-tab:hover { color: #888; }
@@ -308,17 +319,18 @@
       <div class="preview-team">
         <img id="pv-left-logo" class="preview-logo" src="" alt="" onerror="this.style.display='none'" style="display:none">
         <div class="preview-short blue" id="pv-left-short">HME</div>
-        <div class="preview-score blue" id="pv-left-score">0</div>
+        <div class="pv-score-row"><button class="btn btn-minus pv-score-btn" id="pv-left-minus" title="Left team −1">−</button><div class="preview-score blue" id="pv-left-score">0</div><button class="btn btn-plus pv-score-btn" id="pv-left-plus" title="Left team +1">+</button></div>
         <div class="preview-side"       id="pv-left-side">HOME</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
         <div class="preview-vs">vs</div>
         <button class="btn btn-swap" id="swap-btn">⇄ SWAP</button>
+        <button class="btn btn-reset pv-reset" id="pv-reset-btn">Reset Scores</button>
       </div>
       <div class="preview-team">
         <img id="pv-right-logo" class="preview-logo" src="" alt="" onerror="this.style.display='none'" style="display:none">
         <div class="preview-short red"  id="pv-right-short">AWY</div>
-        <div class="preview-score red"  id="pv-right-score">0</div>
+        <div class="pv-score-row"><button class="btn btn-minus pv-score-btn" id="pv-right-minus" title="Right team −1">−</button><div class="preview-score red"  id="pv-right-score">0</div><button class="btn btn-plus pv-score-btn" id="pv-right-plus" title="Right team +1">+</button></div>
         <div class="preview-side"       id="pv-right-side">AWAY</div>
       </div>
     </div>
@@ -331,8 +343,8 @@
 
     <div class="panel-tab-bar">
       <button class="panel-tab active" id="panel-tab-details">Details</button>
-      <button class="panel-tab"        id="panel-tab-today">Today's Matches</button>
-      <button class="panel-tab"        id="panel-tab-tomorrow">Tomorrow's Matches</button>
+      <button class="panel-tab"        id="panel-tab-today" style="display:none;">Today's Matches</button>   <!-- REBROADCAST only (shown by the server-mode check) -->
+      <button class="panel-tab"        id="panel-tab-tomorrow" style="display:none;">Tomorrow's Matches</button>
     </div>
 
     <!-- Details tab -->
@@ -356,7 +368,7 @@
           <option value="BO7">Best of 7</option>
         </select>
       </div>
-      <div class="meta-field grow">
+      <div class="meta-field grow" id="tomorrow-format-field" style="display:none;">   <!-- REBROADCAST only (shown by the server-mode check) -->
         <div class="meta-label">Tomorrow's Format</div>
         <select id="series-tomorrow">
           <option value="BO1">Best of 1</option>
@@ -432,19 +444,25 @@
       </div>
     </div>
 
-    <!-- Row 4: Casters -->
-    <div class="meta-row" style="margin-top:10px;">
+    <!-- Row 4: Casters — REBROADCAST only (hidden in MAIN BROADCAST; shown by the server-mode check at the end of the script) -->
+    <div class="meta-row" id="caster-row" style="margin-top:10px; display:none;">
       <div class="meta-field grow">
         <div class="meta-label" id="caster-label-0">Caster 1</div>
         <input type="text" id="caster-0" list="talent-list" autocomplete="off" value="None">
+        <div class="meta-label pred-label">Prediction</div>
+        <select id="pred-0" class="pred-sel"></select>
       </div>
       <div class="meta-field grow">
         <div class="meta-label" id="caster-label-1">Caster 2</div>
         <input type="text" id="caster-1" list="talent-list" autocomplete="off" value="None">
+        <div class="meta-label pred-label">Prediction</div>
+        <select id="pred-1" class="pred-sel"></select>
       </div>
       <div class="meta-field grow">
         <div class="meta-label" id="caster-label-2">Caster 3</div>
         <input type="text" id="caster-2" list="talent-list" autocomplete="off" value="None">
+        <div class="meta-label pred-label">Prediction</div>
+        <select id="pred-2" class="pred-sel"></select>
       </div>
     </div>
 
@@ -497,6 +515,25 @@
           <button type="button" class="timer-btn timer-btn-pause" id="timer-pause-btn">❚❚ Pause</button>
           <button type="button" class="timer-btn timer-btn-reset" id="timer-reset-btn">⟲ Reset</button>
           <span class="timer-status" id="timer-status">Paused</span>
+        </div>
+      </div>
+      <!-- Countdown Bug's own clock (lower third "Countdown Bug") — independent of the Timer above -->
+      <span class="show-label-key bug-timer-key">Bug Timer</span>
+      <div class="timer-input-wrap">
+        <div class="timer-input-group">
+          <input type="number" class="timer-input" id="bug-min" min="0" max="999" value="6">
+          <span class="timer-input-label">Minutes</span>
+        </div>
+        <span class="timer-input-sep">:</span>
+        <div class="timer-input-group">
+          <input type="number" class="timer-input" id="bug-sec" min="0" max="59" value="0">
+          <span class="timer-input-label">Seconds</span>
+        </div>
+        <div class="timer-btn-group">
+          <button type="button" class="timer-btn timer-btn-start" id="bug-start-btn">▶ Start</button>
+          <button type="button" class="timer-btn timer-btn-pause" id="bug-pause-btn">❚❚ Pause</button>
+          <button type="button" class="timer-btn timer-btn-reset" id="bug-reset-btn">⟲ Reset</button>
+          <span class="timer-status" id="bug-status">Paused</span>
         </div>
       </div>
     </div>
@@ -599,6 +636,10 @@
   var roster      = null;
   var teamLineups = {}; // last-used role assignment per teamId — see /match/team-lineups
   var dragData    = null;
+  /* REBROADCAST: most matches a day ("Number of matches" spinners, match picker, cards). M8 theme's Today's Matches allows 10, everything
+     else (MCT, and Tomorrow's in both themes) 9. MAX_MATCHES = the overall ceiling (match picker options are built up to it). */
+  var MAX_MATCHES = 10;
+  function maxMatchesFor(key) { return (key === 'todayMatchCount' && poTheme && !mctTheme) ? 10 : 9; }
   var localState  = {
     home:    { teamId: '', name: 'Home Team', short: 'HME', score: 0, lineup: [] },
     away:    { teamId: '', name: 'Away Team', short: 'AWY', score: 0, lineup: [] },
@@ -804,6 +845,7 @@
   }
 
   function updatePreview() {
+    if (typeof renderPredictions === 'function') renderPredictions();   /* team / format changes relabel the prediction options */
     var s     = localState;
     var left  = s.swapped ? s.away : s.home;
     var right = s.swapped ? s.home : s.away;
@@ -1038,9 +1080,9 @@
       var l = poTheme && tmList[n] && (tmList[n].matchLabel || '').trim();
       o.textContent = l || ('Match ' + (n + 1));
     });
-    if (rebroadcastMode) {   // REBROADCAST: one option per match, up to the Today's Matches count (max 8)
+    if (rebroadcastMode) {   // REBROADCAST: one option per match, up to the Today's Matches count (max MAX_MATCHES)
       var mp = document.getElementById('match-picker'), cnt = matchCountOf('todayMatchCount');
-      for (var n = 0; n < 8; n++) {
+      for (var n = 0; n < MAX_MATCHES; n++) {
         var o = mp.querySelector('option[value="' + n + '"]');
         if (!o) { o = document.createElement('option'); o.value = String(n); mp.appendChild(o); }
         var l = tmList[n] && (tmList[n].matchLabel || '').trim();
@@ -1093,6 +1135,12 @@
   document.getElementById('home-minus').addEventListener('click', function () { changeScore('home', -1); });
   document.getElementById('away-plus').addEventListener('click',  function () { changeScore('away',  1); });
   document.getElementById('away-minus').addEventListener('click', function () { changeScore('away', -1); });
+  /* Live Preview +/-: the left column is HOME unless swapped (then AWAY) — see updatePreview */
+  function pvSide(pos) { return (pos === 'left') !== !!localState.swapped ? 'home' : 'away'; }
+  ['left', 'right'].forEach(function (pos) {
+    document.getElementById('pv-' + pos + '-plus').addEventListener('click',  function () { changeScore(pvSide(pos),  1); });
+    document.getElementById('pv-' + pos + '-minus').addEventListener('click', function () { changeScore(pvSide(pos), -1); });
+  });
 
   /* ── STAGE ── */
   document.getElementById('stage').addEventListener('change', function () {
@@ -1104,6 +1152,40 @@
   document.getElementById('series').addEventListener('change', function () {
     localState.series = this.value;
     push({ series: this.value });
+    renderPredictions();
+  });
+
+  /* ── TALENT PREDICTIONS (REBROADCAST; one per Panel Host / Caster 1 / Caster 2, under the name field) ──
+     The possible final series scores for the live match's format (BO1 1-0/0-1, BO3 2-0/2-1/1-2/0-2, BO5 3-x, BO7 4-x), always
+     HOME - AWAY, labelled with the live match's tricodes. Saved as localState.predictions ['2-1', '', ...] — only when a value is picked. */
+  function predScores(series) {
+    var bo = parseInt(String(series || 'BO5').replace(/\D/g, ''), 10) || 5, need = Math.ceil(bo / 2), out = [];
+    for (var l = 0; l < need; l++) out.push(need + '-' + l);          /* home wins: 3-0, 3-1, 3-2 */
+    for (var w = need - 1; w >= 0; w--) out.push(w + '-' + need);     /* away wins: 2-3, 1-3, 0-3 */
+    return out;
+  }
+  function renderPredictions() {
+    var s = localState, preds = Array.isArray(s.predictions) ? s.predictions : ['', '', ''];
+    var h = ((s.home && s.home.short) || 'HOME').toUpperCase(), a = ((s.away && s.away.short) || 'AWAY').toUpperCase();
+    var list = predScores(s.series);
+    [0, 1, 2].forEach(function (i) {
+      var sel = document.getElementById('pred-' + i); if (!sel || document.activeElement === sel) return;
+      var cur = preds[i] || '', opts = list.slice();
+      if (cur && opts.indexOf(cur) === -1) opts.push(cur);   /* a saved score from another format stays visible until changed */
+      sel.innerHTML = '';
+      var none = document.createElement('option'); none.value = ''; none.textContent = '— no prediction —'; sel.appendChild(none);
+      opts.forEach(function (sc) { var p = sc.split('-'); var o = document.createElement('option'); o.value = sc; o.textContent = h + '  ' + p[0] + ' - ' + p[1] + '  ' + a; sel.appendChild(o); });
+      sel.value = cur;
+    });
+  }
+  [0, 1, 2].forEach(function (i) {
+    document.getElementById('pred-' + i).addEventListener('change', function () {
+      var preds = (Array.isArray(localState.predictions) ? localState.predictions : ['', '', '']).slice();
+      while (preds.length < 3) preds.push('');
+      preds[i] = this.value;
+      localState.predictions = preds;
+      push({ predictions: preds });
+    });
   });
 
   /* Format for Tomorrow's Schedule (the Format above drives today's matches + the score caps). */
@@ -1117,11 +1199,11 @@
      it's running or paused; Start/Pause drive the run state. All three
      actions go through /match/timer so the server (not this tab) owns the
      clock, and the overlay survives a refresh without restarting it. */
-  function pushTimerAction(action, extra) {
+  function pushTimerAction(action, extra, which) {
     fetch('/match/timer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(Object.assign({ token: token, action: action }, extra || {})),
+      body: JSON.stringify(Object.assign({ token: token, action: action, which: which || 'main' }, extra || {})),
     }).then(function (r) {
       setSyncStatus(r.ok);
       if (r.ok) showSavedToast();
@@ -1144,6 +1226,25 @@
     document.getElementById('countdown-sec').value = 0;
     pushTimerAction('pause');
     pushTimerAction('set', { seconds: 0 });
+  });
+
+  /* Bug Timer (Countdown Bug lower third) — same controls, its own server clock (which: 'bug' -> state.bugTimer) */
+  function pushBugRemaining() {
+    var min = Math.max(0, parseInt(document.getElementById('bug-min').value, 10) || 0);
+    var sec = Math.max(0, Math.min(59, parseInt(document.getElementById('bug-sec').value, 10) || 0));
+    document.getElementById('bug-min').value = min;
+    document.getElementById('bug-sec').value = sec;
+    pushTimerAction('set', { seconds: min * 60 + sec }, 'bug');
+  }
+  document.getElementById('bug-min').addEventListener('change', pushBugRemaining);
+  document.getElementById('bug-sec').addEventListener('change', pushBugRemaining);
+  document.getElementById('bug-start-btn').addEventListener('click', function () { pushTimerAction('start', null, 'bug'); });
+  document.getElementById('bug-pause-btn').addEventListener('click', function () { pushTimerAction('pause', null, 'bug'); });
+  document.getElementById('bug-reset-btn').addEventListener('click', function () {
+    document.getElementById('bug-min').value = 0;
+    document.getElementById('bug-sec').value = 0;
+    pushTimerAction('pause', null, 'bug');
+    pushTimerAction('set', { seconds: 0 }, 'bug');
   });
 
   /* endAt is the server's absolute epoch-ms clock; a machine whose own
@@ -1172,6 +1273,15 @@
     if (startBtn) startBtn.disabled = !!t.running;
     if (pauseBtn) pauseBtn.disabled = !t.running;
     if (statusEl) { statusEl.textContent = t.running ? 'Running' : 'Paused'; statusEl.classList.toggle('on', !!t.running); }
+    /* Bug Timer */
+    var b = (localState.bugTimer) || { running: false, endAt: null, remaining: 360 };
+    var bRem = (b.running && b.endAt) ? Math.max(0, Math.round((b.endAt - (Date.now() + clockOffset)) / 1000)) : Math.max(0, b.remaining || 0);
+    var bm = document.getElementById('bug-min'), bs = document.getElementById('bug-sec');
+    if (bm && bs && document.activeElement !== bm && document.activeElement !== bs) { bm.value = Math.floor(bRem / 60); bs.value = bRem % 60; }
+    var bst = document.getElementById('bug-start-btn'), bpa = document.getElementById('bug-pause-btn'), bstat = document.getElementById('bug-status');
+    if (bst) bst.disabled = !!b.running;
+    if (bpa) bpa.disabled = !b.running;
+    if (bstat) { bstat.textContent = b.running ? 'Running' : 'Paused'; bstat.classList.toggle('on', !!b.running); }
   }
   function startTimerTick() {
     clearInterval(timerTickInt);
@@ -1189,13 +1299,21 @@
     updatePreview();
     push({ home: { score: 0 }, away: { score: 0 }, game: 1 });
   }
-  document.getElementById('reset-btn').addEventListener('click', resetScores);
-  document.getElementById('reset-score-btn').addEventListener('click', resetScores);
+  /* safety: resetting wipes the series score — always ask first */
+  function confirmResetScores() {
+    var s = localState, h = (s.home && s.home.score) || 0, a = (s.away && s.away.score) || 0;
+    var msg = 'Reset the series score to 0 - 0?\n\n' + ((s.home && s.home.short) || 'HOME') + ' ' + h + ' - ' + a + ' ' + ((s.away && s.away.short) || 'AWAY') + ' will be cleared and the game goes back to Game 1.';
+    if (window.confirm(msg)) resetScores();
+  }
+  document.getElementById('reset-btn').addEventListener('click', confirmResetScores);
+  document.getElementById('reset-score-btn').addEventListener('click', confirmResetScores);
+  document.getElementById('pv-reset-btn').addEventListener('click', confirmResetScores);
 
   /* ── SWAP ── */
   document.getElementById('swap-btn').addEventListener('click', function () {
     localState.swapped = !localState.swapped;
     updateBadges(localState.swapped);
+    updatePreview();   /* redraw the Live Preview at once (left/right teams + their +/- swap sides) */
     push({ swapped: localState.swapped });
   });
 
@@ -1294,7 +1412,7 @@
       if (el && document.activeElement !== el) el.value = tzValue();
     });
   }
-  function matchCountOf(key) { var n = parseInt(localState[key], 10); return (n >= 1 && n <= 8) ? n : 2; }
+  function matchCountOf(key) { var n = parseInt(localState[key], 10); return (n >= 1 && n <= maxMatchesFor(key)) ? n : (n > maxMatchesFor(key) ? maxMatchesFor(key) : 2); }
   function poMatchCount(day) { return rebroadcastMode ? matchCountOf('todayMatchCount') : ((day || 1) >= 4 ? 1 : 2); }
   /* A Match picker / current match beyond the day's count would point at a card that is off — pull it back. */
   function clampMatchToDay() {
@@ -1422,7 +1540,7 @@
     var list = (localState.todayMatches || DEFAULT_TIMES.map(function (t) {
       return { team1Id: '', team1Name: '', team1Short: '', team2Id: '', team2Name: '', team2Short: '', score1: 0, score2: 0, vsDisplay: 'VS', time: t };
     })).slice();
-    if (rebroadcastMode) while (list.length < matchCountOf('todayMatchCount'))   // REBROADCAST: up to 8 matches
+    if (rebroadcastMode) while (list.length < matchCountOf('todayMatchCount'))   // REBROADCAST: up to maxMatchesFor('todayMatchCount') matches
       list.push({ team1Id: '', team1Name: '', team1Short: '', team2Id: '', team2Name: '', team2Short: '', score1: 0, score2: 0, vsDisplay: 'VS', time: '' });
     return list;
   }
@@ -1665,8 +1783,11 @@
     updateLogoEl(img, tag);
     return img;
   }
+  var TBD_LOGO = '/assets/overlay/MCT/postgame/mct_m_logo.png';   /* MCT theme: a TBD (unpicked) team shows the MCT logo */
   function updateLogoEl(img, tag) {
+    img.classList.toggle('tbd-logo', !tag && mctTheme);
     if (tag) { img.src = logoUrl(tag); img.style.display = ''; }
+    else if (mctTheme) { img.src = TBD_LOGO; img.style.display = ''; }
     else { img.src = ''; img.style.display = 'none'; }
   }
 
@@ -1674,7 +1795,7 @@
     var sel = document.createElement('select');
     sel.className = 'match-team-sel';
     var none = document.createElement('option');
-    none.value = ''; none.textContent = '— pick —';
+    none.value = ''; none.textContent = 'TBD';   /* no team yet */
     sel.appendChild(none);
     if (roster && roster.teams) {
       Object.entries(roster.teams)
@@ -1972,7 +2093,7 @@
   /* Layout changes (both server modes): Match Info row order, Day up to 15, Bo labels, match-count spinners. */
   (function () {
   rebroadcastMode = true;
-  /* "Number of matches" spinners at the top of Today's / Tomorrow's Matches (1-8). */
+  /* "Number of matches" spinners at the top of Today's / Tomorrow's Matches (1 - maxMatchesFor(key): M8 today 10, else 9). */
   [['today', 'todayMatchCount', 'tab-content-today', 'Number of matches today'],
    ['tomorrow', 'tomorrowMatchCount', 'tab-content-tomorrow', 'Number of matches tomorrow']].forEach(function (c) {
     var wrap = document.createElement('div');
@@ -2003,7 +2124,7 @@
       inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') inp.blur(); });
     })(tzWrap.querySelector('input'));
     function step(delta) {
-      var n = Math.max(1, Math.min(8, matchCountOf(c[1]) + delta));
+      var n = Math.max(1, Math.min(maxMatchesFor(c[1]), matchCountOf(c[1]) + delta));
       localState[c[1]] = n;
       document.getElementById(c[0] + '-count-val').textContent = n;
       var patch = {}; patch[c[1]] = n; push(patch);
@@ -2034,12 +2155,29 @@
   var dv = document.getElementById('day-val'); if (dv && (localState.day || 1) > 15) { localState.day = 15; dv.textContent = 15; }
   })();
 
-  /* Server Mode REBROADCAST only: rename the caster slots (labels only — same fields/data). */
-  fetch('/api/server-mode', { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){
-    if (!d || d.mode !== 'REBROADCAST') return;
-    var tw = document.getElementById('countdown-min'); tw = tw && tw.closest('.show-label-wrap'); if (tw) tw.style.display = '';   /* REBROADCAST: bring back the countdown control */
-    ['Panel Host', 'Caster 1', 'Caster 2'].forEach(function(n, k){ var el = document.getElementById('caster-label-' + k); if (el) el.textContent = n; });
-  }).catch(function(){});
+  /* Server Mode: REBROADCAST shows the casters row (labels Panel Host / Caster 1 / Caster 2), the Today's / Tomorrow's Matches tabs,
+     Tomorrow's Format and the countdown control; MAIN BROADCAST hides them (data untouched). Applied both ways and LIVE: the dashboard
+     posts {type:'server-mode'} to this iframe when the mode is switched, and the mode is re-read every 3 s as a fallback. */
+  var appliedServerMode = null;
+  function applyServerMode(mode) {
+    mode = mode === 'REBROADCAST' ? 'REBROADCAST' : 'MAIN';
+    if (mode === appliedServerMode) return;
+    appliedServerMode = mode;
+    var rb = mode === 'REBROADCAST';
+    ['caster-row', 'panel-tab-today', 'panel-tab-tomorrow', 'tomorrow-format-field'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = rb ? '' : 'none'; });
+    var tw = document.getElementById('countdown-min'); tw = tw && tw.closest('.show-label-wrap'); if (tw) tw.style.display = rb ? '' : 'none';
+    (rb ? ['Panel Host', 'Caster 1', 'Caster 2'] : ['Caster 1', 'Caster 2', 'Caster 3']).forEach(function (n, k) { var el = document.getElementById('caster-label-' + k); if (el) el.textContent = n; });
+    /* leaving REBROADCAST while a now-hidden tab is open -> back to Details */
+    if (!rb) { var act = document.querySelector('.panel-tab.active'); if (act && act.id !== 'panel-tab-details') { var d = document.getElementById('panel-tab-details'); if (d) d.click(); } }
+  }
+  function pollServerMode() {
+    fetch('/api/server-mode', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) { applyServerMode(d && d.mode); }).catch(function () {});
+  }
+  pollServerMode();
+  setInterval(pollServerMode, 3000);
+  window.addEventListener('message', function (e) {
+    if (e.origin === location.origin && e.data && e.data.type === 'server-mode') applyServerMode(e.data.mode);
+  });
 
 })();
 

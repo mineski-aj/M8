@@ -1613,7 +1613,7 @@
     #mvm-sign { left: 50px; top: 138px; width: 1048px; height: 252px; }
     #mvm-teamlogo { left: 122px; top: 423px; width: 135px; height: 95px; object-fit: contain; }
     #mvm-role { left: 272px; top: 437px; width: 66px; height: 66px; border-radius: 4px; background: #47fff0; overflow: hidden; }
-    #mvm-role-glyph { position: absolute; left: -14px; top: -13px; width: 93px; height: 90px; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    #mvm-role-glyph { position: absolute; left: 12%; top: 12%; width: 76%; height: 76%; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
     #mvm-name { left: 358px; top: 420px; width: 700px; height: 110px; line-height: 110px; white-space: nowrap; font: 800 96px/110px 'Monument Ext MCT', sans-serif; color: #43fff0; }
     .mvm-label { font: 400 22px/26px 'Source Han Sans MCT', sans-serif; color: #43fff0; text-transform: uppercase; white-space: nowrap; }
     #mvm-kda-label, #mvm-gpm-label, #mvm-kp-label { width: 360px; text-align: center; top: 564px; }
@@ -1667,6 +1667,10 @@
     #mct-hdr.mch-on { display: block; }
     #mct-hdr.mch-visible { opacity: 1; }
     #mct-hdr > * { position: absolute; }
+    /* country flags beside the logo tiles (assets/flags/<TEAM NAME>_FLAG.webp — square art, flag centred, so a square box keeps each flag's proportions) */
+    .mch-flag { width: 60px; height: 60px; object-fit: contain; }
+    .mch-flag:not([src]) { visibility: hidden; }
+    #mch-flag1 { left: 81px; top: 102px; } #mch-flag2 { left: 1779px; top: 102px; }
     #mch-hud { z-index: 100; left: 47px; top: 50px; width: 1826px; height: 1017px; pointer-events: none; }
     .pgg-tile { width: 162px; height: 162px; box-sizing: border-box; background: linear-gradient(180deg, #2363b6 0%, #2a8bbd 55%, #2fb4b6 100%); border: 1.5px solid rgba(120,230,240,.55); }
     #mch-tile1 { border-radius: 34px 34px 0 34px; } #mch-tile2 { border-radius: 34px 0 34px 34px; }   /* one square corner each, as in the reference (left: bottom-right, right: top-right) */
@@ -1695,7 +1699,7 @@
     .pgg-hero { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #10152c; }
     .pgg-hero:not([src]) { visibility: hidden; }
     .pgg-role { width: 44px; height: 44px; border-radius: 3px; background: #47fff0; overflow: hidden; }
-    .pgg-role > div { position: absolute; left: -9px; top: -9px; width: 62px; height: 60px; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    .pgg-role > div { position: absolute; left: 12%; top: 12%; width: 76%; height: 76%; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
     .pgg-name { width: 186px; height: 36px; white-space: nowrap; overflow: visible; font: 700 26px/36px 'Source Han Sans MCT', sans-serif; color: #fff; text-transform: uppercase; }
     .pgg-coin { width: 28px; height: 28px; }
     .pgg-gold { width: 150px; height: 40px; text-align: center; white-space: nowrap; font: 800 34px/40px 'Monument Ext MCT', sans-serif; color: #fff; }
@@ -1723,7 +1727,7 @@
     #mct-hdr.mch-visible #mch-hud { animation: pggFade 500ms ease both; }
     #pgg-page.pgg-visible .pgg-panel, #pgg-page.pgg-visible #pgg-chart { animation: pggFade 450ms ease both; }
     #mct-hdr.mch-visible .pgg-tile { animation: pggSettle 500ms cubic-bezier(.2,.8,.2,1) both; }
-    #mct-hdr.mch-visible .pgg-logo, #mct-hdr.mch-visible #mch-mark { animation: pggSettle 500ms cubic-bezier(.2,.8,.2,1) 120ms both; }
+    #mct-hdr.mch-visible .pgg-logo, #mct-hdr.mch-visible .mch-flag, #mct-hdr.mch-visible #mch-mark { animation: pggSettle 500ms cubic-bezier(.2,.8,.2,1) 120ms both; }
     #mct-hdr.mch-visible .pgg-tri, #mct-hdr.mch-visible .pgg-score, #mct-hdr.mch-visible #mch-stage { animation: pggLift 450ms cubic-bezier(.2,.8,.2,1) 200ms both; }
     #mct-hdr.mch-visible .pgg-res, #mct-hdr.mch-visible .pgg-sw, #mct-hdr.mch-visible #mch-matchgame { animation: pggLift 450ms cubic-bezier(.2,.8,.2,1) 280ms both; }
     #pgg-page.pgg-visible .pgg-div { animation: pggFade 400ms ease 300ms both; }
@@ -1802,7 +1806,7 @@
     .p2m-spell:not([src]) { visibility: hidden; }
     #p2m-spell1 { left: 62px; } #p2m-spell2 { left: 1803px; }
     .p2m-role { width: 55px; height: 55px; top: 920px; background: #47fff0; overflow: hidden; }
-    .p2m-role > div { position: absolute; left: -12px; top: -11px; width: 79px; height: 77px; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    .p2m-role > div { position: absolute; left: 12%; top: 12%; width: 76%; height: 76%; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
     #p2m-role1 { left: 433px; } #p2m-role2 { left: 1432px; }
     .p2m-name { width: 296px; height: 32px; top: 932px; text-align: center; white-space: nowrap; font: 400 26px/32px 'Monument Ext MCT', sans-serif; color: #43fff0; text-transform: uppercase; }
     #p2m-name1 { left: 125px; } #p2m-name2 { left: 1499px; }
@@ -1829,7 +1833,7 @@
     .mcp-spell { width: 36px; height: 36px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid #f0b93a; object-fit: cover; background: #3a2a10; }
     .mcp-spell:not([src]) { visibility: hidden; }
     .mcp-lvl { width: 32px; height: 28px; background: #43fff0; text-align: center; font: 700 20px/28px 'Source Han Sans MCT', sans-serif; color: #13254f; }
-    .mcp-role { width: 64px; height: 64px; background: linear-gradient(180deg, #2f8cf0 0%, #3bc6f2 50%, #43fff0 100%); -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    .mcp-role { width: 64px; height: 64px; background: center / 62% no-repeat; }   /* official MCT role art in its own colours (mcpApplyRow sets background-image) */
     .mcp-name { width: 190px; height: 30px; white-space: nowrap; font: 700 20.5px/30px 'Source Han Sans MCT', sans-serif; color: #fff; text-transform: uppercase; }
     .mcp-lbl { width: 110px; height: 18px; white-space: nowrap; font: 700 14px/18px 'Source Han Sans MCT', sans-serif; color: #fff; text-transform: uppercase; }
     .mcp-val { height: 34px; white-space: nowrap; font: 400 26px/34px 'Monument Ext MCT', sans-serif; color: #fff; }
@@ -1950,7 +1954,7 @@
     .m4k-spell { top: 848px; width: 55px; height: 55px; border-radius: 50%; box-sizing: border-box; border: 2px solid #f0b93a; object-fit: cover; background: #3a2a10; }
     .m4k-spell:not([src]) { visibility: hidden; }
     .m4k-role { top: 848px; width: 55px; height: 55px; background: #47fff0; overflow: hidden; }
-    .m4k-role > div { position: absolute; left: -12px; top: -11px; width: 79px; height: 77px; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    .m4k-role > div { position: absolute; left: 12%; top: 12%; width: 76%; height: 76%; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
     .m4k-name { top: 859px; width: 296px; height: 32px; text-align: center; white-space: nowrap; font: 400 26px/32px 'Monument Ext MCT', sans-serif; color: #43fff0; text-transform: uppercase; }
     .m4k-label { top: 921px; width: 420px; height: 26px; text-align: center; white-space: nowrap; font: 700 20.5px/26px 'Source Han Sans MCT', sans-serif; color: #efe9e9; text-transform: uppercase; }
     .m4k-value { top: 944px; width: 420px; height: 84px; text-align: center; white-space: nowrap; font: 400 74px/84px 'Monument Ext MCT', sans-serif; color: #fff; }
@@ -2006,7 +2010,7 @@
     #hmm-line { left: 305px; top: 896px; width: 612px; height: 2px; background: rgba(67, 255, 240, .55); }
     #hmm-teamlogo { left: 417px; top: 928px; width: 104px; height: 73px; object-fit: contain; }
     #hmm-role { left: 546px; top: 933px; width: 57px; height: 57px; border-radius: 4px; background: #47fff0; overflow: hidden; }
-    #hmm-role-glyph { position: absolute; left: -12px; top: -11px; width: 80px; height: 78px; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
+    #hmm-role-glyph { position: absolute; left: 12%; top: 12%; width: 76%; height: 76%; background: #20195a; -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
     #hmm-name { left: 620px; top: 920px; width: 560px; height: 96px; white-space: nowrap; font: 800 84px/96px 'Monument Ext MCT', sans-serif; color: #43fff0; }
     #hmm-hero:not([src]), #hmm-teamlogo:not([src]), #hmm-photo:not([src]) { visibility: hidden; }
     #hmm-page.hmm-visible #hmm-container, #hmm-page.hmm-visible #hmm-hud { animation: mvmFade 500ms ease both; }
@@ -5760,6 +5764,7 @@
     <!-- MCT postgame top bar + HUD (#mct-hdr), shared by Post Gold Graph and MCT Post H2H: it stays up (no re-animation) when one of
          those scenes replaces the other (mctHdrShow / mctHdrRelease). -->
     <div id="mct-hdr">
+      <img id="mch-flag1" class="mch-flag" alt=""><img id="mch-flag2" class="mch-flag" alt="">
       <div id="mch-tile1" class="pgg-tile"></div><img id="mch-logo1" class="pgg-logo" alt="">
       <div id="mch-tile2" class="pgg-tile"></div><img id="mch-logo2" class="pgg-logo" alt="">
       <div id="mch-tri1" class="pgg-tri"></div><div id="mch-res1" class="pgg-res"></div><svg id="mch-sw1" class="pgg-sw" viewBox="0 0 112 28"></svg>
@@ -7997,7 +8002,7 @@
        schedule (see match-dashboard.html's renderTomorrowMatches). */
     /* Playoffs: how many matches Tomorrow's Schedule shows — day 4/5 = 1, day 2/3 = 2 (a GRAND FINALS label on match 1 still forces 1). */
     function poTomorrowCount(state) {
-      if (state && state.tomorrowMatchCount >= 1 && state.tomorrowMatchCount <= 8) return state.tomorrowMatchCount;   // REBROADCAST: set by the Match Board spinner
+      if (state && state.tomorrowMatchCount >= 1 && state.tomorrowMatchCount <= 9) return state.tomorrowMatchCount;   // REBROADCAST: set by the Match Board spinner
       const first = (state && state.tomorrowMatches && state.tomorrowMatches[0]) || {};
       return (computeTomorrowWeekDay(state).day >= 4 || /grand\s*finals?/i.test(first.stageLabel || '')) ? 1 : 2;
     }
@@ -8901,32 +8906,14 @@
     const mvmPage = document.getElementById('mvm-page');
     const MVM_SAMPLE = { name: 'Kairi', heroid: 91, role: 'gold_laner', team_simple_name: 'RORA', skillid: 20080, rune_id: 20001, rune_map_1: 811, rune_map_2: 821, rune_map_3: 731,
       kp: 75, extra_param: { kda: '20/1/20', gpm: 1082 }, equip_list: [{ value: 1002 }, { value: 2104 }, { value: 2105 }, { value: 2306 }, { value: 3105 }, { value: 3104 }] };
-    const mvmGlyphCache = {};
     /* Role glyphs live in the middle of the MCT ingame Item Check rows (mct_item<lane>.png, 1084x52, glyph column x 516-568). Cut the glyph out
        of the blue column by its brightness so it can be re-coloured and scaled up as a mask. */
+    /* Official MCT role art (assets/overlay/MCT/roles/<ROLE>.webp, 256 px copies of the 1080 px PNGs, cyan->blue glyph on transparency). Used as a MASK on the
+       cyan role tiles (navy glyph) and drawn as-is (its own gradient) where the glyph has no tile (Post Game rows, .mcp-role). */
+    const MCT_ROLE_ART = { 'GOLD LANER': 'GOLD LANE', 'EXP LANER': 'EXP LANE', 'MID LANER': 'MID LANE', 'ROAMER': 'ROAMER', 'JUNGLER': 'JUNGLER' };
     function mvmRoleGlyph(roleStr) {
-      const lane = { 'GOLD LANER': 'gold', 'EXP LANER': 'exp', 'MID LANER': 'mid', 'ROAMER': 'roam', 'JUNGLER': 'jungle' }[roleFile(roleStr)] || '';
-      if (!lane) return Promise.resolve('');
-      if (mvmGlyphCache[lane]) return mvmGlyphCache[lane];
-      return (mvmGlyphCache[lane] = new Promise(res => {
-        const im = new Image();
-        im.onload = () => {
-          try {
-            /* "Redraw": the 52 px source glyph is up-sampled 8x with smoothing + a blur, then hard-thresholded on brightness, which turns the
-               pixel staircase into smooth vector-like contours (a plain scale-up of the raster looked jagged). */
-            const K = 8, W = 52, H = 52, c = document.createElement('canvas'); c.width = W * K; c.height = H * K;
-            const x = c.getContext('2d', { willReadFrequently: true });
-            x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.filter = 'blur(' + (K * 0.45) + 'px)';
-            x.drawImage(im, 516, 0, W, H, 0, 0, W * K, H * K);
-            x.filter = 'none';
-            const d = x.getImageData(0, 0, W * K, H * K), px = d.data;
-            for (let i = 0; i < px.length; i += 4) { const a = Math.max(0, Math.min(1, (px[i + 1] - 105) / 26)); px[i] = px[i + 1] = px[i + 2] = 255; px[i + 3] = Math.round(a * 255); }
-            x.putImageData(d, 0, 0); res(c.toDataURL());
-          } catch (e) { res(''); }
-        };
-        im.onerror = () => res('');
-        im.src = '/assets/overlay/M8/Ingame/mct_item' + lane + '.png';
-      }));
+      const f = MCT_ROLE_ART[roleFile(roleStr)];
+      return Promise.resolve(f ? '/assets/overlay/MCT/roles/' + encodeURIComponent(f) + '.webp' : '');   /* 256 px WebP copies of the 1080 px PNGs */
     }
     async function mvmFetchPlayer() {
       let pick = { camp: 1, seat: 1, debug: false };
@@ -12772,6 +12759,18 @@
       });
     }
 
+    /* Country flag for a tricode: the theme's roster (/api/roster -> teams[id].tag / .name) gives the team name, the flag is
+       assets/flags/<NAME>_FLAG.webp; unknown team / missing file -> hidden. Roster cached per page load. */
+    let mctRosterP = null;
+    function mctSetFlag(img, tri) {
+      if (!img) return;
+      if (!mctRosterP) mctRosterP = fetch('/api/roster', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+      mctRosterP.then(ro => {
+        const t = ro && ro.teams && Object.values(ro.teams).find(x => String(x.tag || '').toUpperCase() === tri);
+        img.onerror = () => img.removeAttribute('src');
+        if (t && t.name) img.src = '/assets/flags/' + encodeURIComponent(t.name + '_FLAG') + '.webp'; else img.removeAttribute('src');
+      });
+    }
     /* MCT postgame header (Post Gold Graph, MCT Post H2H): <pfx>-tri1/2, -logo1/2, -score1/2, -res1/2, -sw1/2, -stage, -matchgame. */
     function mctFillHeader(pfx, gd, ms) {
       ms = ms || {};
@@ -12783,6 +12782,7 @@
         const logo = document.getElementById(pfx + '-logo' + n), tag = encodeURIComponent(tri);
         logo.onerror = () => { logo.onerror = () => logo.removeAttribute('src'); logo.src = '/assets/team/logos/' + tag + '.png'; };
         if (tri) logo.src = '/assets/team/logos/' + tag + '_3.png'; else logo.removeAttribute('src');
+        if (pfx === 'mch') mctSetFlag(document.getElementById('mch-flag' + n), tri);
         const kills = [1, 2, 3, 4, 5].reduce((a, i) => a + ((c['seat_' + i] || {}).kill_num || 0), 0);
         document.getElementById(pfx + '-score' + n).textContent = c.score != null ? c.score : kills;
         const res = document.getElementById(pfx + '-res' + n);
@@ -13133,7 +13133,7 @@
       const tal = seat ? mcpTalents(seat) : [null, null, null];
       [tal[0], tal[1], tal[2], seat && seat.rune_id].forEach((id, k) => set(`mcp-emb-${n}-${k}`, mvRuneUrl(id)));
       const glyph = seat ? await mvmRoleGlyph(lane) : '', g = document.getElementById('mcp-role-' + n);
-      g.style.webkitMaskImage = g.style.maskImage = glyph ? 'url(' + glyph + ')' : 'none';
+      g.style.backgroundImage = glyph ? 'url(' + glyph + ')' : 'none';
     }
     function mcpMidRow(r, a, b, fmt) {
       const has = a != null && b != null;

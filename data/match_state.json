@@ -1,42 +1,8 @@
 {
   "home": {
-    "teamId": "189",
-    "name": "189 ESPORTS",
-    "short": "189",
-    "score": 1,
-    "lineup": [
-      {
-        "role": "EXP LANER",
-        "ign": "",
-        "id": ""
-      },
-      {
-        "role": "JUNGLER",
-        "ign": "",
-        "id": ""
-      },
-      {
-        "role": "MID LANER",
-        "ign": "",
-        "id": ""
-      },
-      {
-        "role": "ROAMER",
-        "ign": "",
-        "id": ""
-      },
-      {
-        "role": "GOLD LANER",
-        "ign": "",
-        "id": ""
-      }
-    ],
-    "coach": ""
-  },
-  "away": {
-    "teamId": "FCON",
-    "name": "FALCON ESPORTS",
-    "short": "FCON",
+    "teamId": "ESB",
+    "name": "ESB TITANS",
+    "short": "ESB",
     "score": 0,
     "lineup": [
       {
@@ -67,8 +33,42 @@
     ],
     "coach": ""
   },
-  "series": "BO1",
-  "game": 2,
+  "away": {
+    "teamId": "189",
+    "name": "189 ESPORTS",
+    "short": "189",
+    "score": 0,
+    "lineup": [
+      {
+        "role": "EXP LANER",
+        "ign": "",
+        "id": ""
+      },
+      {
+        "role": "JUNGLER",
+        "ign": "",
+        "id": ""
+      },
+      {
+        "role": "MID LANER",
+        "ign": "",
+        "id": ""
+      },
+      {
+        "role": "ROAMER",
+        "ign": "",
+        "id": ""
+      },
+      {
+        "role": "GOLD LANER",
+        "ign": "",
+        "id": ""
+      }
+    ],
+    "coach": ""
+  },
+  "series": "BO3",
+  "game": 1,
   "match": 1,
   "swapped": false,
   "official": true,
@@ -100,111 +100,139 @@
   },
   "todayMatches": [
     {
-      "team1Id": "10845",
-      "team1Name": "Aurora Gaming PH",
-      "team1Short": "RORA",
-      "team2Id": "10764",
-      "team2Name": "ONIC PH",
-      "team2Short": "ONIC",
-      "score1": 1,
+      "team1Id": "ESB",
+      "team1Name": "ESB TITANS",
+      "team1Short": "ESB",
+      "team2Id": "189",
+      "team2Name": "189 ESPORTS",
+      "team2Short": "189",
+      "score1": 0,
       "score2": 0,
-      "vsDisplay": "1 - 0",
-      "time": "2:30 pm",
+      "vsDisplay": "VS",
+      "time": "2:10 PM",
       "matchLabel": "MATCH 1",
-      "series": "BO1"
+      "series": "BO3",
+      "group": ""
     },
     {
-      "team1Id": "10764",
-      "team1Name": "ONIC PH",
-      "team1Short": "ONIC",
-      "team2Id": "10845",
-      "team2Name": "Aurora Gaming PH",
-      "team2Short": "RORA",
+      "team1Id": "TEN",
+      "team1Name": "TENACITY",
+      "team1Short": "TEN",
+      "team2Id": "EV",
+      "team2Name": "TEAM EVIL",
+      "team2Short": "EV",
       "score1": 0,
       "score2": 0,
       "vsDisplay": "VS",
-      "time": "5:00 PM",
+      "time": "3:10 PM",
       "matchLabel": "MATCH 2",
-      "series": "BO1"
+      "series": "BO1",
+      "group": ""
     },
     {
-      "team1Id": "10973",
-      "team1Name": "Team Falcons",
-      "team1Short": "FLCN",
-      "team2Id": "11150",
-      "team2Name": "Smart Omega",
-      "team2Short": "OMG",
+      "team1Id": "FCON",
+      "team1Name": "FALCON ESPORTS",
+      "team1Short": "FCON",
+      "team2Id": "BAC",
+      "team2Name": "BACON TIME",
+      "team2Short": "BAC",
       "score1": 0,
       "score2": 0,
       "vsDisplay": "VS",
-      "time": "",
+      "time": "4:10 PM",
       "matchLabel": "MATCH 3",
-      "series": "BO1"
+      "series": "BO1",
+      "group": ""
     },
     {
-      "team1Id": "10975",
-      "team1Name": "Twisted Minds PH",
-      "team1Short": "TWIS",
-      "team2Id": "11150",
-      "team2Name": "Smart Omega",
-      "team2Short": "OMG",
+      "team1Id": "ESB",
+      "team1Name": "ESB TITANS",
+      "team1Short": "ESB",
+      "team2Id": "SGP",
+      "team2Name": "SAIGON PHANTOM",
+      "team2Short": "SGP",
       "score1": 0,
       "score2": 0,
       "vsDisplay": "VS",
-      "time": "",
-      "matchLabel": "MATCH 4"
+      "time": "5:10 PM",
+      "matchLabel": "MATCH 4",
+      "series": "BO1",
+      "group": ""
     },
     {
-      "team1Id": "10845",
-      "team1Name": "Aurora Gaming PH",
-      "team1Short": "RORA",
-      "team2Id": "11150",
-      "team2Name": "Smart Omega",
-      "team2Short": "OMG",
+      "team1Id": "TEN",
+      "team1Name": "TENACITY",
+      "team1Short": "TEN",
+      "team2Id": "3V",
+      "team2Name": "VENI VIDI VICI",
+      "team2Short": "3V",
       "score1": 0,
       "score2": 0,
       "vsDisplay": "VS",
-      "time": "",
-      "matchLabel": "MATCH 5"
+      "time": "6:10 PM",
+      "matchLabel": "MATCH 5",
+      "series": "BO1",
+      "group": ""
     },
     {
-      "team1Id": "10845",
-      "team1Name": "Aurora Gaming PH",
-      "team1Short": "RORA",
-      "team2Id": "10763",
-      "team2Name": "Team Liquid PH",
-      "team2Short": "TLPH",
+      "team1Id": "FCON",
+      "team1Name": "FALCON ESPORTS",
+      "team1Short": "FCON",
+      "team2Id": "VGR",
+      "team2Name": "VIGOR APEX",
+      "team2Short": "VGR",
       "score1": 0,
       "score2": 0,
       "vsDisplay": "VS",
-      "time": "",
-      "matchLabel": "MATCH 6"
+      "time": "7:10 PM",
+      "matchLabel": "MATCH 6",
+      "series": "BO1",
+      "group": ""
     },
     {
-      "team1Id": "10845",
-      "team1Name": "Aurora Gaming PH",
-      "team1Short": "RORA",
-      "team2Id": "11149",
-      "team2Name": "AP.BREN",
-      "team2Short": "APBR",
+      "team1Id": "189",
+      "team1Name": "189 ESPORTS",
+      "team1Short": "189",
+      "team2Id": "SGP",
+      "team2Name": "SAIGON PHANTOM",
+      "team2Short": "SGP",
       "score1": 0,
       "score2": 0,
       "vsDisplay": "VS",
-      "time": "",
-      "matchLabel": "MATCH 7"
+      "time": "8:10 PM",
+      "matchLabel": "MATCH 7",
+      "series": "BO1",
+      "group": ""
     },
     {
-      "team1Id": "10763",
-      "team1Name": "Team Liquid PH",
-      "team1Short": "TLPH",
-      "team2Id": "10765",
-      "team2Name": "TNC Pro Team PH",
-      "team2Short": "TNC",
+      "team1Id": "EV",
+      "team1Name": "TEAM EVIL",
+      "team1Short": "EV",
+      "team2Id": "3V",
+      "team2Name": "VENI VIDI VICI",
+      "team2Short": "3V",
       "score1": 0,
       "score2": 0,
       "vsDisplay": "VS",
-      "time": "",
-      "matchLabel": "MATCH 8"
+      "time": "9:10 PM",
+      "matchLabel": "MATCH 8",
+      "series": "BO1",
+      "group": ""
+    },
+    {
+      "team1Id": "BAC",
+      "team1Name": "BACON TIME",
+      "team1Short": "BAC",
+      "team2Id": "VGR",
+      "team2Name": "VIGOR APEX",
+      "team2Short": "VGR",
+      "score1": 0,
+      "score2": 0,
+      "vsDisplay": "VS",
+      "time": "10:10 PM",
+      "matchLabel": "MATCH 9",
+      "series": "BO1",
+      "group": ""
     }
   ],
   "tomorrowMatches": [
@@ -303,7 +331,17 @@
     "Midnight"
   ],
   "stage": "Group Stage",
-  "todayMatchCount": 8,
+  "todayMatchCount": 9,
   "tomorrowMatchCount": 8,
-  "timezone": "GMT+8"
+  "timezone": "GMT+8",
+  "predictions": [
+    "",
+    "",
+    ""
+  ],
+  "bugTimer": {
+    "running": true,
+    "endAt": 1795677907139,
+    "remaining": 60
+  }
 }

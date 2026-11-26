@@ -93,10 +93,80 @@
       letter-spacing: 0; text-transform: uppercase; white-space: nowrap; }
     #wt-comingup { top: 798px; }
     #wt-stage { top: 962px; }
+
+    /* ───────── WAITING LOBBY (reference assets/overlay/MCT/waiting lobby/mctlobby_reference.png) ─────────
+       Transparent centre (the stream shows through), players either side cycling every 4 s, centre = logo, stage-day, shared timer,
+       live match, sponsor. Every element its own absolute child of #lobby. */
+    @font-face { font-family: 'Source Code Pro'; font-style: italic; font-weight: 500; font-display: block; src: url('/assets/fonts/SourceCodePro/SourceCodePro-MediumIt.ttf') format('truetype'); }
+    @font-face { font-family: 'Built Titling'; font-weight: 600; font-display: block; src: url('/assets/fonts/MCT/BuiltTitling/built-titling-sb-5.ttf') format('truetype'); }
+    /* looping background behind the fullscreen scenes (same loop as the MCT postgame scenes). On while a scene is on air AND the dashboard's
+       Scene Background setting is on (/api/fs-bg, SSE 'fsbg' — shared with Postgame); off = transparent. The video pauses when hidden. */
+    #fs-bg, #fs-bg-video { left: 0; top: 0; width: 1920px; height: 1080px; object-fit: cover; opacity: 0; transition: opacity 500ms ease; }
+    #fs-bg.on, #fs-bg-video.on { opacity: 1; }
+    #lobby { left: 0; top: 0; width: 1920px; height: 1080px; }
+    #lobby.off { visibility: hidden; pointer-events: none; }
+    #lobby > * { position: absolute; }
+    .lb-photo { top: 70px; width: 1000px; height: 1000px; object-fit: contain; }
+    .lb-photo:not([src]) { visibility: hidden; }
+    #lb-photo1 { left: -150px; } #lb-photo2 { left: 1050px; }   /* head centres ~330 / ~1600 like the reference */
+    #lb-grad, #lb-water { left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; }
+    #lb-sider { left: 44px; top: 95px; width: 1832px; height: 694px; }
+    #lb-hud { left: 47px; top: 50px; width: 1826px; height: 1017px; }
+    .lb-toptxt { top: 50px; height: 22px; white-space: pre; line-height: 22px; color: #fff; }
+    .lb-toptxt span { display: inline-block; }
+    #lb-loc { left: 398px; font: 400 16.6px/22px 'Monument Extended', sans-serif; }   /* Monument Extended Regular */
+    #lb-loc svg { width: 13px; height: 15px; margin-right: 9px; vertical-align: -1px; }
+    #lb-tag { left: 1318px; width: 204px; text-align: right; font: italic 500 18.9px/22px 'Source Code Pro', monospace; }   /* Source Code Pro Medium Italic */
+    #lb-tag .w { color: #43fff0; }
+    #lb-logo { left: 858px; top: 48px; width: 204px; height: 271px; }
+    #lb-stage { left: 560px; top: 368px; width: 800px; height: 38px; text-align: center; white-space: pre; font: 800 31.5px/38px 'Monument Extended', sans-serif; color: #fff; text-transform: uppercase; }
+    #lb-timer { left: 560px; top: 415px; width: 800px; height: 140px; display: flex; align-items: center; justify-content: center;
+      font-family: 'Monument Extended', sans-serif; font-weight: 800; font-size: 146px; line-height: 1; white-space: nowrap; }
+    #lb-timer .d, #lb-timer .c { display: inline-block; text-align: center; color: transparent; background: var(--grad-text); -webkit-background-clip: text; background-clip: text; }
+    #lb-timer .d { width: var(--digit-w, 0.86em); } #lb-timer .c { width: var(--colon-w, 0.42em); }
+    .lb-flag { top: 568px; width: 55px; height: 55px; object-fit: contain; } #lb-flag1 { left: 731px; } #lb-flag2 { left: 1135px; }
+    .lb-tile { top: 621px; width: 168px; height: 168px; } #lb-tile1 { left: 675px; } #lb-tile2 { left: 1078px; }
+    .lb-logo { top: 645px; width: 120px; height: 120px; object-fit: contain; } #lb-logo1 { left: 699px; } #lb-logo2 { left: 1102px; }
+    .lb-flag:not([src]), .lb-logo:not([src]) { visibility: hidden; }
+    .lb-tri { top: 795px; width: 220px; height: 44px; text-align: center; white-space: pre; font: 800 40px/44px 'Monument Extended', sans-serif; color: #fff; }
+    #lb-tri1 { left: 651px; } #lb-tri2 { left: 1052px; }
+    .lb-small { left: 810px; width: 300px; height: 34px; text-align: center; white-space: pre; font: 500 27px/34px 'Source Han Sans', sans-serif; color: #7ff3e9; text-transform: uppercase; }
+    #lb-match { top: 621px; } #lb-bo { top: 759px; }
+    #lb-vs { left: 810px; top: 655px; width: 300px; height: 100px; text-align: center; white-space: pre; font: 800 93.5px/100px 'Monument Extended', sans-serif; color: #fff; }
+    #lb-spcat { left: 760px; top: 886px; width: 400px; height: 28px; text-align: center; white-space: pre; font: 500 20.6px/28px 'Source Han Sans', sans-serif; color: #fff; text-transform: uppercase; transition: opacity 400ms; }
+    #lb-splogo { left: 860px; top: 922px; width: 200px; height: 88px; object-fit: contain; transition: opacity 400ms; }
+    #lb-splogo:not([src]) { visibility: hidden; }
+    .lb-nbox { top: 906px; width: 563px; height: 77px; } #lb-nbox1 { left: 112px; } #lb-nbox2 { left: 1245px; transform: scaleX(-1); }
+    .lb-role { top: 919px; width: 52px; height: 52px; object-fit: contain; } #lb-role1 { left: 133px; } #lb-role2 { left: 1735.5px; }   /* centred in each plate's dark square (left 112-205, right = mirror 1715-1808) */
+    .lb-role:not([src]) { visibility: hidden; }
+    .lb-name { top: 924px; width: 380px; height: 44px;   /* measured: baseline = top + 33, cap height 25.6 -> caps centred on the plate's centre line (y 944.5) */ overflow: hidden; text-align: center; white-space: pre; font: 800 36.6px/44px 'Monument Extended', sans-serif; color: #13246b; }
+    #lb-name1 { left: 198px; } #lb-name2 { left: 1357px; }
+    .lb-name .ch { display: inline-block; }
   </style>
 </head>
 <body>
 <div id="stage">
+  <img id="fs-bg" src="/assets/overlay/MCT/postgame/mvp/mvp_background.png" alt="">
+  <video id="fs-bg-video" src="/assets/webm/MCT-FHD-BG%20LOOP.webm" loop muted playsinline preload="auto"></video>
+  <div id="lobby" class="off">
+    <img id="lb-photo1" class="lb-photo" alt=""><img id="lb-photo2" class="lb-photo" alt="">
+    <img id="lb-grad" src="/assets/overlay/MCT/waiting%20lobby/mctlobby_gradientonplayer.png" alt="">
+    <img id="lb-water" src="/assets/overlay/MCT/waiting%20lobby/mctlobby_frontwater.png" alt="">
+    <img id="lb-sider" src="/assets/overlay/MCT/waiting%20lobby/mctlobby_sider.png" alt="">
+    <img id="lb-hud" src="/assets/overlay/MCT/postgame/mvp/mvp_hud.png" alt="">
+    <div id="lb-loc" class="lb-toptxt"></div><div id="lb-tag" class="lb-toptxt"></div>
+    <img id="lb-logo" src="/assets/overlay/MCT/waiting%20lobby/mctlobby_logo.png" alt="">
+    <div id="lb-stage"></div><div id="lb-timer"></div>
+    <img id="lb-flag1" class="lb-flag" alt=""><img id="lb-flag2" class="lb-flag" alt="">
+    <img id="lb-tile1" class="lb-tile" src="/assets/overlay/MCT/waiting%20lobby/mctlobby_teamcontainer.png" alt=""><img id="lb-tile2" class="lb-tile" src="/assets/overlay/MCT/waiting%20lobby/mctlobby_teamcontainer.png" alt="">
+    <img id="lb-logo1" class="lb-logo" alt=""><img id="lb-logo2" class="lb-logo" alt="">
+    <div id="lb-tri1" class="lb-tri"></div><div id="lb-tri2" class="lb-tri"></div>
+    <div id="lb-match" class="lb-small"></div><div id="lb-vs">VS</div><div id="lb-bo" class="lb-small"></div>
+    <div id="lb-spcat"></div><img id="lb-splogo" alt="">
+    <img id="lb-nbox1" class="lb-nbox" src="/assets/overlay/MCT/waiting%20lobby/mctlobby_playernamecontainer.png" alt=""><img id="lb-nbox2" class="lb-nbox" src="/assets/overlay/MCT/waiting%20lobby/mctlobby_playernamecontainer.png" alt="">
+    <img id="lb-role1" class="lb-role" alt=""><img id="lb-role2" class="lb-role" alt="">
+    <div id="lb-name1" class="lb-name"></div><div id="lb-name2" class="lb-name"></div>
+  </div>
   <div id="waiting" class="off">
     <div id="wt-timer"></div>
 
@@ -177,7 +247,7 @@
 
   /* ── matches ── */
   function teamsOf(s) {
-    var n = parseInt(s.todayMatchCount, 10); n = (n >= 1 && n <= 8) ? n : 2;
+    var n = parseInt(s.todayMatchCount, 10); n = (n >= 1 && n <= 10) ? n : 2;   /* Match Board allows up to 10 (M8) / 9 (MCT) */
     return (s.todayMatches || []).slice(0, n);
   }
   function hasTeams(m) { return !!(m && (m.team1Short || m.team2Short)); }
@@ -189,9 +259,11 @@
     var tz = (typeof state.timezone === 'string') ? state.timezone.trim() : 'GMT+8';
     return (tz && !/GMT|UTC/i.test(t)) ? t + ' ' + tz : t;
   }
+  /* a side with no team yet (Match Board "TBD") shows the MCT logo + "TBD" (a match with NO teams at all is still skipped, hasTeams) */
+  var TBD_LOGO = '/assets/overlay/MCT/postgame/mct_m_logo.png';
   function logo(img, tag) {
-    if (!tag) { img.style.display = 'none'; img.removeAttribute('data-tag'); return; }
-    if (img.dataset.tag !== tag) { img.dataset.tag = tag; img.src = '/assets/team/logos/' + encodeURIComponent(tag) + '.png'; }
+    var src = tag ? '/assets/team/logos/' + encodeURIComponent(tag) + '.png' : TBD_LOGO, key = tag || '__tbd';
+    if (img.dataset.tag !== key) { img.dataset.tag = key; img.src = src; }
     img.style.display = '';
   }
   function $(id) { return document.getElementById(id); }
@@ -210,7 +282,7 @@
     $('wm-c-nl').className = 'wm-tri ' + cls(lost1); $('wm-c-nr').className = 'wm-tri ' + cls(lost2);
     $('wm-c-time').textContent = timeText(m);
     $('wm-c-bo').textContent = boText(m, s);
-    $('wm-c-nl').textContent = m.team1Short || ''; $('wm-c-nr').textContent = m.team2Short || '';
+    $('wm-c-nl').textContent = m.team1Short || 'TBD'; $('wm-c-nr').textContent = m.team2Short || 'TBD';
   }
   function showCurrent(i) {
     if (busy) return;
@@ -232,13 +304,13 @@
     return cur;
   }
   function paintNext() {
-    var list = teamsOf(state), m = list[(parseInt(state.match, 10) || 1)];   // the match after the live one
+    var list = teamsOf(state), m = list[Math.max(0, (parseInt(state.match, 10) || 1) - 1)];   // the Match Board's live (checked) match — state.match is 1-based (Match 1 = 1)
     var el = $('wm-next');
     if (!hasTeams(m)) { el.classList.add('empty'); return; }
     el.classList.remove('empty');
     logo($('wm-n-il'), m.team1Short); logo($('wm-n-ir'), m.team2Short);
     $('wm-n-bo').textContent = boText(m, state);
-    $('wm-n-nl').textContent = m.team1Short || ''; $('wm-n-nr').textContent = m.team2Short || '';
+    $('wm-n-nl').textContent = m.team1Short || 'TBD'; $('wm-n-nr').textContent = m.team2Short || 'TBD';
     $('wm-n-time').textContent = timeText(m);
   }
 
@@ -247,6 +319,7 @@
     state = s;
     if (typeof s.serverNow === 'number') clockOffset = s.serverNow - Date.now();
     if (s.timer) timer = s.timer;
+    if (window.__lobby) window.__lobby.apply(s);   /* Waiting Lobby: live match + stage */
     renderTimer();
     $('wt-stage').textContent = (s.stage || '') + (s.day ? ' - Day ' + s.day : '');
     var list = teamsOf(s);
@@ -427,13 +500,192 @@
     window.__waiting = api;   // handy for testing from the console
     return api;
   })();
+  /* ═════════ WAITING LOBBY (Dashboard → Control → Fullscreen → Waiting Lobby; SSE 'fullscreen' {name:'lobby'}) ═════════
+     Data: Match Board (live match home/away, match, series, stage, day) + the Waiting Screen's own timer (state.timer, shared).
+     Players: the theme roster's players for each team (role order EXP, JUNGLE, MID, ROAM, GOLD); photo <ign>_LEFT (left) / _RIGHT (right)
+     from assets/photo/hires/<POSE>_web/. Both sides move to the next player every 4 s.
+     LOBBY_DEBUG: RORA vs FLCN with the M8 roster (/data/mainroster.json) until the MCT players + photos exist. */
+  var Lobby = (function () {
+    var LOBBY_DEBUG = true, DEBUG_TEAMS = ['RORA', 'FLCN'];
+    var ROLE_ORDER = ['EXP LANER', 'JUNGLER', 'MID LANER', 'ROAMER', 'GOLD LANER'];
+    var ROLE_ART = { 'EXP LANER': 'EXP LANE', 'JUNGLER': 'JUNGLER', 'MID LANER': 'MID LANE', 'ROAMER': 'ROAMER', 'GOLD LANER': 'GOLD LANE' };
+    var OUT = 'cubic-bezier(.16,.84,.24,1)', BACK = 'cubic-bezier(.34,1.4,.64,1)', EXIT = 'cubic-bezier(.5,0,.75,0)';
+    var scene = $('lobby'), visible = false, live = [], seq = 0, players = [[], []], pi = 0, cycleT = null, rosterP = null, teams = ['', ''];
+    function A(el, frames, o) { var a = el.animate(frames, Object.assign({ fill: 'both' }, o)); live.push(a); return a.finished.catch(function () {}); }
+    function cancelAll() { live.forEach(function (a) { try { a.cancel(); } catch (e) {} }); live = []; }
+    /* top HUD texts, one span per letter (tracking sweep below, same motion as the Waiting Screen's side texts) */
+    $('lb-loc').innerHTML = '<svg viewBox="0 0 13 15"><path d="M6.5 1C3.7 1 1.5 3.2 1.5 6c0 3.6 5 8 5 8s5-4.4 5-8c0-2.8-2.2-5-5-5zm0 7a2 2 0 110-4 2 2 0 010 4z" fill="none" stroke="#fff" stroke-width="1.6"/></svg>';
+    'THAILAND,BANGKOK'.split('').forEach(function (c) { var x = document.createElement('span'); x.textContent = c; $('lb-loc').appendChild(x); });
+    '#BREAKINTOTHE'.split('').concat(['W', 'O', 'R', 'L', 'D']).forEach(function (c, i) { var x = document.createElement('span'); x.textContent = c; if (i >= 13) x.className = 'w'; $('lb-tag').appendChild(x); });
+    (function sweep() {
+      var CYCLE = 7500, STAG = 45, DUR = 520, OPEN_AT = 300, CLOSE_AT = 2700, SPREAD = 1.6, t0 = performance.now();
+      function ease(p) { p = Math.max(0, Math.min(1, p)); return p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; }
+      var rows = [[$('lb-loc'), 0], [$('lb-tag'), 450]].map(function (r) { return { sp: Array.prototype.slice.call(r[0].querySelectorAll('span')), off: r[1] }; });
+      (function f(now) {
+        if (visible) rows.forEach(function (r) {
+          var c = (now - t0 + r.off) % CYCLE, n = r.sp.length;
+          r.sp.forEach(function (el, k) {
+            var s = ease((c - OPEN_AT - k * STAG) / DUR) - ease((c - CLOSE_AT - k * STAG) / DUR);
+            el.style.transform = s > 0.001 ? 'translateX(' + ((k - (n - 1) / 2) * SPREAD * s).toFixed(2) + 'px)' : '';
+          });
+        });
+        requestAnimationFrame(f);
+      })(t0);
+    })();
+    /* timer: MM:SS from the shared Waiting Screen clock, fixed-width cells */
+    var tcells = [];
+    '00:00'.split('').forEach(function (ch) { var x = document.createElement('span'); x.className = ch === ':' ? 'c' : 'd'; x.textContent = ch; $('lb-timer').appendChild(x); tcells.push(x); });
+    function measure() {
+      var cv = document.createElement('canvas').getContext('2d'); cv.font = '800 146px "Monument Extended"';
+      var w = 0; '0123456789'.split('').forEach(function (d) { w = Math.max(w, cv.measureText(d).width); });
+      if (w > 0) { $('lb-timer').style.setProperty('--digit-w', (w / 146 + 0.02) + 'em'); $('lb-timer').style.setProperty('--colon-w', (cv.measureText(':').width / 146 + 0.04) + 'em'); }
+    }
+    if (document.fonts && document.fonts.load) { document.fonts.load('800 146px "Monument Extended"').then(measure, measure); document.fonts.load('italic 500 19px "Source Code Pro"'); document.fonts.load('400 17px "Monument Extended"'); }
+    setInterval(function () {
+      var r = remaining(), m = Math.min(99, Math.floor(r / 60)), s = r % 60, txt = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+      for (var i = 0; i < 5; i++) if (tcells[i].textContent !== txt.charAt(i)) tcells[i].textContent = txt.charAt(i);
+    }, 100);
+    /* sponsor: entitlement (category) + white logo, cross-fade, resumes via SponsorCursor */
+    (function () {
+      var list = [], idx = 0, t = null, cat = $('lb-spcat'), logo = $('lb-splogo');
+      function next() {
+        if (!list.length) return;
+        var it = list[idx % list.length]; SponsorCursor.aired(idx % list.length);
+        cat.style.opacity = 0; logo.style.opacity = 0;
+        setTimeout(function () { cat.textContent = it.category || ''; logo.onerror = function () { logo.onerror = null; logo.src = it.src; }; logo.src = it.src.replace(/\/([^\/]+)$/, '/white/$1'); cat.style.opacity = 1; logo.style.opacity = 1; }, 420);
+        idx++; t = setTimeout(next, Math.max(1500, parseInt(it.dur, 10) || 4000) + 420);
+      }
+      fetch('/api/sponsors' + SponsorSet.qs(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (l) {
+        if (Array.isArray(l) && l.length) { list = l; idx = SponsorCursor.start(l.length); next(); }
+      }).catch(function () {});
+    })();
+    /* data */
+    function rosterData() {
+      if (!rosterP) rosterP = Promise.all([fetch('/api/roster', { cache: 'no-store' }).then(function (r) { return r.json(); }).catch(function () { return null; }),
+        LOBBY_DEBUG ? fetch('/data/mainroster.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).catch(function () { return null; }) : Promise.resolve(null)]);
+      return rosterP;
+    }
+    function setImg(img, src, fb) { if (!src) { img.removeAttribute('src'); return; } img.onerror = function () { img.onerror = function () { img.removeAttribute('src'); }; if (fb) img.src = fb; else img.removeAttribute('src'); }; img.src = src; }
+    function applyMatch(s) {
+      var h = s.home || {}, a = s.away || {};
+      var tris = LOBBY_DEBUG ? DEBUG_TEAMS : [String(h.short || '').toUpperCase(), String(a.short || '').toUpperCase()];
+      $('lb-stage').textContent = String(s.stage || '').toUpperCase() + (s.day ? ' — DAY ' + s.day : '');
+      $('lb-match').textContent = 'MATCH ' + (parseInt(s.match, 10) || 1);
+      $('lb-bo').textContent = 'BEST OF ' + String(s.series || 'BO3').replace(/\D/g, '');
+      if (tris.join('|') === teams.join('|')) return;
+      teams = tris;
+      rosterData().then(function (rs) {
+        var theme = rs[0], main = rs[1];
+        tris.forEach(function (tri, k) {
+          var n = k + 1, tag = encodeURIComponent(tri);
+          $('lb-tri' + n).textContent = tri;
+          setImg($('lb-logo' + n), tri ? '/assets/team/logos/' + tag + '_3.png' : '', tri ? '/assets/team/logos/' + tag + '.png' : '');
+          var team = [theme, main].map(function (ro) { return ro && ro.teams && Object.keys(ro.teams).map(function (i) { return ro.teams[i]; }).filter(function (t) { return String(t.tag || '').toUpperCase() === tri; })[0]; }).filter(Boolean)[0];
+          setImg($('lb-flag' + n), team && team.name ? '/assets/flags/' + encodeURIComponent(team.name + '_FLAG') + '.webp' : '');
+          var src = [theme, main].filter(function (ro) { return ro && ro.players; }).map(function (ro) { return Object.keys(ro.players).map(function (i) { return ro.players[i]; }).filter(function (p) { return String(p.tag || '').toUpperCase() === tri; }); }).filter(function (l) { return l.length; })[0] || [];
+          players[k] = ROLE_ORDER.map(function (r) { return src.filter(function (p) { return String(p.role || '').toUpperCase() === r; })[0]; }).filter(Boolean);
+        });
+        pi = 0; paintPlayers(false);
+      });
+    }
+    function paintPlayer(k, p, animate) {
+      var n = k + 1, pose = k ? 'LEFT' : 'RIGHT',   /* left side uses the _RIGHT photo, right side the _LEFT photo (each player faces the centre) */ photo = $('lb-photo' + n), name = $('lb-name' + n), role = $('lb-role' + n);
+      function put() {
+        setImg(photo, p ? '/assets/photo/hires/' + pose + '_web/' + encodeURIComponent(p.ign + '_' + pose) + '.webp' : '');
+        setImg(role, p && ROLE_ART[String(p.role || '').toUpperCase()] ? '/assets/overlay/MCT/roles/' + encodeURIComponent(ROLE_ART[String(p.role).toUpperCase()]) + '.webp' : '');
+        name.innerHTML = ''; String((p && p.ign) || '').split('').forEach(function (c) { var x = document.createElement('span'); x.className = 'ch'; x.textContent = c; name.appendChild(x); });
+        var w = (function () { var cv = document.createElement('canvas').getContext('2d'); cv.font = "800 36.6px 'Monument Extended'"; return cv.measureText(name.textContent).width; })();
+        name.style.fontSize = (w > 360 ? 36.6 * 360 / w : 36.6).toFixed(1) + 'px';
+      }
+      if (!animate) { put(); return Promise.resolve(); }
+      var dx = k ? 60 : -60;   /* each player leaves / enters from its own outer side */
+      /* every animation here is cleared once it has played (fill:'both' leftovers stacked up and pushed the name off its line) */
+      var els = [photo, name, role];
+      function clear() { els.concat(Array.prototype.slice.call(name.children)).forEach(function (e) { e.getAnimations().forEach(function (a) { a.cancel(); }); }); }
+      clear();
+      var outs = [
+        photo.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(' + dx + 'px)' }], { duration: 320, easing: EXIT, fill: 'forwards' }),
+        name.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-14px)' }], { duration: 240, easing: EXIT, fill: 'forwards' }),
+        role.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.6)' }], { duration: 240, easing: EXIT, fill: 'forwards' })
+      ];
+      return Promise.all(outs.map(function (a) { return a.finished.catch(function () {}); })).then(function () {
+        put();
+        var ins = [
+          photo.animate([{ opacity: 0, transform: 'translateX(' + dx + 'px)' }, { opacity: 1, transform: 'none' }], { duration: 560, easing: OUT, fill: 'backwards' }),
+          role.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 80, easing: BACK, fill: 'backwards' })
+        ];
+        Array.prototype.forEach.call(name.children, function (c, i) { ins.push(c.animate([{ opacity: 0, transform: 'translateY(60%)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: 120 + i * 18, easing: OUT, fill: 'backwards' })); });
+        outs.forEach(function (a) { a.cancel(); });   /* the new frames take over (fill:'backwards' holds their start state through the delay) */
+        return Promise.all(ins.map(function (a) { return a.finished.catch(function () {}); })).then(function () { ins.forEach(function (a) { a.cancel(); }); });
+      });
+    }
+    function paintPlayers(animate) { [0, 1].forEach(function (k) { var l = players[k]; paintPlayer(k, l.length ? l[pi % l.length] : null, animate); }); }
+    function startCycle() { clearInterval(cycleT); cycleT = setInterval(function () { if (!visible) return; pi++; paintPlayers(true); }, 4000); }
+    /* in / out — HUD + side texts like the Waiting Screen, players sweep in from their sides, centre builds top-down */
+    function build(show) {
+      var P = [], q = function (id) { return $(id); };
+      if (show) {
+        P.push(A(q('lb-hud'), [{ opacity: 0, transform: 'scale(1.025)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 700, easing: OUT }));
+        P.push(A(q('lb-sider'), [{ opacity: 0, transform: 'scale(1.02)' }, { opacity: 1, transform: 'none' }], { duration: 700, delay: 80, easing: OUT }));
+        P.push(A(q('lb-water'), [{ opacity: 0 }, { opacity: 1 }], { duration: 600, easing: OUT }), A(q('lb-grad'), [{ opacity: 0 }, { opacity: 1 }], { duration: 600, easing: OUT }));
+        P.push(A(q('lb-loc'), [{ opacity: 0, transform: 'translateX(-34px)' }, { opacity: 1, transform: 'none' }], { duration: 600, delay: 260, easing: OUT }));
+        P.push(A(q('lb-tag'), [{ opacity: 0, transform: 'translateX(34px)' }, { opacity: 1, transform: 'none' }], { duration: 600, delay: 260, easing: OUT }));
+        P.push(A(q('lb-photo1'), [{ opacity: 0, transform: 'translateX(-90px)' }, { opacity: 1, transform: 'none' }], { duration: 760, delay: 120, easing: OUT }));
+        P.push(A(q('lb-photo2'), [{ opacity: 0, transform: 'translateX(90px)' }, { opacity: 1, transform: 'none' }], { duration: 760, delay: 160, easing: OUT }));
+        P.push(A(q('lb-logo'), [{ opacity: 0, transform: 'translateY(-24px) scale(.9)' }, { opacity: 1, transform: 'none' }], { duration: 620, delay: 200, easing: BACK }));
+        P.push(A(q('lb-stage'), [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], { duration: 480, delay: 340, easing: OUT }));
+        tcells.forEach(function (c, i) { P.push(A(c, [{ opacity: 0, transform: 'translateY(46%) scale(.86)' }, { opacity: 1, transform: 'none' }], { duration: 560, delay: 380 + i * 55, easing: BACK })); });
+        ['lb-flag1', 'lb-tile1', 'lb-logo1', 'lb-tri1'].forEach(function (id, i) { P.push(A(q(id), [{ opacity: 0, transform: 'translateX(40px) scale(.85)' }, { opacity: 1, transform: 'none' }], { duration: 540, delay: 520 + i * 40, easing: BACK })); });
+        ['lb-flag2', 'lb-tile2', 'lb-logo2', 'lb-tri2'].forEach(function (id, i) { P.push(A(q(id), [{ opacity: 0, transform: 'translateX(-40px) scale(.85)' }, { opacity: 1, transform: 'none' }], { duration: 540, delay: 520 + i * 40, easing: BACK })); });
+        P.push(A(q('lb-vs'), [{ opacity: 0, transform: 'scale(.5)' }, { opacity: 1, transform: 'none' }], { duration: 520, delay: 600, easing: BACK }));
+        ['lb-match', 'lb-bo', 'lb-spcat', 'lb-splogo'].forEach(function (id, i) { P.push(A(q(id), [{ transform: 'translateY(12px)' }, { transform: 'none' }], { duration: 460, delay: 640 + i * 60, easing: OUT })); });
+        P.push(A(q('lb-nbox1'), [{ opacity: 0, transform: 'translateX(-60px)' }, { opacity: 1, transform: 'none' }], { duration: 560, delay: 460, easing: OUT }));
+        P.push(A(q('lb-nbox2'), [{ opacity: 0, transform: 'scaleX(-1) translateX(-60px)' }, { opacity: 1, transform: 'scaleX(-1)' }], { duration: 560, delay: 460, easing: OUT }));
+        ['lb-role1', 'lb-role2'].forEach(function (id) { P.push(A(q(id), [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], { duration: 420, delay: 620, easing: BACK })); });
+        ['lb-name1', 'lb-name2'].forEach(function (id) { P.push(A(q(id), [{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: 440, delay: 680, easing: OUT })); });
+      } else {
+        var all = ['lb-name1', 'lb-name2', 'lb-role1', 'lb-role2', 'lb-nbox1', 'lb-nbox2', 'lb-splogo', 'lb-spcat', 'lb-bo', 'lb-match', 'lb-vs', 'lb-tri1', 'lb-tri2', 'lb-logo1', 'lb-logo2', 'lb-tile1', 'lb-tile2', 'lb-flag1', 'lb-flag2', 'lb-stage', 'lb-logo', 'lb-loc', 'lb-tag'];
+        all.forEach(function (id, i) { P.push(A(q(id), [{ opacity: 1 }, { opacity: 0 }], { duration: 260, delay: i * 12, easing: EXIT })); });
+        tcells.forEach(function (c, i) { P.push(A(c, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-40%) scale(.9)' }], { duration: 300, delay: 60 + (tcells.length - 1 - i) * 22, easing: EXIT })); });
+        P.push(A(q('lb-photo1'), [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(-70px)' }], { duration: 380, delay: 120, easing: EXIT }));
+        P.push(A(q('lb-photo2'), [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(70px)' }], { duration: 380, delay: 120, easing: EXIT }));
+        ['lb-sider', 'lb-water', 'lb-grad'].forEach(function (id) { P.push(A(q(id), [{ opacity: 1 }, { opacity: 0 }], { duration: 380, delay: 260, easing: EXIT })); });
+        P.push(A(q('lb-hud'), [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.02)' }], { duration: 420, delay: 300, easing: EXIT }));
+      }
+      return Promise.all(P);
+    }
+    function go(show) {
+      if (show === visible && !live.length) return;
+      visible = show; var my = ++seq;
+      cancelAll();
+      if (show) { scene.classList.remove('off'); startCycle(); } else clearInterval(cycleT);
+      build(show).then(function () { if (my !== seq) return; if (show) cancelAll(); else { scene.classList.add('off'); cancelAll(); } });
+    }
+    return { show: function () { go(true); }, hide: function () { go(false); }, apply: applyMatch };
+  })();
+  window.__lobby = Lobby;
+
+  /* ── looping background: shown while Waiting Screen or Waiting Lobby is on air and Scene Background is on ── */
+  var FsBg = (function () {
+    var bgOn = true, on = { waiting: false, lobby: false }, pauseT = null, img = $('fs-bg'), vid = $('fs-bg-video');
+    function sync() {
+      var show = bgOn && (on.waiting || on.lobby);
+      img.classList.toggle('on', show); vid.classList.toggle('on', show);
+      clearTimeout(pauseT);
+      if (show) { var p = vid.play(); if (p && p.catch) p.catch(function () {}); }
+      else pauseT = setTimeout(function () { vid.pause(); }, 600);
+    }
+    fetch('/api/fs-bg', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) { bgOn = !(d && d.on === false); sync(); }).catch(function () {});
+    return { scene: function (name, shown) { on[name] = shown; sync(); }, setBg: function (v) { bgOn = v; sync(); } };
+  })();
   (function () {
     var sse = createOverlaySSE();
     sse.addEventListener('fullscreen', function (e) {
-      try { var d = JSON.parse(e.data); if (d.name === 'waiting') { if (d.action === 'show') Waiting.show(); else Waiting.hide(); } } catch (err) {}
+      try { var d = JSON.parse(e.data); if (d.name === 'waiting') { if (d.action === 'show') Waiting.show(); else Waiting.hide(); } if (d.name === 'lobby') { if (d.action === 'show') Lobby.show(); else Lobby.hide(); } if (d.name === 'waiting' || d.name === 'lobby') FsBg.scene(d.name, d.action === 'show'); } catch (err) {}
     });
     fetch('/overlay/fullscreen-state', { cache: 'no-store' }).then(function (r) { return r.json(); })
-      .then(function (st) { if (st && st.waiting) Waiting.show(); }).catch(function () {});
+      .then(function (st) { if (st && st.waiting) { Waiting.show(); FsBg.scene('waiting', true); } if (st && st.lobby) { Lobby.show(); FsBg.scene('lobby', true); } }).catch(function () {});
+    sse.addEventListener('fsbg', function (e) { try { FsBg.setBg(JSON.parse(e.data).on !== false); } catch (err) {} });
   })();
 })();
 </script>
