@@ -897,13 +897,26 @@
     .scene-status .ss-preview.success  { color: #2ed39a; }
     .scene-status .ss-preview.warning  { color: #f5b301; }
     .scene-status .ss-preview.critical { color: #ff5a68; }
-  </style>
+    /* header title: brand + live server-mode + theme pills (window.renderDashTitle) */
+  #dash-title { display: flex; align-items: center; gap: 12px; margin: 0; font-size: 18px; }
+  #dash-title .dt-brand { font-weight: 900; font-size: 22px; letter-spacing: .02em; background: linear-gradient(90deg, #43fff0, #2f9cf0 55%, #edc555); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #dash-title .dt-slash { color: #556; -webkit-text-fill-color: #556; margin: 0 2px; }
+  #dash-title .dt-word { font-weight: 700; font-size: 13px; letter-spacing: .22em; color: #8a8aa8; }
+  #dash-title .dt-pill { font-size: 11px; font-weight: 800; letter-spacing: .12em; padding: 5px 11px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  #dash-title .dt-pill:empty { display: none; }
+  #dt-mode.rb   { color: #ffb347; border-color: #ff8c1a; background: rgba(255,140,26,.14); box-shadow: 0 0 12px rgba(255,140,26,.35); }
+  #dt-mode.main { color: #4be3a0; border-color: #22b878; background: rgba(34,184,120,.14); box-shadow: 0 0 12px rgba(34,184,120,.3); }
+  #dt-mode::before { content: '\25CF  '; animation: dtPulse 1.6s ease-in-out infinite; }
+  @keyframes dtPulse { 50% { opacity: .35; } }
+  #dt-theme.mct { color: #43fff0; border-color: #2fc9d8; background: rgba(67,255,240,.10); }
+  #dt-theme.m8  { color: #f0c860; border-color: #d0a43e; background: rgba(237,197,85,.12); }
+</style>
 </head>
 <body>
 <div id="copy-tooltip"></div>
 
 <header>
-  <h1 id="dash-title">MCT/M8 Dashboard</h1>
+  <h1 id="dash-title"><span class="dt-brand">MCT<span class="dt-slash">/</span>M8</span><span class="dt-word">DASHBOARD</span><span id="dt-mode" class="dt-pill"></span><span id="dt-theme" class="dt-pill"></span></h1>
   <div id="server-status">
     <div class="status-dot" id="srv-dot"></div>
     <span id="srv-label">Checking server…</span>
@@ -1729,9 +1742,18 @@
   var themeSelect = document.getElementById('theme-select');
   var currentTheme = 'playoffs';
 
+  /* header: brand + server mode + theme (both live) */
+  window.renderDashTitle = function () {
+    var rb = window.__dashMode === 'REBROADCAST', mct = currentTheme === 'mct';
+    var m = document.getElementById('dt-mode'), t = document.getElementById('dt-theme');
+    if (m && window.__dashMode) { m.textContent = rb ? 'REBROADCAST MODE' : 'MAIN BROADCAST'; m.className = 'dt-pill ' + (rb ? 'rb' : 'main'); }
+    if (t) { t.textContent = (mct ? 'MCT' : 'M8') + ' THEME'; t.className = 'dt-pill ' + (mct ? 'mct' : 'm8'); }
+    document.title = (mct ? 'MCT' : 'M8') + ' · ' + (window.__dashMode ? (rb ? 'REBROADCAST' : 'MAIN') + ' · ' : '') + 'Dashboard';
+  };
   function applyThemeSelect(theme) {
     var changed = theme !== currentTheme;
     currentTheme = theme;
+    window.renderDashTitle();
     themeSelect.value = theme;
     if (changed && window.__rebuildControlForTheme) window.__rebuildControlForTheme();
   }
@@ -4468,9 +4490,8 @@
         var c = document.querySelector('.tab-btn[data-page="control"]'); if (c) c.click();
       }
     });
-    var ttl = (mode === 'REBROADCAST') ? 'MCT/M8 Dashboard - REBROADCAST MODE' : 'MCT/M8 Dashboard - MAIN BROADCAST MODE';
-    var h = document.getElementById('dash-title'); if (h) h.textContent = ttl;
-    document.title = ttl;
+    window.__dashMode = mode;
+    if (window.renderDashTitle) window.renderDashTitle();
     rebroadcastItems.forEach(function (it) { it.style.display = mode === 'REBROADCAST' ? '' : 'none'; });
     mainItems.forEach(function (m) { m.item.style.display = mode === 'REBROADCAST' ? 'none' : ''; });
     /* if the overlay being viewed just got hidden, move to the first one that's still listed */
