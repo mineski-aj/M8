@@ -8003,12 +8003,6 @@
       "width": "296px",
       "height": "83px"
     },
-    "#mvm-hero": {
-      "left": "681px",
-      "top": "-48px",
-      "width": "1155.2px",
-      "height": "1300px"
-    },
     "#mvm-hud": {
       "left": "47px",
       "top": "50px",
@@ -8028,7 +8022,7 @@
       "height": "500px"
     },
     "#mvm-photo": {
-      "left": "903px",
+      "left": "913px",
       "top": "39px",
       "width": "1550px",
       "height": "1550px"
@@ -8201,11 +8195,7 @@
       "height": "90px"
     },
     "#hmm-photo": {
-      "left": "813px"
-    },
-    "#hmm-hero": {
-      "left": "551px",
-      "top": "-28px"
+      "left": "823px"
     }
   }
 }

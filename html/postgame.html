@@ -1607,7 +1607,7 @@
     #mvm-container { left: 50px; top: 541px; width: 1898px; height: 500px;
       /* fades out towards the right end (reference): solid to ~x1050, gone by ~x1450 on the canvas */
       -webkit-mask-image: linear-gradient(90deg, #000 0, #000 1000px, transparent 1400px); mask-image: linear-gradient(90deg, #000 0, #000 1000px, transparent 1400px); }
-    #mvm-hero { left: 800px; top: 10px; width: 840px; height: 640px; object-fit: contain; object-position: 50% 0; }
+    #mvm-hero { left: 0 !important; top: 0 !important; width: 1920px !important; height: 1080px !important; object-fit: fill; transform: none; }   /* assets/hero/potg/<id>.webp: full 1920x1080 frame, hero already placed in it — never moved/scaled */
     #mvm-photo { left: 903px; top: 39px; width: 1550px; height: 1550px; object-fit: contain; }   /* 1000x1000 signature photo scaled so the head matches the reference (~450 px hair-to-chin, centred ~x1570,y295); the bottom/right overflow is cropped by the page */
     #mvm-water { left: 785px; top: 0; width: 1135px; height: 1080px; pointer-events: none; }
     #mvm-sign { left: 50px; top: 138px; width: 1048px; height: 252px; }
@@ -1795,8 +1795,8 @@
     #p2m-card1 { left: 52px; border-radius: 44px 0 0 0; } #p2m-card2 { left: 1424px; border-radius: 0 44px 0 0; }
     .p2m-card > img { position: absolute; }
     .p2m-card > img:not([src]) { visibility: hidden; }
-    .p2m-hero { height: 760px; width: 1002px; object-fit: contain; }
-    #p2m-hero1 { left: -500px; top: -30px; } #p2m-hero2 { left: -270px; top: -30px; }
+    .p2m-hero { left: -2px; top: -2px; width: 446px; height: 747px; object-fit: fill; }   /* assets/hero/top4/<id>.webp = the whole 446x747 card face (border baked in) */
+    #p2m-hero2 { transform: scaleX(-1); }   /* right player mirrored */
     .p2m-photo { width: 550px; height: 550px; object-fit: contain; object-position: 50% 100%; }
     #p2m-photo1 { left: 20px; top: 72px; } #p2m-photo2 { left: -128px; top: 72px; }
     .p2m-plate { top: 908px; width: 444px; height: 124px; box-sizing: border-box; border: 2px solid #43fff0; border-top: 0;
@@ -1827,7 +1827,7 @@
     .mcp-art { width: 185px; height: 141px; overflow: hidden; }
     .mcp-art > img { position: absolute; }
     .mcp-art > img:not([src]) { visibility: hidden; }
-    .mcp-hero { width: 330px; height: 250px; object-fit: contain; }
+    .mcp-hero { left: 0 !important; top: 0 !important; width: 185px !important; height: 141px !important; object-fit: cover; }   /* assets/hero/postmatch/<id>.webp (372x286 = 2x the art box) fills the box */
     .mcp-R > .mcp-hero { transform: scaleX(-1); }
     .mcp-photo { width: 180px; height: 180px; object-fit: contain; object-position: 50% 0; }
     .mcp-spell { width: 36px; height: 36px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid #f0b93a; object-fit: cover; background: #3a2a10; }
@@ -1947,7 +1947,7 @@
       background: radial-gradient(120% 80% at 30% 20%, #5b86de 0%, #2c55b5 45%, #16307a 100%); }
     .m4k-card > img { position: absolute; }
     .m4k-card > img:not([src]) { visibility: hidden; }
-    .m4k-hero { left: -500px; top: -30px; width: 1002px; height: 760px; object-fit: contain; }
+    .m4k-hero { left: -2px; top: -2px; width: 446px; height: 747px; object-fit: fill; }   /* assets/hero/top4/<id>.webp = the whole card face */
     .m4k-photo { left: 30px; top: 37px; width: 520px; height: 520px; object-fit: contain; object-position: 50% 100%; }
     .m4k-plate { top: 843px; width: 444px; height: 189px; box-sizing: border-box; border: 2px solid #43fff0; border-top: 0;
       background: linear-gradient(180deg, #0e2566 0%, #173f95 60%, #1f4ea8 100%); }
@@ -1962,12 +1962,63 @@
     #m4k-card2, #m4k-plate2 { left: 510px; } #m4k-spell2 { left: 520px; } #m4k-role2 { left: 891px; } #m4k-name2 { left: 583px; } #m4k-label2, #m4k-value2 { left: 522px; }
     #m4k-card3, #m4k-plate3 { left: 968px; } #m4k-spell3 { left: 978px; } #m4k-role3 { left: 1349px; } #m4k-name3 { left: 1041px; } #m4k-label3, #m4k-value3 { left: 980px; }
     #m4k-card4, #m4k-plate4 { left: 1426px; } #m4k-spell4 { left: 1436px; } #m4k-role4 { left: 1807px; } #m4k-name4 { left: 1499px; } #m4k-label4, #m4k-value4 { left: 1438px; }
-    /* in: cards rise in one after another (left -> right), then the numbers count up (m4kShow) */
-    @keyframes m4kRise { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
-    #m4k-page.m4k-visible #m4k-card1, #m4k-page.m4k-visible #m4k-plate1, #m4k-page.m4k-visible #m4k-spell1, #m4k-page.m4k-visible #m4k-role1, #m4k-page.m4k-visible #m4k-name1, #m4k-page.m4k-visible #m4k-label1, #m4k-page.m4k-visible #m4k-value1 { animation: m4kRise 600ms cubic-bezier(.16,.84,.24,1) 150ms both; }
-    #m4k-page.m4k-visible #m4k-card2, #m4k-page.m4k-visible #m4k-plate2, #m4k-page.m4k-visible #m4k-spell2, #m4k-page.m4k-visible #m4k-role2, #m4k-page.m4k-visible #m4k-name2, #m4k-page.m4k-visible #m4k-label2, #m4k-page.m4k-visible #m4k-value2 { animation: m4kRise 600ms cubic-bezier(.16,.84,.24,1) 260ms both; }
-    #m4k-page.m4k-visible #m4k-card3, #m4k-page.m4k-visible #m4k-plate3, #m4k-page.m4k-visible #m4k-spell3, #m4k-page.m4k-visible #m4k-role3, #m4k-page.m4k-visible #m4k-name3, #m4k-page.m4k-visible #m4k-label3, #m4k-page.m4k-visible #m4k-value3 { animation: m4kRise 600ms cubic-bezier(.16,.84,.24,1) 370ms both; }
-    #m4k-page.m4k-visible #m4k-card4, #m4k-page.m4k-visible #m4k-plate4, #m4k-page.m4k-visible #m4k-spell4, #m4k-page.m4k-visible #m4k-role4, #m4k-page.m4k-visible #m4k-name4, #m4k-page.m4k-visible #m4k-label4, #m4k-page.m4k-visible #m4k-value4 { animation: m4kRise 600ms cubic-bezier(.16,.84,.24,1) 480ms both; }
+    /* in (snappy, ~1.5 s): per card, left -> right 80 ms apart: the card springs up (overshoot), the hero art settles from a zoom, a border
+       flash pulses on it, the photo pops up, the plate drops open, spell/role pop, texts rise, the number counts up and lands
+       with a punch (m4kShow). Out: cards sink + fade quickly (m4k-out). transform/opacity only. */
+    .m4k-card::before { content: ""; position: absolute; pointer-events: none; opacity: 0; z-index: 2; }
+    .m4k-card::before { inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 3px #43fff0, inset 0 0 60px rgba(67,255,240,.75); }
+    .m4k-hero { transform-origin: 50% 30%; }
+    .m4k-plate, .m4k-value { transform-origin: 50% 0; }
+    .m4k-value.m4k-punch { animation: m4kPunch 420ms cubic-bezier(.2,1.6,.4,1) both !important; }
+    @keyframes m4kCardIn { from { opacity: 0; transform: translateY(90px) scale(.92); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
+    @keyframes m4kHeroIn { from { transform: scale(1.22); } to { transform: none; } }
+    @keyframes m4kFlash { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+    @keyframes m4kPhotoIn { from { opacity: 0; transform: translateY(80px) scale(.96); } 50% { opacity: 1; } to { opacity: 1; transform: none; } }
+    @keyframes m4kPlateIn { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: none; } }
+    @keyframes m4kPop { 0% { opacity: 0; transform: scale(0) rotate(-25deg); } 70% { opacity: 1; transform: scale(1.18) rotate(4deg); } 100% { opacity: 1; transform: none; } }
+    @keyframes m4kRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+    @keyframes m4kPunch { 0% { transform: scale(1); } 35% { transform: scale(1.2); color: #43fff0; } 100% { transform: none; color: #fff; } }
+    @keyframes m4kSink { to { opacity: 0; transform: translateY(50px) scale(.97); } }
+    #m4k-page.m4k-visible #m4k-card1 { animation: m4kCardIn 520ms cubic-bezier(.2,1.3,.4,1) 120ms both; }
+    #m4k-page.m4k-visible #m4k-hero1 { animation: m4kHeroIn 900ms cubic-bezier(.16,.84,.24,1) 120ms both; }
+    #m4k-page.m4k-visible #m4k-card1::before { animation: m4kFlash 650ms ease-out 340ms both; }
+    #m4k-page.m4k-visible #m4k-photo1 { animation: m4kPhotoIn 520ms cubic-bezier(.2,1.3,.4,1) 270ms both; }
+    #m4k-page.m4k-visible #m4k-plate1 { animation: m4kPlateIn 280ms cubic-bezier(.16,.84,.24,1) 350ms both; }
+    #m4k-page.m4k-visible #m4k-spell1, #m4k-page.m4k-visible #m4k-role1 { animation: m4kPop 400ms cubic-bezier(.16,.84,.24,1) 500ms both; }
+    #m4k-page.m4k-visible #m4k-name1 { animation: m4kRise 340ms cubic-bezier(.16,.84,.24,1) 450ms both; }
+    #m4k-page.m4k-visible #m4k-label1 { animation: m4kRise 320ms cubic-bezier(.16,.84,.24,1) 520ms both; }
+    #m4k-page.m4k-visible #m4k-value1 { animation: m4kRise 320ms cubic-bezier(.16,.84,.24,1) 550ms both; }
+    #m4k-page.m4k-out #m4k-card1, #m4k-page.m4k-out #m4k-plate1, #m4k-page.m4k-out #m4k-spell1, #m4k-page.m4k-out #m4k-role1, #m4k-page.m4k-out #m4k-name1, #m4k-page.m4k-out #m4k-label1, #m4k-page.m4k-out #m4k-value1 { animation: m4kSink 300ms cubic-bezier(.5,0,.75,0) 0ms both !important; }
+    #m4k-page.m4k-visible #m4k-card2 { animation: m4kCardIn 520ms cubic-bezier(.2,1.3,.4,1) 200ms both; }
+    #m4k-page.m4k-visible #m4k-hero2 { animation: m4kHeroIn 900ms cubic-bezier(.16,.84,.24,1) 200ms both; }
+    #m4k-page.m4k-visible #m4k-card2::before { animation: m4kFlash 650ms ease-out 420ms both; }
+    #m4k-page.m4k-visible #m4k-photo2 { animation: m4kPhotoIn 520ms cubic-bezier(.2,1.3,.4,1) 350ms both; }
+    #m4k-page.m4k-visible #m4k-plate2 { animation: m4kPlateIn 280ms cubic-bezier(.16,.84,.24,1) 430ms both; }
+    #m4k-page.m4k-visible #m4k-spell2, #m4k-page.m4k-visible #m4k-role2 { animation: m4kPop 400ms cubic-bezier(.16,.84,.24,1) 580ms both; }
+    #m4k-page.m4k-visible #m4k-name2 { animation: m4kRise 340ms cubic-bezier(.16,.84,.24,1) 530ms both; }
+    #m4k-page.m4k-visible #m4k-label2 { animation: m4kRise 320ms cubic-bezier(.16,.84,.24,1) 600ms both; }
+    #m4k-page.m4k-visible #m4k-value2 { animation: m4kRise 320ms cubic-bezier(.16,.84,.24,1) 630ms both; }
+    #m4k-page.m4k-out #m4k-card2, #m4k-page.m4k-out #m4k-plate2, #m4k-page.m4k-out #m4k-spell2, #m4k-page.m4k-out #m4k-role2, #m4k-page.m4k-out #m4k-name2, #m4k-page.m4k-out #m4k-label2, #m4k-page.m4k-out #m4k-value2 { animation: m4kSink 300ms cubic-bezier(.5,0,.75,0) 40ms both !important; }
+    #m4k-page.m4k-visible #m4k-card3 { animation: m4kCardIn 520ms cubic-bezier(.2,1.3,.4,1) 280ms both; }
+    #m4k-page.m4k-visible #m4k-hero3 { animation: m4kHeroIn 900ms cubic-bezier(.16,.84,.24,1) 280ms both; }
+    #m4k-page.m4k-visible #m4k-card3::before { animation: m4kFlash 650ms ease-out 500ms both; }
+    #m4k-page.m4k-visible #m4k-photo3 { animation: m4kPhotoIn 520ms cubic-bezier(.2,1.3,.4,1) 430ms both; }
+    #m4k-page.m4k-visible #m4k-plate3 { animation: m4kPlateIn 280ms cubic-bezier(.16,.84,.24,1) 510ms both; }
+    #m4k-page.m4k-visible #m4k-spell3, #m4k-page.m4k-visible #m4k-role3 { animation: m4kPop 400ms cubic-bezier(.16,.84,.24,1) 660ms both; }
+    #m4k-page.m4k-visible #m4k-name3 { animation: m4kRise 340ms cubic-bezier(.16,.84,.24,1) 610ms both; }
+    #m4k-page.m4k-visible #m4k-label3 { animation: m4kRise 320ms cubic-bezier(.16,.84,.24,1) 680ms both; }
+    #m4k-page.m4k-visible #m4k-value3 { animation: m4kRise 320ms cubic-bezier(.16,.84,.24,1) 710ms both; }
+    #m4k-page.m4k-out #m4k-card3, #m4k-page.m4k-out #m4k-plate3, #m4k-page.m4k-out #m4k-spell3, #m4k-page.m4k-out #m4k-role3, #m4k-page.m4k-out #m4k-name3, #m4k-page.m4k-out #m4k-label3, #m4k-page.m4k-out #m4k-value3 { animation: m4kSink 300ms cubic-bezier(.5,0,.75,0) 80ms both !important; }
+    #m4k-page.m4k-visible #m4k-card4 { animation: m4kCardIn 520ms cubic-bezier(.2,1.3,.4,1) 360ms both; }
+    #m4k-page.m4k-visible #m4k-hero4 { animation: m4kHeroIn 900ms cubic-bezier(.16,.84,.24,1) 360ms both; }
+    #m4k-page.m4k-visible #m4k-card4::before { animation: m4kFlash 650ms ease-out 580ms both; }
+    #m4k-page.m4k-visible #m4k-photo4 { animation: m4kPhotoIn 520ms cubic-bezier(.2,1.3,.4,1) 510ms both; }
+    #m4k-page.m4k-visible #m4k-plate4 { animation: m4kPlateIn 280ms cubic-bezier(.16,.84,.24,1) 590ms both; }
+    #m4k-page.m4k-visible #m4k-spell4, #m4k-page.m4k-visible #m4k-role4 { animation: m4kPop 400ms cubic-bezier(.16,.84,.24,1) 740ms both; }
+    #m4k-page.m4k-visible #m4k-name4 { animation: m4kRise 340ms cubic-bezier(.16,.84,.24,1) 690ms both; }
+    #m4k-page.m4k-visible #m4k-label4 { animation: m4kRise 320ms cubic-bezier(.16,.84,.24,1) 760ms both; }
+    #m4k-page.m4k-visible #m4k-value4 { animation: m4kRise 320ms cubic-bezier(.16,.84,.24,1) 790ms both; }
+    #m4k-page.m4k-out #m4k-card4, #m4k-page.m4k-out #m4k-plate4, #m4k-page.m4k-out #m4k-spell4, #m4k-page.m4k-out #m4k-role4, #m4k-page.m4k-out #m4k-name4, #m4k-page.m4k-out #m4k-label4, #m4k-page.m4k-out #m4k-value4 { animation: m4kSink 300ms cubic-bezier(.5,0,.75,0) 120ms both !important; }
     /* in: header like the Gold Graph, cards slide in from their side, title + panel rise, then the bars grow (p2mGrow) */
     @keyframes p2mFromL { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
     @keyframes p2mFromR { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
@@ -1989,7 +2040,7 @@
     #hmm-page > * { position: absolute; }
     #hmm-hud { z-index: 100; left: 47px; top: 50px; width: 1826px; height: 1017px; pointer-events: none; }
     #hmm-logo { left: 129px; top: 29px; width: 219px; height: 71px; }
-    #hmm-hero { left: 551px; top: -48px; width: 1155.2px; height: 1300px; object-fit: contain; object-position: 50% 0; }   /* = the MCT MVP hero's current (Edit-tab) size */
+    #hmm-hero { left: 0 !important; top: 0 !important; width: 1920px !important; height: 1080px !important; object-fit: fill; transform: none; }   /* assets/hero/potg/<id>.webp, same full 1920x1080 frame as the MVP — never moved/scaled */
     #hmm-map { left: 219px; top: 146px; width: 786px; height: 532px; overflow: hidden; }
     #hmm-map-img, #hmm-heat-canvas, #hmm-dot-canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
     #hmm-heat-canvas { opacity: .88; }
@@ -8499,6 +8550,9 @@
 
     /* heromvp/ is indexed by heroid like everywhere else, just prefixed
        "MVP_" instead of suffixed. */
+    /* MCT hero art sets (WebP, named <heroid>.webp): top4 = Post 4 Key / Post H2H card face (446x747), potg = MVP/POTM full
+       1920x1080 frame, postmatch = Post Game Items/Emblem/Stats row art (372x286). */
+    function mctHeroArt(set, heroid) { return heroid ? '/assets/hero/' + set + '/' + heroid + '.webp' : ''; }
     function mvHeroImgUrl(heroid) {
       if (!heroid) return '';
       return '/assets/hero/mvp_web/MVP_' + heroid + '.webp';
@@ -9006,7 +9060,7 @@
        <pfx>-name, -hero, -teamlogo, -photo, -role-glyph. */
     async function mctSetIdentity(pfx, pl) {
       document.getElementById(pfx + '-name').textContent = pl.name || '';
-      mvmSetIcon(pfx + '-hero', mvHeroImgUrl(pl.heroid));
+      mvmSetIcon(pfx + '-hero', mctHeroArt('potg', pl.heroid));
       /* team logo: the white version (<TAG>_3.png) like the reference, else the normal one */
       { const tl = document.getElementById(pfx + '-teamlogo'), tag = pl.team_simple_name ? encodeURIComponent(String(pl.team_simple_name).toUpperCase()) : '';
         tl.style.visibility = tag ? '' : 'hidden';
@@ -12665,7 +12719,9 @@
       const band = 'M0 3 C12 -1 22 5 30 13 C37 20 44 25 58 24 L52 28 C38 30 29 25 21 18 C14 12 8 6 0 3 Z';
       const paths = [];
       for (let i = 0; i < total; i++) paths.push('<path transform="translate(' + (i * 27) + ' 0)" d="' + band + '" fill="' + (i >= total - won ? '#43fff0' : '#8f97a3') + '"/>');
-      svg.innerHTML = '<g' + (mirror ? ' transform="translate(112 0) scale(-1 1)"' : '') + '>' + paths.join('') + '</g>';
+      const html = '<g' + (mirror ? ' transform="translate(112 0) scale(-1 1)"' : '') + '>' + paths.join('') + '</g>';
+      if (svg.dataset.k === html) return;   /* unchanged: don't rebuild (the top bar stays up between scenes) */
+      svg.dataset.k = html; svg.innerHTML = html;
     }
     document.getElementById('mch-hud').innerHTML = document.getElementById('mvm-hud').innerHTML;
     /* Shared MCT top bar + HUD (#mct-hdr). Shown by each scene that uses it; a scene's hide leaves it up when the scene coming in
@@ -12765,11 +12821,30 @@
     function mctSetFlag(img, tri) {
       if (!img) return;
       if (!mctRosterP) mctRosterP = fetch('/api/roster', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+      if (img.dataset.flagTri === tri) return;   /* already showing this team's flag: re-assigning would re-load it (flicker between scenes) */
+      img.dataset.flagTri = tri;
       mctRosterP.then(ro => {
+        if (img.dataset.flagTri !== tri) return;
         const t = ro && ro.teams && Object.values(ro.teams).find(x => String(x.tag || '').toUpperCase() === tri);
         img.onerror = () => img.removeAttribute('src');
         if (t && t.name) img.src = '/assets/flags/' + encodeURIComponent(t.name + '_FLAG') + '.webp'; else img.removeAttribute('src');
       });
+    }
+    /* Team logo for the MCT top bars: white <TRI>_3.png, else <TRI>.png. The working file is remembered per tricode and an <img> that
+       already shows this team is left alone — re-setting it on every scene change re-tried the missing _3 file, blanking the logo for a
+       moment (the top-bar flicker between Post Game scenes). */
+    const mctLogoOk = {};
+    function mctSetTeamLogo(img, tri) {
+      if (!img) return;
+      if (!tri) { delete img.dataset.logoTri; img.removeAttribute('src'); return; }
+      if (img.dataset.logoTri === tri && img.getAttribute('src')) return;
+      img.dataset.logoTri = tri;
+      const tag = encodeURIComponent(tri), white = '/assets/team/logos/' + tag + '_3.png', plain = '/assets/team/logos/' + tag + '.png';
+      if (mctLogoOk[tri]) { img.onerror = () => img.removeAttribute('src'); img.src = mctLogoOk[tri]; return; }
+      const probe = new Image();
+      probe.onload = () => { mctLogoOk[tri] = white; if (img.dataset.logoTri === tri) { img.onerror = null; img.src = white; } };
+      probe.onerror = () => { mctLogoOk[tri] = plain; if (img.dataset.logoTri === tri) { img.onerror = () => img.removeAttribute('src'); img.src = plain; } };
+      probe.src = white;
     }
     /* MCT postgame header (Post Gold Graph, MCT Post H2H): <pfx>-tri1/2, -logo1/2, -score1/2, -res1/2, -sw1/2, -stage, -matchgame. */
     function mctFillHeader(pfx, gd, ms) {
@@ -12780,8 +12855,7 @@
         const tri = String(c.team_simple_name || '').toUpperCase();
         document.getElementById(pfx + '-tri' + n).textContent = tri;
         const logo = document.getElementById(pfx + '-logo' + n), tag = encodeURIComponent(tri);
-        logo.onerror = () => { logo.onerror = () => logo.removeAttribute('src'); logo.src = '/assets/team/logos/' + tag + '.png'; };
-        if (tri) logo.src = '/assets/team/logos/' + tag + '_3.png'; else logo.removeAttribute('src');
+        mctSetTeamLogo(logo, tri);
         if (pfx === 'mch') mctSetFlag(document.getElementById('mch-flag' + n), tri);
         const kills = [1, 2, 3, 4, 5].reduce((a, i) => a + ((c['seat_' + i] || {}).kill_num || 0), 0);
         document.getElementById(pfx + '-score' + n).textContent = c.score != null ? c.score : kills;
@@ -12917,7 +12991,7 @@
     }
     async function p2mApplyCard(n, seat, role) {
       const set = (id, url) => { const el = document.getElementById(id); el.onerror = () => el.removeAttribute('src'); if (url) el.src = url; else el.removeAttribute('src'); };
-      set('p2m-hero' + n, seat && seat.heroid ? mvHeroImgUrl(seat.heroid) : '');
+      set('p2m-hero' + n, seat && seat.heroid ? mctHeroArt('top4', seat.heroid) : '');
       set('p2m-spell' + n, seat ? ftSpellUrl(seat.skillid) : '');
       /* photo: FRONT pose (as in the reference), else the signature portrait, else nothing */
       const ph = document.getElementById('p2m-photo' + n), name = seat && seat.name;
@@ -13038,7 +13112,7 @@
       await Promise.all(leaders.map(async (seat, k) => {
         const n = k + 1;
         const set = (id, url) => { const el = document.getElementById(id); el.onerror = () => el.removeAttribute('src'); if (url) el.src = url; else el.removeAttribute('src'); };
-        set('m4k-hero' + n, seat.heroid ? mvHeroImgUrl(seat.heroid) : '');
+        set('m4k-hero' + n, seat.heroid ? mctHeroArt('top4', seat.heroid) : '');
         set('m4k-spell' + n, ftSpellUrl(seat.skillid) || '');
         const ph = document.getElementById('m4k-photo' + n);
         ph.onerror = () => { ph.onerror = () => ph.removeAttribute('src'); ph.src = hlPhotoUrl(seat.name); };
@@ -13053,6 +13127,17 @@
     }
     function m4kFit() {
       m4kPage.querySelectorAll('.m4k-name').forEach(el => { let px = 26; el.style.fontSize = px + 'px'; while (el.scrollWidth > 296 && px > 13) { px -= 1; el.style.fontSize = px + 'px'; } });
+    }
+    /* count up quickly (650 ms, ease-out) then punch the final number */
+    function m4kCountUp(el, to) {
+      const t0 = performance.now();
+      (function tick(now) {
+        if (!m4kVisible) return;
+        const t = Math.min(1, (now - t0) / 650);
+        el.textContent = String(Math.round(to * (1 - Math.pow(1 - t, 3))));
+        if (t < 1) requestAnimationFrame(tick);
+        else { el.classList.remove('m4k-punch'); void el.offsetWidth; el.classList.add('m4k-punch'); }
+      })(t0);
     }
     function m4kFitValue(el) { let px = 74; el.style.fontSize = px + 'px'; while (el.scrollWidth > 420 && px > 36) { px -= 2; el.style.fontSize = px + 'px'; } }
     async function m4kShow() {
@@ -13072,6 +13157,8 @@
       if (activeFeature !== 'post4key') return;
       m4kVisible = true;
       showSceneVideo('post4key');
+      m4kPage.classList.remove('m4k-out');
+      m4kPage.querySelectorAll('.m4k-punch').forEach(e => e.classList.remove('m4k-punch'));
       m4kPage.classList.add('m4k-on');
       mctHdrShow();
       m4kFit();
@@ -13080,15 +13167,16 @@
       values.forEach((v, k) => {
         const el = document.getElementById('m4k-value' + (k + 1));
         el.textContent = String(v); m4kFitValue(el); el.textContent = '0';   /* size for the final number, then count up to it */
-        setTimeout(() => { if (m4kVisible) p2hCountUp(el, v, x => String(Math.round(x))); }, 650 + k * 110);
+        setTimeout(() => { if (m4kVisible) m4kCountUp(el, v); }, 560 + k * 80);   /* = the value's rise (120 + 80k + 430) + a beat */
       });
     }
     function m4kHide() {
       if (!m4kVisible) return Promise.resolve();
       m4kVisible = false;
       mctHdrHide();
+      m4kPage.classList.add('m4k-out');   /* cards sink out (staggered), the page fades with them */
       m4kPage.classList.remove('m4k-visible');
-      return new Promise(resolve => setTimeout(() => { m4kPage.classList.remove('m4k-on'); hideSceneVideo(); resolve(); }, 420));
+      return new Promise(resolve => setTimeout(() => { m4kPage.classList.remove('m4k-on', 'm4k-out'); hideSceneVideo(); resolve(); }, 420));
     }
     /* ════════════════════════════════════════════════
        MCT CONSOLIDATED POST page 1 (#mcp-page) — replaces #cp-page under data-theme-name="mct" (showConsolidatedPost /
@@ -13118,7 +13206,7 @@
     }
     async function mcpApplyRow(n, seat, lane) {
       const set = (id, url) => { const el = document.getElementById(id); el.onerror = () => el.removeAttribute('src'); if (url) el.src = url; else el.removeAttribute('src'); };
-      set('mcp-hero-' + n, seat && seat.heroid ? mvHeroImgUrl(seat.heroid) : '');
+      set('mcp-hero-' + n, seat && seat.heroid ? mctHeroArt('postmatch', seat.heroid) : '');
       set('mcp-spell-' + n, seat ? ftSpellUrl(seat.skillid) : '');
       const ph = document.getElementById('mcp-photo-' + n), name = seat && seat.name;
       ph.onerror = () => { ph.onerror = () => ph.removeAttribute('src'); ph.src = hlPhotoUrl(name); };
