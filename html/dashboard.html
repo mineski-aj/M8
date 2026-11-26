@@ -338,6 +338,8 @@
     /* Control-tab feature list — search / favorites / sections (buildFeatureList) */
     .feature-head { display: flex; align-items: center; gap: 6px; width: 100%; }
     .feature-head .feature-name { flex: 1; }
+    .feat-copies { display: flex; gap: 4px; }   /* show/hide route copiers on the right of the header, just left of the ☆ (the name's flex:1 pushes them right) */
+    .feat-copies .btn-copy { padding: 1px 6px; line-height: 14px; font-size: 10px; }
     .feat-toolbar { position: sticky; top: 0; z-index: 5; background: inherit; padding: 2px 0 8px; }
     .feat-search {
       width: 100%; box-sizing: border-box; padding: 7px 10px; border-radius: 6px;
@@ -4266,13 +4268,17 @@
         fr.dataset.featName = feat.name;
         fr.dataset.label = (currentTheme === 'mct' && feat.mctLabel) || feat.name;   /* search matches the shown name too */
         var fhead = el('div', 'feature-head');
-        fhead.appendChild(el('div', 'feature-name', (currentTheme === 'mct' && feat.mctLabel) || feat.name));   /* per-theme display name; feat.name stays the key */
+        var fname = el('div', 'feature-name', (currentTheme === 'mct' && feat.mctLabel) || feat.name);   /* per-theme display name; feat.name stays the key */
+        fhead.appendChild(fname);
+        /* show / hide route copiers sit on the right of the header, next to the ☆ (filled below), so the button row is just the toggle + Preview (+ scene tools) */
+        var fcopies = el('div', 'feat-copies');
+        if (feat.show || feat.hide) fhead.appendChild(fcopies);
         if (feat.comingSoon) { var cs = el('div', 'scene-status', 'coming soon'); cs.style.cssText = 'color:#777;font-size:11px;margin-left:auto;'; fhead.appendChild(cs); }
         fr.appendChild(fhead);
-        /* Last load result for this scene (🟢/🟡/🔴), filled + kept current
-           by the Logs-tab script at the bottom of this file. Keyed by the
-           same route key the Preview button uses. */
-        if (feat.show && ov.file && window.olFillSceneStatus) {
+        /* Per-scene load-status line ("Live/Preview: Loaded with warnings · 0.49s · …") removed from the Control tab — it cluttered every
+           card. The results are still logged; read them in the Logs tab. (Flip SHOW_SCENE_STATUS to bring the line back.) */
+        var SHOW_SCENE_STATUS = false;
+        if (SHOW_SCENE_STATUS && feat.show && ov.file && window.olFillSceneStatus) {
           var ssParts = feat.show.split('/');
           var ss = el('div', 'scene-status');
           ss.dataset.page  = ov.file.replace(/\.html?$/i, '');
@@ -4299,7 +4305,7 @@
           (function (path, name, b) {
             b.addEventListener('click', function () { copyRoute(path, name + ' show route', b); });
           })(feat.show, feat.name, csb);
-          fb.appendChild(csb);
+          fcopies.appendChild(csb);
         }
         if (feat.hide) {
           var chb = document.createElement('button');
@@ -4308,12 +4314,12 @@
           (function (path, name, b) {
             b.addEventListener('click', function () { copyRoute(path, name + ' hide route', b); });
           })(feat.hide, feat.name, chb);
-          fb.appendChild(chb);
+          fcopies.appendChild(chb);
         }
         if (feat.show || feat.hide) {
           var featRoute = feat.show || feat.hide;
           var featParts = featRoute.split('/');
-          fb.appendChild(buildPreviewToggleBtn(featParts[featParts.length - 2]));
+          fb.insertBefore(buildPreviewToggleBtn(featParts[featParts.length - 2]), fb.firstChild);   /* Preview on the left, Showing/Hidden to its right */
         }
         if (feat.versionToggle && !(feat.mctNudges && currentTheme === 'mct')) {
           /* Per-scene version switch (Team Line-Up V1/V2) — same feature toggle
